@@ -16,9 +16,15 @@ if '__main__' == __name__:
     _launcher['port'] = int(_launcher['port'])
     if args.debug: print('_launcher : {}'.format(_launcher))
     _service = service.Service('mainmem', _launcher.get('host'), _launcher.get('port'))
-#    _service.tx('bye')
-    while True:
+    _cycle = 0
+    _active = True
+    while _active:
         msg = _service.rx()
-        print(msg)
-        if {'text': 'bye'} == msg: break
+        for k, v in msg.items():
+            if {'text': 'bye'} == {k: v}:
+                _active = False
+            elif 'cycle' == k:
+                _cycle = msg.get('cycle')
+#                _service.tx({'cycle': _cycle})
+        _service.tx({'ack': {'cycle': _cycle}})
     if not args.quiet: print('Shutting down {}...'.format(sys.argv[0]))

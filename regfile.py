@@ -26,13 +26,12 @@ if '__main__' == __name__:
     _registers = {x: 0 for x in ['%pc', '%sp']}
     while _active:
         msg = _service.rx()
-#        print(msg)
         for k, v in msg.items():
             if {'text': 'bye'} == {k: v}:
                 _active = False
             elif 'cycle' == k:
                 _cycle = msg.get('cycle')
-                _service.tx({'cycle': _cycle})
+#                _service.tx({'cycle': _cycle})
             elif 'register' == k:
                 _cmd = v.get('cmd')
                 _name = v.get('name')

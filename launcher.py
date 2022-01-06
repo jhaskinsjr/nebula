@@ -29,20 +29,23 @@ def handler(connections, conn, addr):
                 time.sleep(1)
                 continue
             msg = json.loads(msg.decode('ascii'))
-            print('{}: {}'.format(threading.get_ident(), msg))
-            if {'text': 'bye'} == msg:
+            print('{}: {}'.format(threading.current_thread().name, msg))
+            k, v = (next(iter(msg.items())) if isinstance(msg, dict) else (None, None))
+            if {k: v} == {'text': 'bye'}:
                 conn.close()
                 connections.remove(conn)
                 break
+            elif 'name' == k:
+                threading.current_thread().name = v
+#            else:
+#                broadcast(set(filter(lambda c: c != conn, connections)), msg)
         except Exception as e:
             print('Oopsie! {} ({} ({}:{}))'.format(e, str(msg), type(msg), len(msg)))
-            conn.close()
             connections.remove(conn)
+            conn.close()
 def acceptor(connections):
     while True:
         _conn, _addr = _s.accept()
-#        match = list(filter(lambda n: _addr == (services[n].get('host'), services[n].get('port')), services.keys()))
-#        print('match : {}'.format(match))
         th = threading.Thread(target=handler, args=(connections, _conn, _addr))
         th.start()
 def integer(val):
@@ -95,23 +98,21 @@ if __name__ == '__main__':
     _s.listen(5)
     connections = set()
     threading.Thread(target=acceptor, args=(connections,), daemon=True).start()
-    services = {
-        n: {
-            'host': h,
-            'port': p,
-            'thread': threading.Thread(target=subprocess.run, args=(['ssh', h, 'python3 {} {} {} {}'.format(c, ('-D' if args.debug else ''), '{}:{}'.format(socket.gethostname(), args.port), p)],), daemon=True),
-         } for n, c, h, p in map(lambda x: x.split(':'), args.services)
-    }
-    if args.debug: print('services : {}'.format(services))
-    [th.start() for th in map(lambda n: services.get(n).get('thread'), services.keys())]
+    _services = [
+        threading.Thread(
+            target=subprocess.run,
+            args=(['ssh', h, 'python3 {} {} {} {}'.format(c, ('-D' if args.debug else ''), '{}:{}'.format(socket.gethostname(), args.port), p)],),
+            daemon=True,
+        ) for _, c, h, p in map(lambda x: x.split(':'), args.services)
+    ]
+    [th.start() for th in _services]
     _cycle = 0
-    while len(services.keys()) > len(connections): time.sleep(1)
+    while len(_services) > len(connections): time.sleep(1)
     with open(args.script) as fp:
         for raw in map(lambda x: x.strip(), fp.readlines()):
             raw = (raw[:raw.index('#')] if '#' in raw else raw)
             if '' == raw: continue
             cmd, params = ((raw.split()[0], raw.split()[1:]) if 1 < len(raw.split()) else (raw, []))
-#            print('{} -> {}({})'.format(raw, cmd, params))
             if 'shutdown' == cmd:
                 break
             elif 'tick' == cmd:
@@ -130,4 +131,4 @@ if __name__ == '__main__':
                     'push': lambda x: push(x),
                 }.get(cmd, lambda : print('Unknown command!'))(*params)
     broadcast(connections, 'bye')
-    [th.join() for th in map(lambda n: services.get(n).get('thread'), services.keys())]
+    [th.join() for th in _services]
