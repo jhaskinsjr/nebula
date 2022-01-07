@@ -1,0 +1,9 @@
+# Sample μService-SIMulator script
+cycle
+loadbin ~/bin/fibonacci 0x40000000      # load ~/bin/fibonacci binary to @0x40000000
+register set %pc 0x40000000             # set %pc to 0x40000000
+register set %sp 0x80000000             # set %sp to 0x80000000
+push 5                                  # push the parameter 5... as a string... onto the stack
+run
+cycle
+shutdown
