@@ -10,6 +10,7 @@ class Service:
         self.s.connect((host, port))
         assert {'ack': 'launcher'} == self.rx()
         self.tx({'name': name})
+        self.tx({'blocking': self.s.getblocking()})
     def __del__(self):
         self.s.close()
     def rx(self):

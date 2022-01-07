@@ -17,10 +17,14 @@ def tx(conn, msg):
 def broadcast(connections, msg):
     return [tx(c, msg) for c in connections]
 def handler(connections, conn, addr):
+    global state
+    state.get('lock').acquire()
+    state.get('connections').add(conn)
+    state.get('lock').release()
     connections.add(conn)
-    print('handler for {}:{}'.format(*addr))
-    print('len(connections) : {}'.format(len(connections)))
-    conn.setblocking(True)
+#    print('handler for {}:{}'.format(*addr))
+#    print('len(connections) : {}'.format(len(connections)))
+#    conn.setblocking(True)
     tx(conn, {'ack': 'launcher'})
     while True:
         try:
@@ -29,16 +33,28 @@ def handler(connections, conn, addr):
                 time.sleep(1)
                 continue
             msg = json.loads(msg.decode('ascii'))
-            print('{}: {}'.format(threading.current_thread().name, msg))
+#            print('{}: {}'.format(threading.current_thread().name, msg))
             k, v = (next(iter(msg.items())) if isinstance(msg, dict) else (None, None))
             if {k: v} == {'text': 'bye'}:
                 conn.close()
+                state.get('lock').acquire()
+                state.get('connections').remove(conn)
+                state.get('lock').release()
                 connections.remove(conn)
                 break
             elif 'name' == k:
                 threading.current_thread().name = v
-#            else:
-#                broadcast(set(filter(lambda c: c != conn, connections)), msg)
+            elif 'info' == k:
+                print('{}.handler(): info : {}'.format(threading.current_thread().name, v))
+            elif 'ack' == k:
+                state.get('lock').acquire()
+                state.get('ack').append((threading.current_thread().name, msg))
+                print('{}.handler(): ack: {} ({})'.format(threading.current_thread().name, state.get('ack'), len(state.get('ack'))))
+                state.get('lock').release()
+            else:
+                state.get('lock').acquire()
+                broadcast(set(filter(lambda c: c != conn, state.get('connections'))), msg)
+                state.get('lock').release()
         except Exception as e:
             print('Oopsie! {} ({} ({}:{}))'.format(e, str(msg), type(msg), len(msg)))
             connections.remove(conn)
@@ -73,13 +89,28 @@ def loadbin(binary, addr):
     print('loadbin(): {} @{}'.format(binary, addr))
 def push(val):
     print('push(): @(%sp) <= {}'.format(val))
-def tick(connections, increment):
-    broadcast(connections, {'tick': increment})
 def run(connections, cycle, max_cycles):
+    global state
+    state.get('lock').acquire()
+    broadcast(state.get('connections'), 'run')
+    state.get('lock').release()
     while (cycle < max_cycles if max_cycles else True):
+        state.get('lock').acquire()
+        broadcast(state.get('connections'), {'cycle': cycle})
+        state.get('lock').release()
+        _ack = False
+        while not _ack:
+            state.get('lock').acquire()
+            print('run(): ack: {} ({})'.format(state.get('ack'), len(state.get('ack'))))
+            _ack = len(state.get('ack')) == len(state.get('connections'))
+            state.get('lock').release()
+#            time.sleep(10)
+        state.get('lock').acquire()
+        state.get('ack').clear()
+        state.get('lock').release()
         cycle_inc = 1
-        tick(connections, cycle_inc)
         cycle += cycle_inc
+#        time.sleep(1)
     return cycle
 
 if __name__ == '__main__':
@@ -96,6 +127,13 @@ if __name__ == '__main__':
     _s.setsockopt(socket.SOL_SOCKET, socket.SO_REUSEADDR, 1)
     _s.bind(('0.0.0.0', args.port))
     _s.listen(5)
+    state = {
+        'lock': threading.Lock(),
+        'connections': set(),
+        'ack': [],
+        'running': False,
+        'cycle': 0,
+    }
     connections = set()
     threading.Thread(target=acceptor, args=(connections,), daemon=True).start()
     _services = [
@@ -107,7 +145,8 @@ if __name__ == '__main__':
     ]
     [th.start() for th in _services]
     _cycle = 0
-    while len(_services) > len(connections): time.sleep(1)
+#    while len(_services) > len(connections): time.sleep(1)
+    while len(_services) > len(state.get('connections')): time.sleep(1)
     with open(args.script) as fp:
         for raw in map(lambda x: x.strip(), fp.readlines()):
             raw = (raw[:raw.index('#')] if '#' in raw else raw)
@@ -132,3 +171,4 @@ if __name__ == '__main__':
                 }.get(cmd, lambda : print('Unknown command!'))(*params)
     broadcast(connections, 'bye')
     [th.join() for th in _services]
+#    [th.join() for th in filter(lambda x: x != threading.main_thread(), threading.enumerate())]
