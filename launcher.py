@@ -51,12 +51,25 @@ def handler(connections, conn, addr):
                 state.get('ack').append((threading.current_thread().name, msg))
                 print('{}.handler(): ack: {} ({})'.format(threading.current_thread().name, state.get('ack'), len(state.get('ack'))))
                 state.get('lock').release()
+            elif 'result' == k:
+                state.get('lock').acquire()
+                state.get('results').append(v) # e.g., v = {'pc': 0x40000000}
+                state.get('lock').release()
             else:
                 state.get('lock').acquire()
-                broadcast(set(filter(lambda c: c != conn, state.get('connections'))), msg)
+                _running = state.get('running')
                 state.get('lock').release()
-        except Exception as e:
-            print('Oopsie! {} ({} ({}:{}))'.format(e, str(msg), type(msg), len(msg)))
+                print('{}.handler(): _running : {} ({})'.format(threading.current_thread().name, _running, msg))
+                if _running:
+                    state.get('lock').acquire()
+                    state.get('events').append((filter(lambda c: c != conn, state.get('connections')), msg))
+                    state.get('lock').release()
+                else:
+                    state.get('lock').acquire()
+                    broadcast(filter(lambda c: c != conn, state.get('connections')), msg)
+                    state.get('lock').release()
+        except Exception as ex:
+            print('Oopsie! {} ({} ({}:{}))'.format(ex, str(msg), type(msg), len(msg)))
             connections.remove(conn)
             conn.close()
 def acceptor(connections):
@@ -91,22 +104,39 @@ def push(val):
     print('push(): @(%sp) <= {}'.format(val))
 def run(connections, cycle, max_cycles):
     global state
+    # {
+    #   'tick': {
+    #       'cycle': XXX,
+    #       'results': [],
+    #       'events': [],
+    #   }
+    # }
     state.get('lock').acquire()
     broadcast(state.get('connections'), 'run')
     state.get('lock').release()
     while (cycle < max_cycles if max_cycles else True):
         state.get('lock').acquire()
-        broadcast(state.get('connections'), {'cycle': cycle})
+        broadcast(state.get('connections'), {
+            'tick': {
+                'cycle': cycle,
+                'results': state.get('results').copy(),
+                'events': state.get('events').copy(),
+            }
+        })
         state.get('lock').release()
         _ack = False
         while not _ack:
             state.get('lock').acquire()
-            print('run(): ack: {} ({})'.format(state.get('ack'), len(state.get('ack'))))
+            print('run(): ack     : {} ({})'.format(state.get('ack'), len(state.get('ack'))))
             _ack = len(state.get('ack')) == len(state.get('connections'))
             state.get('lock').release()
 #            time.sleep(10)
         state.get('lock').acquire()
+        print('run(): results : {} ({})'.format(state.get('results'), len(state.get('results'))))
+        print('run(): events  : {} ({})'.format(state.get('events'), len(state.get('events'))))
         state.get('ack').clear()
+        state.get('results').clear()
+        state.get('events').clear()
         state.get('lock').release()
         cycle_inc = 1
         cycle += cycle_inc
@@ -131,6 +161,8 @@ if __name__ == '__main__':
         'lock': threading.Lock(),
         'connections': set(),
         'ack': [],
+        'results': [],
+        'events': [],
         'running': False,
         'cycle': 0,
     }
@@ -144,7 +176,6 @@ if __name__ == '__main__':
         ) for _, c, h, p in map(lambda x: x.split(':'), args.services)
     ]
     [th.start() for th in _services]
-    _cycle = 0
 #    while len(_services) > len(connections): time.sleep(1)
     while len(_services) > len(state.get('connections')): time.sleep(1)
     with open(args.script) as fp:
@@ -155,17 +186,26 @@ if __name__ == '__main__':
             if 'shutdown' == cmd:
                 break
             elif 'tick' == cmd:
-                _cycle += sum(map(lambda x: integer(x), params))
-                broadcast(connections, {'cycle': _cycle})
+                state.update({'cycle': state.get('cycle') + sum(map(lambda x: integer(x), params))})
+                broadcast(connections, {
+                    'tick': {
+                        'cycle': state.get('cycle'),
+                        'results': [],
+                        'events': [],
+                    }
+                })
             elif 'run' == cmd:
-                _cycle = run(connections, _cycle, args.max_cycles)
+                state.update({'running': True})
+                state.update({'cycle': run(connections, state.get('cycle'), args.max_cycles)})
+                state.update({'running': False})
             else:
                 {
                     'register': lambda x, y, z=None: register(connections, x, y, z),
                     'mainmem': lambda w, x, y, z=None: mainmem(connections, w, x, y, z),
                     'loadbin': lambda x, y: loadbin(x, y),
                     'run': lambda x: run(x),
-                    'cycle': lambda: print(_cycle),
+                    'cycle': lambda: print(state.get('cycle')),
+                    'state': lambda: print(state),
                     'connections': lambda: print(connections),
                     'push': lambda x: push(x),
                 }.get(cmd, lambda : print('Unknown command!'))(*params)

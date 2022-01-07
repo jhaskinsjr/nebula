@@ -26,7 +26,7 @@ if '__main__' == __name__:
         state.update({'ack': True})
         msg = _service.rx()
         _service.tx({'info': {'msg': msg, 'msg.size()': len(msg)}})
-        print('msg : {}'.format(msg))
+#        print('msg : {}'.format(msg))
         for k, v in msg.items():
             if {'text': 'bye'} == {k: v}:
                 state.update({'active': False})
@@ -34,7 +34,10 @@ if '__main__' == __name__:
             elif {'text': 'run'} == {k: v}:
                 state.update({'running': True})
                 state.update({'ack': False})
-            elif 'cycle' == k:
-                state.update({'cycle': msg.get('cycle')})
+            elif 'tick' == k:
+                _cycle = v.get('cycle')
+                _results = v.get('results')
+                _events = v.get('events')
+                state.update({'cycle': _cycle})
         if state.get('ack') and state.get('running'): _service.tx({'ack': {'cycle': state.get('cycle')}})
     if not args.quiet: print('Shutting down {}...'.format(sys.argv[0]))

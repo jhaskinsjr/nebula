@@ -20,6 +20,7 @@ if '__main__' == __name__:
     _launcher = {x:y for x, y in zip(['host', 'port'], args.launcher.split(':'))}
     _launcher['port'] = int(_launcher['port'])
     if args.debug: print('_launcher : {}'.format(_launcher))
+    _registers = {x: 0 for x in ['%sp', '%pc']}
     _service = service.Service('regfile', _launcher.get('host'), _launcher.get('port'))
     state = {
         'cycle': 0,
@@ -31,7 +32,7 @@ if '__main__' == __name__:
         state.update({'ack': True})
         msg = _service.rx()
         _service.tx({'info': {'msg': msg, 'msg.size()': len(msg)}})
-        print('msg : {}'.format(msg))
+#        print('msg : {}'.format(msg))
         for k, v in msg.items():
             if {'text': 'bye'} == {k: v}:
                 state.update({'active': False})
@@ -39,15 +40,18 @@ if '__main__' == __name__:
             elif {'text': 'run'} == {k: v}:
                 state.update({'running': True})
                 state.update({'ack': False})
-            elif 'cycle' == k:
-                state.update({'cycle': msg.get('cycle')})
-#            elif 'register' == k:
-#                _cmd = v.get('cmd')
-#                _name = v.get('name')
-#                if 'set' == _cmd:
-#                    _registers = setregister(_registers, _name, v.get('data'))
-#                elif 'get' == _cmd:
-#                    _ret = getregister(_registers, _name)
-#                    _service.tx({'result': {'register': _ret}})
+            elif 'tick' == k:
+                _cycle = v.get('cycle')
+                _results = v.get('results')
+                _events = v.get('events')
+                state.update({'cycle': _cycle})
+            elif 'register' == k:
+                _cmd = v.get('cmd')
+                _name = v.get('name')
+                if 'set' == _cmd:
+                    _registers = setregister(_registers, _name, v.get('data'))
+                elif 'get' == _cmd:
+                    _ret = getregister(_registers, _name)
+                    _service.tx({'result': {'register': _ret}})
         if state.get('ack') and state.get('running'): _service.tx({'ack': {'cycle': state.get('cycle')}})
     if not args.quiet: print('Shutting down {}...'.format(sys.argv[0]))

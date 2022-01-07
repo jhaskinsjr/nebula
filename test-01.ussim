@@ -6,4 +6,5 @@ register set %sp 0x80000000             # set %sp to 0x80000000
 push 5                                  # push the parameter 5... as a string... onto the stack
 run
 cycle
+state
 shutdown
