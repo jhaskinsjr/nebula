@@ -13,7 +13,6 @@ if '__main__' == __name__:
     parser.add_argument('--debug', '-D', dest='debug', action='store_true', help='print debug messages')
     parser.add_argument('--quiet', '-Q', dest='quiet', action='store_true', help='suppress status messages')
     parser.add_argument('launcher', help='host:port of μService-SIMulator launcher')
-    parser.add_argument('port', type=int, help='port to connect to on host')
     args = parser.parse_args()
     if args.debug: print('args : {}'.format(args))
     if not args.quiet: print('Starting {}...'.format(sys.argv[0]))

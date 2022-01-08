@@ -4,8 +4,6 @@ import json
 class Service:
     def __init__(self, name, host, port):
         self.name = name
-        self.host = host
-        self.port = port
         self.s = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
         self.s.connect((host, port))
         assert {'ack': 'launcher'} == self.rx()

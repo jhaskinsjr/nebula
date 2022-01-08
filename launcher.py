@@ -146,7 +146,7 @@ def run(connections, cycle, max_cycles):
 if __name__ == '__main__':
     parser = argparse.ArgumentParser(description='μService-SIMulator')
     parser.add_argument('--debug', '-D', dest='debug', action='store_true', help='print debug messages')
-    parser.add_argument('--services', dest='services', nargs='+', help='service:code:host:port')
+    parser.add_argument('--services', dest='services', nargs='+', help='code:host')
     parser.add_argument('--max_cycles', type=int, dest='max_cycles', default=None, help='maximum number of cycles to run for')
     parser.add_argument('port', type=int, help='port to connect to on host')
     parser.add_argument('script', type=str, help='script to be executed by μService-SIMulator')
@@ -171,9 +171,9 @@ if __name__ == '__main__':
     _services = [
         threading.Thread(
             target=subprocess.run,
-            args=(['ssh', h, 'python3 {} {} {} {}'.format(c, ('-D' if args.debug else ''), '{}:{}'.format(socket.gethostname(), args.port), p)],),
+            args=(['ssh', h, 'python3 {} {} {}'.format(c, ('-D' if args.debug else ''), '{}:{}'.format(socket.gethostname(), args.port))],),
             daemon=True,
-        ) for _, c, h, p in map(lambda x: x.split(':'), args.services)
+        ) for c, h in map(lambda x: x.split(':'), args.services)
     ]
     [th.start() for th in _services]
 #    while len(_services) > len(connections): time.sleep(1)
