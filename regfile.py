@@ -3,6 +3,23 @@ import argparse
 
 import service
 
+def do_tick(service, state, cycle, results, events):
+    print('do_tick({}, {}, {}, {})...'.format(service, cycle, results, events))
+    for ev in filter(lambda x: x, map(lambda y: y.get('register'), events)):
+        service.tx({'info': ev})
+        _cmd = ev.get('cmd')
+        _name = ev.get('name')
+        _data = ev.get('data')
+        if 'set' == _cmd:
+            state.update({'registers': setregister(state.get('registers'), _name, _data)})
+        elif 'get' == _cmd:
+            service.tx({'result': {_name: getregister(state.get('registers'), _name)}})
+        else:
+            print('ev   : {}'.format(ev))
+            print('_cmd : {}'.format(_cmd))
+            assert False
+    return cycle
+
 def setregister(registers, reg, val):
     return {x: y for x, y in tuple(registers.items()) + ((reg, val),)}
 def getregister(registers, reg):
@@ -19,18 +36,18 @@ if '__main__' == __name__:
     _launcher = {x:y for x, y in zip(['host', 'port'], args.launcher.split(':'))}
     _launcher['port'] = int(_launcher['port'])
     if args.debug: print('_launcher : {}'.format(_launcher))
-    _registers = {x: 0 for x in ['%sp', '%pc']}
     _service = service.Service('regfile', _launcher.get('host'), _launcher.get('port'))
     state = {
         'cycle': 0,
         'active': True,
         'running': False,
         'ack': True,
+        'registers': {x: 0 for x in ['%r{}'.format(y) for y in range(8)] + ['%sp', '%pc']}
     }
     while state.get('active'):
         state.update({'ack': True})
         msg = _service.rx()
-        _service.tx({'info': {'msg': msg, 'msg.size()': len(msg)}})
+#        _service.tx({'info': {'msg': msg, 'msg.size()': len(msg)}})
 #        print('msg : {}'.format(msg))
         for k, v in msg.items():
             if {'text': 'bye'} == {k: v}:
@@ -43,14 +60,17 @@ if '__main__' == __name__:
                 _cycle = v.get('cycle')
                 _results = v.get('results')
                 _events = v.get('events')
-                state.update({'cycle': _cycle})
+                state.update({'cycle': do_tick(_service, state, _cycle, _results, _events)})
+#                state.update({'cycle': _cycle})
             elif 'register' == k:
                 _cmd = v.get('cmd')
                 _name = v.get('name')
                 if 'set' == _cmd:
-                    _registers = setregister(_registers, _name, v.get('data'))
+                    state.update({'registers': setregister(state.get('registers'), _name, v.get('data'))})
                 elif 'get' == _cmd:
-                    _ret = getregister(_registers, _name)
+                    _ret = getregister(state.get('registers'), _name)
                     _service.tx({'result': {'register': _ret}})
         if state.get('ack') and state.get('running'): _service.tx({'ack': {'cycle': state.get('cycle')}})
     if not args.quiet: print('Shutting down {}...'.format(sys.argv[0]))
+    for k, v in state.get('registers').items():
+        print('{} : {}'.format(k, v))

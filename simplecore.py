@@ -3,6 +3,32 @@ import argparse
 
 import service
 
+def do_tick(service, cycle, results, events):
+    [rs for rs in results]
+    [ev for ev in events]
+#    for pc in filter(lambda x: x, map(lambda y: y.get('%pc'), results)):
+#        service.tx({
+#            'mem': {
+#                'cmd': 'load',
+#                'addr': pc,
+#                'size': 4,
+#            },
+#        })
+    service.tx({
+        'register': {
+            'cmd': 'get',
+            'name': '%pc',
+        },
+    })
+    service.tx({ # set r0 <= 23456789
+        'register': {
+            'cmd': 'set',
+            'name': '%r0',
+            'data': 23456789,
+        },
+    })
+    return cycle
+
 if '__main__' == __name__:
     parser = argparse.ArgumentParser(description='μService-SIMulator: Watchdog Timer')
     parser.add_argument('--debug', '-D', dest='debug', action='store_true', help='print debug messages')
@@ -14,7 +40,7 @@ if '__main__' == __name__:
     _launcher = {x:y for x, y in zip(['host', 'port'], args.launcher.split(':'))}
     _launcher['port'] = int(_launcher['port'])
     if args.debug: print('_launcher : {}'.format(_launcher))
-    _service = service.Service('watchdog', _launcher.get('host'), _launcher.get('port'))
+    _service = service.Service('simplecore', _launcher.get('host'), _launcher.get('port'))
     state = {
         'cycle': 0,
         'active': True,
@@ -24,7 +50,7 @@ if '__main__' == __name__:
     while state.get('active'):
         state.update({'ack': True})
         msg = _service.rx()
-        _service.tx({'info': {'msg': msg, 'msg.size()': len(msg)}})
+#        _service.tx({'info': {'msg': msg, 'msg.size()': len(msg)}})
 #        print('msg : {}'.format(msg))
         for k, v in msg.items():
             if {'text': 'bye'} == {k: v}:
@@ -37,6 +63,6 @@ if '__main__' == __name__:
                 _cycle = v.get('cycle')
                 _results = v.get('results')
                 _events = v.get('events')
-                state.update({'cycle': _cycle})
+                state.update({'cycle': do_tick(_service, _cycle, _results, _events)})
         if state.get('ack') and state.get('running'): _service.tx({'ack': {'cycle': state.get('cycle')}})
     if not args.quiet: print('Shutting down {}...'.format(sys.argv[0]))

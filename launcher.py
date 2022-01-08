@@ -49,7 +49,7 @@ def handler(connections, conn, addr):
             elif 'ack' == k:
                 state.get('lock').acquire()
                 state.get('ack').append((threading.current_thread().name, msg))
-                print('{}.handler(): ack: {} ({})'.format(threading.current_thread().name, state.get('ack'), len(state.get('ack'))))
+#                print('{}.handler(): ack: {} ({})'.format(threading.current_thread().name, state.get('ack'), len(state.get('ack'))))
                 state.get('lock').release()
             elif 'result' == k:
                 state.get('lock').acquire()
@@ -59,10 +59,10 @@ def handler(connections, conn, addr):
                 state.get('lock').acquire()
                 _running = state.get('running')
                 state.get('lock').release()
-                print('{}.handler(): _running : {} ({})'.format(threading.current_thread().name, _running, msg))
+#                print('{}.handler(): _running : {} ({})'.format(threading.current_thread().name, _running, msg))
                 if _running:
                     state.get('lock').acquire()
-                    state.get('events').append((filter(lambda c: c != conn, state.get('connections')), msg))
+                    state.get('events').append(msg)
                     state.get('lock').release()
                 else:
                     state.get('lock').acquire()
@@ -116,6 +116,8 @@ def run(connections, cycle, max_cycles):
     state.get('lock').release()
     while (cycle < max_cycles if max_cycles else True):
         state.get('lock').acquire()
+        print('run(): results : {} ({})'.format(state.get('results'), len(state.get('results'))))
+        print('run(): events  : {} ({})'.format(state.get('events'), len(state.get('events'))))
         broadcast(state.get('connections'), {
             'tick': {
                 'cycle': cycle,
@@ -123,21 +125,17 @@ def run(connections, cycle, max_cycles):
                 'events': state.get('events').copy(),
             }
         })
-        state.get('lock').release()
-        _ack = False
-        while not _ack:
-            state.get('lock').acquire()
-            print('run(): ack     : {} ({})'.format(state.get('ack'), len(state.get('ack'))))
-            _ack = len(state.get('ack')) == len(state.get('connections'))
-            state.get('lock').release()
-#            time.sleep(10)
-        state.get('lock').acquire()
-        print('run(): results : {} ({})'.format(state.get('results'), len(state.get('results'))))
-        print('run(): events  : {} ({})'.format(state.get('events'), len(state.get('events'))))
         state.get('ack').clear()
         state.get('results').clear()
         state.get('events').clear()
         state.get('lock').release()
+        _ack = False
+        while not _ack:
+            state.get('lock').acquire()
+#            print('run(): ack     : {} ({})'.format(state.get('ack'), len(state.get('ack'))))
+            _ack = len(state.get('ack')) == len(state.get('connections'))
+            state.get('lock').release()
+#            time.sleep(10)
         cycle_inc = 1
         cycle += cycle_inc
 #        time.sleep(1)
