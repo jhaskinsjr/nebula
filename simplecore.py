@@ -3,30 +3,37 @@ import argparse
 
 import service
 
-def do_tick(service, cycle, results, events):
+def do_tick(service, state, cycle, results, events):
     [rs for rs in results]
     [ev for ev in events]
-#    for pc in filter(lambda x: x, map(lambda y: y.get('%pc'), results)):
-#        service.tx({
-#            'mem': {
-#                'cmd': 'load',
-#                'addr': pc,
-#                'size': 4,
-#            },
-#        })
+    for pc in filter(lambda x: x, map(lambda y: y.get('%pc'), results)):
+        service.tx({
+            'mem': {
+                'cmd': 'load',
+                'addr': pc,
+                'size': 4,
+            },
+        })
+        service.tx({
+            'register': {
+                'cmd': 'set',
+                'name': '%pc',
+                'data': 4 + pc,
+            }
+        })
     service.tx({
         'register': {
             'cmd': 'get',
             'name': '%pc',
         },
     })
-    service.tx({ # set r0 <= 23456789
-        'register': {
-            'cmd': 'set',
-            'name': '%r0',
-            'data': 23456789,
-        },
-    })
+#    service.tx({ # set r0 <= 23456789
+#        'register': {
+#            'cmd': 'set',
+#            'name': '%r0',
+#            'data': 23456789,
+#        },
+#    })
     return cycle
 
 if '__main__' == __name__:
@@ -63,6 +70,6 @@ if '__main__' == __name__:
                 _cycle = v.get('cycle')
                 _results = v.get('results')
                 _events = v.get('events')
-                state.update({'cycle': do_tick(_service, _cycle, _results, _events)})
+                state.update({'cycle': do_tick(_service, state, _cycle, _results, _events)})
         if state.get('ack') and state.get('running'): _service.tx({'ack': {'cycle': state.get('cycle')}})
     if not args.quiet: print('Shutting down {}...'.format(sys.argv[0]))
