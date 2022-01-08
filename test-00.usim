@@ -12,7 +12,7 @@ tick 100
 register get %pc
 register get %sp
 register get %r0
-mainmem load 0x80000000 1               # mainmem load 1B @0x80000000
-mainmem store 0x80000000 4 0x00000000   # mainmem store 4B @0x80000000
+mainmem peek 0x80000000 1               # mainmem load 1B @0x80000000
+mainmem poke 0x80000000 4 0x00000000    # mainmem store 4B @0x80000000
 cycle
 shutdown

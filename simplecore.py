@@ -9,7 +9,7 @@ def do_tick(service, state, cycle, results, events):
     for pc in filter(lambda x: x, map(lambda y: y.get('%pc'), results)):
         service.tx({
             'mem': {
-                'cmd': 'load',
+                'cmd': 'peek',
                 'addr': pc,
                 'size': 4,
             },
@@ -21,19 +21,18 @@ def do_tick(service, state, cycle, results, events):
                 'data': 4 + pc,
             }
         })
+        if pc not in state.get('requested_pc'): state.get('requested_pc').append(pc)
+        service.tx({'info': state.get('requested_pc')})
+    for mem in filter(lambda x: x and x.get('addr') in state.get('requested_pc'), map(lambda y: y.get('mem'), results)):
+        state.get('requested_pc').remove(mem.get('addr'))
+        service.tx({'info': state.get('requested_pc')})
+        service.tx({'info': mem})
     service.tx({
         'register': {
             'cmd': 'get',
             'name': '%pc',
         },
     })
-#    service.tx({ # set r0 <= 23456789
-#        'register': {
-#            'cmd': 'set',
-#            'name': '%r0',
-#            'data': 23456789,
-#        },
-#    })
     return cycle
 
 if '__main__' == __name__:
@@ -52,6 +51,7 @@ if '__main__' == __name__:
         'cycle': 0,
         'active': True,
         'running': False,
+        'requested_pc': [], # to allow more than one outstanding PC req at a time
         'ack': True,
     }
     while state.get('active'):
