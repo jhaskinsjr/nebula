@@ -13,7 +13,13 @@ def do_tick(service, state, cycle, results, events):
         if 'set' == _cmd:
             state.update({'registers': setregister(state.get('registers'), _name, _data)})
         elif 'get' == _cmd:
-            service.tx({'result': {_name: getregister(state.get('registers'), _name)}})
+            service.tx({'result': {
+                'register': {
+                    'name': _name,
+                    'data': getregister(state.get('registers'), _name),
+                }
+            }
+        })
         else:
             print('ev   : {}'.format(ev))
             print('_cmd : {}'.format(_cmd))
