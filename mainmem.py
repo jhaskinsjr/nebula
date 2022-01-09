@@ -3,6 +3,9 @@ import argparse
 
 import service
 
+import os
+import struct
+
 def do_tick(service, state, cycle, results, events):
     [rs for rs in results]
     [ev for ev in events]
@@ -13,14 +16,14 @@ def do_tick(service, state, cycle, results, events):
         _size = ev.get('size')
         _data = ev.get('data')
         if 'poke' == _cmd:
-            poke(None, _addr, _size, _data)
+            poke(state, _addr, _size, _data)
         elif 'peek' == _cmd:
             service.tx({
                 'result': {
                     'mem': {
                         'addr': _addr,
                         'size': _size,
-                        'data': peek(None, _addr, _size),
+                        'data': peek(state, _addr, _size),
                     }
                 }
             })
@@ -29,10 +32,17 @@ def do_tick(service, state, cycle, results, events):
             assert False
     return cycle
 
-def poke(mm, addr, size, data):
-    pass
-def peek(mm, addr, size):
-    return 23456789
+def poke(state, addr, data):
+    _fd = state.get('fd')
+    _size = len(data)
+    os.lseek(_fd, addr, os.SEEK_SET)
+    os.write(_fd, struct.pack('B' * _size, *(os.read(_fd, _size))), _size)
+def peek(state, addr, size):
+    _fd = state.get('fd')
+    os.lseek(_fd, addr, os.SEEK_SET)
+    _data = struct.unpack('B' * size, os.read(_fd, size))
+    return _data
+#    return 23456789
 
 if '__main__' == __name__:
     parser = argparse.ArgumentParser(description='μService-SIMulator: Main Memory')
@@ -51,7 +61,9 @@ if '__main__' == __name__:
         'active': True,
         'running': False,
         'ack': True,
+        'fd': os.open('/tmp/mainmem.raw', os.O_RDWR|os.O_CREAT)
     }
+    os.ftruncate(state.get('fd'), 2**32) # HACK: hard-wired memory is dumb, but I don't want to focus on that right now
     while state.get('active'):
         state.update({'ack': True})
         msg = _service.rx()
@@ -71,3 +83,4 @@ if '__main__' == __name__:
                 state.update({'cycle': do_tick(_service, state, _cycle, _results, _events)})
         if state.get('ack') and state.get('running'): _service.tx({'ack': {'cycle': state.get('cycle')}})
     if not args.quiet: print('Shutting down {}...'.format(sys.argv[0]))
+    os.close(state.get('fd'))
