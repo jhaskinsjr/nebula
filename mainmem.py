@@ -33,15 +33,18 @@ def do_tick(service, state, cycle, results, events):
     return cycle
 
 def poke(state, addr, data):
+    # data : list of unsigned char, e.g., to make an integer, X, into a list
+    # of N little-endian-formatted bytes -> list(X.to_bytes(N, 'little'))
     _fd = state.get('fd')
-    _size = len(data)
     os.lseek(_fd, addr, os.SEEK_SET)
-    os.write(_fd, struct.pack('B' * _size, *(os.read(_fd, _size))), _size)
+    os.write(_fd, bytes(data))
 def peek(state, addr, size):
+    # return : list of unsigned char, e.g., to make an 8-byte quadword from
+    # a list, X, of N bytes -> int.from_bytes(X, 'little')
     _fd = state.get('fd')
     os.lseek(_fd, addr, os.SEEK_SET)
-    _data = struct.unpack('B' * size, os.read(_fd, size))
-    return _data
+    return list(os.read(_fd, size))
+#    return _data
 #    return 23456789
 
 if '__main__' == __name__:
