@@ -37,7 +37,7 @@ def do_tick(service, state, cycle, results, events):
     return cycle
 
 if '__main__' == __name__:
-    parser = argparse.ArgumentParser(description='μService-SIMulator: Watchdog Timer')
+    parser = argparse.ArgumentParser(description='μService-SIMulator: Simple Core')
     parser.add_argument('--debug', '-D', dest='debug', action='store_true', help='print debug messages')
     parser.add_argument('--quiet', '-Q', dest='quiet', action='store_true', help='suppress status messages')
     parser.add_argument('launcher', help='host:port of μService-SIMulator launcher')
