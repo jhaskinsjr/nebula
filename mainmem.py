@@ -4,7 +4,6 @@ import argparse
 import service
 
 import os
-import struct
 
 def do_tick(service, state, cycle, results, events):
     for ev in filter(lambda x: x, map(lambda y: y.get('mem'), events)):
