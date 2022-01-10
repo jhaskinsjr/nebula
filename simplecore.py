@@ -4,8 +4,6 @@ import argparse
 import service
 
 def do_tick(service, state, cycle, results, events):
-    [rs for rs in results]
-    [ev for ev in events]
     for pc in map(lambda w: w.get('data'), filter(lambda x: x and '%pc' == x.get('name'), map(lambda y: y.get('register'), results))):
         service.tx({
             'mem': {

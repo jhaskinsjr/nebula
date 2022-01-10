@@ -4,7 +4,7 @@ import argparse
 import service
 
 def do_tick(service, state, cycle, results, events):
-    print('do_tick({}, {}, {}, {})...'.format(service, cycle, results, events))
+#    print('do_tick({}, {}, {}, {})...'.format(service, cycle, results, events))
     for ev in filter(lambda x: x, map(lambda y: y.get('register'), events)):
 #        service.tx({'info': ev})
         _cmd = ev.get('cmd')

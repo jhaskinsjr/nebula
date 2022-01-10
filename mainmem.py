@@ -7,8 +7,6 @@ import os
 import struct
 
 def do_tick(service, state, cycle, results, events):
-    [rs for rs in results]
-    [ev for ev in events]
     for ev in filter(lambda x: x, map(lambda y: y.get('mem'), events)):
 #        service.tx({'info': ev})
         _cmd = ev.get('cmd')
