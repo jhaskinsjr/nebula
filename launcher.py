@@ -136,16 +136,23 @@ def run(connections, cycle, max_cycles):
         print('run(): @{:8} events  : {} ({})'.format(cycle, state.get('events'), len(state.get('events'))))
         print('run(): @{:8} futures : {}'.format(cycle, state.get('futures')))
         print('---')
-        broadcast(state.get('connections'), {
-            'tick': {
-                'cycle': cycle,
-                'results': state.get('results').copy(),
-                'events': state.get('events').copy(),
-            }
+        cycle = (min(state.get('futures').keys()) if len(state.get('futures').keys()) else 1 + cycles)
+        broadcast(state.get('connections'), {'tick':
+            'cycle': cycle,
+            'results': state.get('futures').get(cycle, {'results': []}).get('results').copy(),
+            'events': state.get('futures').get(cycle, {'events': []}).get('events').copy(),
         })
+        if cycle in state.get('futures'): state.get('futures').pop(cycle)
+#        broadcast(state.get('connections'), {
+#            'tick': {
+#                'cycle': cycle,
+#                'results': state.get('results').copy(),
+#                'events': state.get('events').copy(),
+#            }
+#        })
         state.get('ack').clear()
-        state.get('results').clear()
-        state.get('events').clear()
+#        state.get('results').clear()
+#        state.get('events').clear()
         state.get('lock').release()
         _ack = False
         while not _ack:
@@ -153,7 +160,7 @@ def run(connections, cycle, max_cycles):
 #            print('run(): ack     : {} ({})'.format(state.get('ack'), len(state.get('ack'))))
             _ack = len(state.get('ack')) == len(state.get('connections'))
             state.get('lock').release()
-        cycle += 1
+#        cycle += 1
     return cycle
 
 if __name__ == '__main__':
