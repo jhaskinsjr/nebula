@@ -52,11 +52,23 @@ def handler(connections, conn, addr):
 #                print('{}.handler(): ack: {} ({})'.format(threading.current_thread().name, state.get('ack'), len(state.get('ack'))))
                 state.get('lock').release()
             elif 'result' == k:
+#                print('v - result : {}'.format(v))
+                _arr, _res = v.items()
+                _, _arr = _arr
                 state.get('lock').acquire()
+                _res_evt = state.get('futures').get(_arr, {'results': [], 'events': []})
+                _res_evt.get('results').append(_res)
+                state.get('futures').update({_arr: _res_evt})
                 state.get('results').append(v) # e.g., v = {'pc': 0x40000000}
                 state.get('lock').release()
             elif 'event' == k:
+#                print('v - event  : {}'.format(v))
+                _arr, _evt = v.items()
+                _, _arr = _arr
                 state.get('lock').acquire()
+                _res_evt = state.get('futures').get(_arr, {'results': [], 'events': []})
+                _res_evt.get('events').append(_evt)
+                state.get('futures').update({_arr: _res_evt})
                 state.get('events').append(v) # e.g., v = {'pc': 0x40000000}
                 state.get('lock').release()
             else:
@@ -122,6 +134,8 @@ def run(connections, cycle, max_cycles):
         state.get('lock').acquire()
         print('run(): @{:8} results : {} ({})'.format(cycle, state.get('results'), len(state.get('results'))))
         print('run(): @{:8} events  : {} ({})'.format(cycle, state.get('events'), len(state.get('events'))))
+        print('run(): @{:8} futures : {}'.format(cycle, state.get('futures')))
+        print('---')
         broadcast(state.get('connections'), {
             'tick': {
                 'cycle': cycle,
@@ -139,10 +153,7 @@ def run(connections, cycle, max_cycles):
 #            print('run(): ack     : {} ({})'.format(state.get('ack'), len(state.get('ack'))))
             _ack = len(state.get('ack')) == len(state.get('connections'))
             state.get('lock').release()
-#            time.sleep(10)
-        cycle_inc = 1
-        cycle += cycle_inc
-#        time.sleep(1)
+        cycle += 1
     return cycle
 
 if __name__ == '__main__':
@@ -163,6 +174,7 @@ if __name__ == '__main__':
         'lock': threading.Lock(),
         'connections': set(),
         'ack': [],
+        'futures': {},
         'results': [],
         'events': [],
         'running': False,
