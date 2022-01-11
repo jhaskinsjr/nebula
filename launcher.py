@@ -55,6 +55,10 @@ def handler(connections, conn, addr):
                 state.get('lock').acquire()
                 state.get('results').append(v) # e.g., v = {'pc': 0x40000000}
                 state.get('lock').release()
+            elif 'event' == k:
+                state.get('lock').acquire()
+                state.get('events').append(v) # e.g., v = {'pc': 0x40000000}
+                state.get('lock').release()
             else:
                 state.get('lock').acquire()
                 _running = state.get('running')
@@ -116,8 +120,8 @@ def run(connections, cycle, max_cycles):
     state.get('lock').release()
     while (cycle < max_cycles if max_cycles else True):
         state.get('lock').acquire()
-        print('run(): results : {} ({})'.format(state.get('results'), len(state.get('results'))))
-        print('run(): events  : {} ({})'.format(state.get('events'), len(state.get('events'))))
+        print('run(): @{:8} results : {} ({})'.format(cycle, state.get('results'), len(state.get('results'))))
+        print('run(): @{:8} events  : {} ({})'.format(cycle, state.get('events'), len(state.get('events'))))
         broadcast(state.get('connections'), {
             'tick': {
                 'cycle': cycle,

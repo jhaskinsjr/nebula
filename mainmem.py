@@ -15,15 +15,14 @@ def do_tick(service, state, cycle, results, events):
         if 'poke' == _cmd:
             poke(state, _addr, _size, _data)
         elif 'peek' == _cmd:
-            service.tx({
-                'result': {
-                    'mem': {
-                        'addr': _addr,
-                        'size': _size,
-                        'data': peek(state, _addr, _size),
-                    }
+            service.tx({'result': {
+                'arrival': 5 + cycle,
+                'mem': {
+                    'addr': _addr,
+                    'size': _size,
+                    'data': peek(state, _addr, _size),
                 }
-            })
+            }})
         else:
             print('ev : {}'.format(ev))
             assert False

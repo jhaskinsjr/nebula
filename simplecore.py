@@ -5,20 +5,22 @@ import service
 
 def do_tick(service, state, cycle, results, events):
     for pc in map(lambda w: w.get('data'), filter(lambda x: x and '%pc' == x.get('name'), map(lambda y: y.get('register'), results))):
-        service.tx({
+        service.tx({'event': {
+            'arrival': 1 + cycle,
             'mem': {
                 'cmd': 'peek',
                 'addr': pc,
                 'size': 4,
             },
-        })
-        service.tx({
+        }})
+        service.tx({'event': {
+            'arrival': 1 + cycle,
             'register': {
                 'cmd': 'set',
                 'name': '%pc',
                 'data': 4 + pc,
             }
-        })
+        }})
         if pc not in state.get('requested_pc'): state.get('requested_pc').append(pc)
 #        service.tx({'info': state.get('requested_pc')})
     for mem in filter(lambda x: x and x.get('addr') in state.get('requested_pc'), map(lambda y: y.get('mem'), results)):
@@ -28,12 +30,13 @@ def do_tick(service, state, cycle, results, events):
 #        service.tx({'info': mem})
     if not state.get('pending_pc_request'):
         state.update({'pending_pc_request': True})
-        service.tx({
+        service.tx({'event': {
+            'arrival': 1 + cycle,
             'register': {
                 'cmd': 'get',
                 'name': '%pc',
             },
-        })
+        }})
     return cycle
 
 if '__main__' == __name__:
