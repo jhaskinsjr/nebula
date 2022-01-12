@@ -15,6 +15,24 @@ them, this architecture would require every microservice to have detailed
 information about every other microservice. This rigidity is the antithesis
 of the flexibility that software is supposed to facilitate.
 
-As my doctoral advisor taught me: There are no solutions, only tradeoffs. I
-have made this tradeoff knowingly, willingly, intentionally, fully aware of
-the performance ramifications to trade away speed for flexibility.
+There are no solutions, only tradeoffs. I have made this tradeoff knowingly,
+willingly, intentionally, fully aware of the performance ramifications.
+Notwithstanding this, I chose to trade away speed for flexibility.
+
+--
+RUNNING
+
+To quickly run, execute
+
+python3 launcher.py --services simplecore.py:localhost \
+    regfile.py:localhost \
+    mainmem.py:localhost \
+    --max_cycles 100 \
+    -- 10000 test-01.ussim
+
+This executes the launcher module (launcher.py), which in turn spawns the
+CPU core service (simplecore.py), the register file service (regfile.py), and
+the main memory service (mainmem.py), all on localhost. The simulation will
+run for a total of 100 cycles, set up the launcher module to accept
+TCP connections on the localhost's port 10000, and execute the script
+test-01.ussim.
