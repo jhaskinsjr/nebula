@@ -22,12 +22,9 @@ def do_tick(service, state, cycle, results, events):
             }
         }})
         if pc not in state.get('requested_pc'): state.get('requested_pc').append(pc)
-#        service.tx({'info': state.get('requested_pc')})
     for mem in filter(lambda x: x and x.get('addr') in state.get('requested_pc'), map(lambda y: y.get('mem'), results)):
         state.get('requested_pc').remove(mem.get('addr'))
         state.update({'pending_pc_request': False})
-#        service.tx({'info': state.get('requested_pc')})
-#        service.tx({'info': mem})
     if not state.get('pending_pc_request'):
         state.update({'pending_pc_request': True})
         service.tx({'event': {

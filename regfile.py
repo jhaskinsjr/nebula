@@ -4,7 +4,6 @@ import argparse
 import service
 
 def do_tick(service, state, cycle, results, events):
-#    print('do_tick({}, {}, {}, {})...'.format(service, cycle, results, events))
     for ev in filter(lambda x: x, map(lambda y: y.get('register'), events)):
 #        service.tx({'info': ev})
         _cmd = ev.get('cmd')
@@ -68,7 +67,6 @@ if '__main__' == __name__:
                 _results = v.get('results')
                 _events = v.get('events')
                 state.update({'cycle': do_tick(_service, state, _cycle, _results, _events)})
-#                state.update({'cycle': _cycle})
             elif 'register' == k:
                 _cmd = v.get('cmd')
                 _name = v.get('name')

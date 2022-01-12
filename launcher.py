@@ -21,10 +21,7 @@ def handler(conn, addr):
     state.get('lock').acquire()
     state.get('connections').add(conn)
     state.get('lock').release()
-#    connections.add(conn)
-#    print('handler for {}:{}'.format(*addr))
-#    print('len(connections) : {}'.format(len(connections)))
-#    conn.setblocking(True)
+    print('handler(): {}:{}'.format(*addr))
     tx(conn, {'ack': 'launcher'})
     while True:
         try:
@@ -40,7 +37,6 @@ def handler(conn, addr):
                 state.get('lock').acquire()
                 state.get('connections').remove(conn)
                 state.get('lock').release()
-#                connections.remove(conn)
                 break
             elif 'name' == k:
                 threading.current_thread().name = v
@@ -52,27 +48,20 @@ def handler(conn, addr):
 #                print('{}.handler(): ack: {} ({})'.format(threading.current_thread().name, state.get('ack'), len(state.get('ack'))))
                 state.get('lock').release()
             elif 'result' == k:
-#                print('v - result : {}'.format(v))
                 _arr = v.pop('arrival')
                 _res = v
                 state.get('lock').acquire()
                 _res_evt = state.get('futures').get(_arr, {'results': [], 'events': []})
                 _res_evt.get('results').append(_res)
                 state.get('futures').update({_arr: _res_evt})
-#                state.get('results').append(v) # e.g., v = {'pc': 0x40000000}
                 state.get('lock').release()
             elif 'event' == k:
-#                print('v - event       : {}'.format(v))
                 _arr = v.pop('arrival')
-#                print('v - event       : {}'.format(v))
                 _evt = v
-#                print('v - event  _arr : {}'.format(_arr))
-#                print('v - event  _evt : {}'.format(_evt))
                 state.get('lock').acquire()
                 _res_evt = state.get('futures').get(_arr, {'results': [], 'events': []})
                 _res_evt.get('events').append(_evt)
                 state.get('futures').update({_arr: _res_evt})
-#                state.get('events').append(v) # e.g., v = {'pc': 0x40000000}
                 state.get('lock').release()
             else:
                 state.get('lock').acquire()
@@ -89,7 +78,6 @@ def handler(conn, addr):
                     state.get('lock').release()
         except Exception as ex:
             print('Oopsie! {} ({} ({}:{}))'.format(ex, str(msg), type(msg), len(msg)))
-#            connections.remove(conn)
             conn.close()
 def acceptor():
     while True:
@@ -135,40 +123,20 @@ def run(connections, cycle, max_cycles):
     state.get('lock').release()
     while (cycle < max_cycles if max_cycles else True):
         state.get('lock').acquire()
-#        print('run(): @{:8} results  : {} ({})'.format(cycle, state.get('results'), len(state.get('results'))))
-#        print('run(): @{:8} events   : {} ({})'.format(cycle, state.get('events'), len(state.get('events'))))
         print('run(): @{:8} futures  : {}'.format(cycle, state.get('futures')))
         cycle = (min(state.get('futures').keys()) if len(state.get('futures').keys()) else 1 + cycle)
-        _res_evt = state.get('futures').get(cycle, {'results': [], 'events': []})
-        _res = state.get('futures').get(cycle, {'results': []}).get('results')
-        _evt = state.get('futures').get(cycle, {'events': []}).get('events')
-        print('run(): @{:8} _res_evt : {}'.format(cycle, _res_evt))
-        print('run(): @{:8} _res     : {}'.format(cycle, _res))
-        print('run(): @{:8} _evt     : {}'.format(cycle, _evt))
-        print('---')
         broadcast(state.get('connections'), {'tick': {
             **{'cycle': cycle},
             **dict(state.get('futures').get(cycle, {'results': [], 'events': []})),
         }})
         if cycle in state.get('futures'): state.get('futures').pop(cycle)
-#        broadcast(state.get('connections'), {
-#            'tick': {
-#                'cycle': cycle,
-#                'results': state.get('results').copy(),
-#                'events': state.get('events').copy(),
-#            }
-#        })
         state.get('ack').clear()
-#        state.get('results').clear()
-#        state.get('events').clear()
         state.get('lock').release()
         _ack = False
         while not _ack:
             state.get('lock').acquire()
-#            print('run(): ack     : {} ({})'.format(state.get('ack'), len(state.get('ack'))))
             _ack = len(state.get('ack')) == len(state.get('connections'))
             state.get('lock').release()
-#        cycle += 1
     return cycle
 
 if __name__ == '__main__':
@@ -190,12 +158,9 @@ if __name__ == '__main__':
         'connections': set(),
         'ack': [],
         'futures': {},
-#        'results': [],
-#        'events': [],
         'running': False,
         'cycle': 0,
     }
-#    connections = set()
     threading.Thread(target=acceptor, daemon=True).start()
     _services = [
         threading.Thread(
@@ -205,7 +170,6 @@ if __name__ == '__main__':
         ) for c, h in map(lambda x: x.split(':'), args.services)
     ]
     [th.start() for th in _services]
-#    while len(_services) > len(connections): time.sleep(1)
     while len(_services) > len(state.get('connections')): time.sleep(1)
     with open(args.script) as fp:
         for raw in map(lambda x: x.strip(), fp.readlines()):
@@ -240,4 +204,3 @@ if __name__ == '__main__':
                 }.get(cmd, lambda : print('Unknown command!'))(*params)
     broadcast(state.get('connections'), 'bye')
     [th.join() for th in _services]
-#    [th.join() for th in filter(lambda x: x != threading.main_thread(), threading.enumerate())]

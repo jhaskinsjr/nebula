@@ -6,9 +6,6 @@ import service
 import os
 
 def do_tick(service, state, cycle, results, events):
-#    service.tx({'info': {'results': results}})
-#    service.tx({'info': {'events': events}})
-#    for ev in events: service.tx({'info': {'ev': ev}})
     for ev in filter(lambda x: x, map(lambda y: y.get('mem'), events)):
 #        service.tx({'info': ev})
         _cmd = ev.get('cmd')
@@ -43,8 +40,6 @@ def peek(state, addr, size):
     _fd = state.get('fd')
     os.lseek(_fd, addr, os.SEEK_SET)
     return list(os.read(_fd, size))
-#    return _data
-#    return 23456789
 
 if '__main__' == __name__:
     parser = argparse.ArgumentParser(description='μService-SIMulator: Main Memory')
@@ -82,9 +77,6 @@ if '__main__' == __name__:
                 _cycle = v.get('cycle')
                 _results = v.get('results')
                 _events = v.get('events')
-#                _service.tx({'info': {'_cycle': _cycle}})
-#                _service.tx({'info': {'_results': _results}})
-#                _service.tx({'info': {'_events': _events}})
                 state.update({'cycle': do_tick(_service, state, _cycle, _results, _events)})
         if state.get('ack') and state.get('running'): _service.tx({'ack': {'cycle': state.get('cycle')}})
     if not args.quiet: print('Shutting down {}...'.format(sys.argv[0]))
