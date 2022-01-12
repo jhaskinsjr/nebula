@@ -25,6 +25,7 @@ def do_tick(service, state, cycle, results, events):
     for mem in filter(lambda x: x and x.get('addr') in state.get('requested_pc'), map(lambda y: y.get('mem'), results)):
         state.get('requested_pc').remove(mem.get('addr'))
         state.update({'pending_pc_request': False})
+        # TODO: actually *do* the instruction spelled by int.from_bytes(mem.get('data'), 'little'); just NOP for now
     if not state.get('pending_pc_request'):
         state.update({'pending_pc_request': True})
         service.tx({'event': {
