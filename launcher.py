@@ -16,12 +16,12 @@ def tx(conn, msg):
     conn.send(_message)
 def broadcast(connections, msg):
     return [tx(c, msg) for c in connections]
-def handler(connections, conn, addr):
+def handler(conn, addr):
     global state
     state.get('lock').acquire()
     state.get('connections').add(conn)
     state.get('lock').release()
-    connections.add(conn)
+#    connections.add(conn)
 #    print('handler for {}:{}'.format(*addr))
 #    print('len(connections) : {}'.format(len(connections)))
 #    conn.setblocking(True)
@@ -40,7 +40,7 @@ def handler(connections, conn, addr):
                 state.get('lock').acquire()
                 state.get('connections').remove(conn)
                 state.get('lock').release()
-                connections.remove(conn)
+#                connections.remove(conn)
                 break
             elif 'name' == k:
                 threading.current_thread().name = v
@@ -89,12 +89,12 @@ def handler(connections, conn, addr):
                     state.get('lock').release()
         except Exception as ex:
             print('Oopsie! {} ({} ({}:{}))'.format(ex, str(msg), type(msg), len(msg)))
-            connections.remove(conn)
+#            connections.remove(conn)
             conn.close()
-def acceptor(connections):
+def acceptor():
     while True:
         _conn, _addr = _s.accept()
-        th = threading.Thread(target=handler, args=(connections, _conn, _addr))
+        th = threading.Thread(target=handler, args=(_conn, _addr))
         th.start()
 def integer(val):
     return {
@@ -195,8 +195,8 @@ if __name__ == '__main__':
         'running': False,
         'cycle': 0,
     }
-    connections = set()
-    threading.Thread(target=acceptor, args=(connections,), daemon=True).start()
+#    connections = set()
+    threading.Thread(target=acceptor, daemon=True).start()
     _services = [
         threading.Thread(
             target=subprocess.run,
@@ -216,7 +216,7 @@ if __name__ == '__main__':
                 break
             elif 'tick' == cmd:
                 state.update({'cycle': state.get('cycle') + sum(map(lambda x: integer(x), params))})
-                broadcast(connections, {
+                broadcast(state.get('connections'), {
                     'tick': {
                         'cycle': state.get('cycle'),
                         'results': [],
@@ -225,19 +225,19 @@ if __name__ == '__main__':
                 })
             elif 'run' == cmd:
                 state.update({'running': True})
-                state.update({'cycle': run(connections, state.get('cycle'), args.max_cycles)})
+                state.update({'cycle': run(state.get('connections'), state.get('cycle'), args.max_cycles)})
                 state.update({'running': False})
             else:
                 {
-                    'register': lambda x, y, z=None: register(connections, x, y, z),
-                    'mainmem': lambda w, x, y, z=None: mainmem(connections, w, x, y, z),
+                    'register': lambda x, y, z=None: register(state.get('connections'), x, y, z),
+                    'mainmem': lambda w, x, y, z=None: mainmem(state.get('connections'), w, x, y, z),
                     'loadbin': lambda x, y: loadbin(x, y),
                     'run': lambda x: run(x),
                     'cycle': lambda: print(state.get('cycle')),
                     'state': lambda: print(state),
-                    'connections': lambda: print(connections),
+                    'connections': lambda: print(state.get('connections')),
                     'push': lambda x: push(x),
                 }.get(cmd, lambda : print('Unknown command!'))(*params)
-    broadcast(connections, 'bye')
+    broadcast(state.get('connections'), 'bye')
     [th.join() for th in _services]
 #    [th.join() for th in filter(lambda x: x != threading.main_thread(), threading.enumerate())]
