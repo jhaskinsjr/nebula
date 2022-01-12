@@ -53,23 +53,26 @@ def handler(connections, conn, addr):
                 state.get('lock').release()
             elif 'result' == k:
 #                print('v - result : {}'.format(v))
-                _arr, _res = v.items()
-                _, _arr = _arr
+                _arr = v.pop('arrival')
+                _res = v
                 state.get('lock').acquire()
                 _res_evt = state.get('futures').get(_arr, {'results': [], 'events': []})
                 _res_evt.get('results').append(_res)
                 state.get('futures').update({_arr: _res_evt})
-                state.get('results').append(v) # e.g., v = {'pc': 0x40000000}
+#                state.get('results').append(v) # e.g., v = {'pc': 0x40000000}
                 state.get('lock').release()
             elif 'event' == k:
-#                print('v - event  : {}'.format(v))
-                _arr, _evt = v.items()
-                _, _arr = _arr
+#                print('v - event       : {}'.format(v))
+                _arr = v.pop('arrival')
+#                print('v - event       : {}'.format(v))
+                _evt = v
+#                print('v - event  _arr : {}'.format(_arr))
+#                print('v - event  _evt : {}'.format(_evt))
                 state.get('lock').acquire()
                 _res_evt = state.get('futures').get(_arr, {'results': [], 'events': []})
                 _res_evt.get('events').append(_evt)
                 state.get('futures').update({_arr: _res_evt})
-                state.get('events').append(v) # e.g., v = {'pc': 0x40000000}
+#                state.get('events').append(v) # e.g., v = {'pc': 0x40000000}
                 state.get('lock').release()
             else:
                 state.get('lock').acquire()
@@ -132,16 +135,21 @@ def run(connections, cycle, max_cycles):
     state.get('lock').release()
     while (cycle < max_cycles if max_cycles else True):
         state.get('lock').acquire()
-        print('run(): @{:8} results : {} ({})'.format(cycle, state.get('results'), len(state.get('results'))))
-        print('run(): @{:8} events  : {} ({})'.format(cycle, state.get('events'), len(state.get('events'))))
-        print('run(): @{:8} futures : {}'.format(cycle, state.get('futures')))
+#        print('run(): @{:8} results  : {} ({})'.format(cycle, state.get('results'), len(state.get('results'))))
+#        print('run(): @{:8} events   : {} ({})'.format(cycle, state.get('events'), len(state.get('events'))))
+        print('run(): @{:8} futures  : {}'.format(cycle, state.get('futures')))
+        cycle = (min(state.get('futures').keys()) if len(state.get('futures').keys()) else 1 + cycle)
+        _res_evt = state.get('futures').get(cycle, {'results': [], 'events': []})
+        _res = state.get('futures').get(cycle, {'results': []}).get('results')
+        _evt = state.get('futures').get(cycle, {'events': []}).get('events')
+        print('run(): @{:8} _res_evt : {}'.format(cycle, _res_evt))
+        print('run(): @{:8} _res     : {}'.format(cycle, _res))
+        print('run(): @{:8} _evt     : {}'.format(cycle, _evt))
         print('---')
-        cycle = (min(state.get('futures').keys()) if len(state.get('futures').keys()) else 1 + cycles)
-        broadcast(state.get('connections'), {'tick':
-            'cycle': cycle,
-            'results': state.get('futures').get(cycle, {'results': []}).get('results').copy(),
-            'events': state.get('futures').get(cycle, {'events': []}).get('events').copy(),
-        })
+        broadcast(state.get('connections'), {'tick': {
+            **{'cycle': cycle},
+            **dict(state.get('futures').get(cycle, {'results': [], 'events': []})),
+        }})
         if cycle in state.get('futures'): state.get('futures').pop(cycle)
 #        broadcast(state.get('connections'), {
 #            'tick': {
@@ -182,8 +190,8 @@ if __name__ == '__main__':
         'connections': set(),
         'ack': [],
         'futures': {},
-        'results': [],
-        'events': [],
+#        'results': [],
+#        'events': [],
         'running': False,
         'cycle': 0,
     }
