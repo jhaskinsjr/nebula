@@ -107,7 +107,7 @@ def loadbin(binary, addr):
     print('loadbin(): {} @{}'.format(binary, addr))
 def push(val):
     print('push(): @(%sp) <= {}'.format(val))
-def run(connections, cycle, max_cycles):
+def run(cycle, max_cycles):
     global state
     # {
     #   'tick': {
@@ -187,14 +187,13 @@ if __name__ == '__main__':
                 })
             elif 'run' == cmd:
                 state.update({'running': True})
-                state.update({'cycle': run(state.get('connections'), state.get('cycle'), args.max_cycles)})
+                state.update({'cycle': run(state.get('cycle'), args.max_cycles)})
                 state.update({'running': False})
             else:
                 {
                     'register': lambda x, y, z=None: register(state.get('connections'), x, y, z),
                     'mainmem': lambda w, x, y, z=None: mainmem(state.get('connections'), w, x, y, z),
                     'loadbin': lambda x, y: loadbin(x, y),
-                    'run': lambda x: run(x),
                     'cycle': lambda: print(state.get('cycle')),
                     'state': lambda: print(state),
                     'connections': lambda: print(state.get('connections')),
