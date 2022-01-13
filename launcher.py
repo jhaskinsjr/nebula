@@ -6,23 +6,21 @@ import argparse
 import threading
 import subprocess
 
-def tx(conn, msg):
+def tx(conns, msg):
     _message = {
         str: lambda : json.dumps({'text': msg}),
         dict: lambda : json.dumps(msg),
     }.get(type(msg), lambda : json.dumps({'error': 'Undeliverable object'}))().encode('ascii')
     assert 1024 >= len(_message), 'Message too big!'
     _message += (' ' * (1024 - len(_message))).encode('ascii')
-    conn.send(_message)
-def broadcast(connections, msg):
-    return [tx(c, msg) for c in connections]
+    for c in conns: c.send(_message)
 def handler(conn, addr):
     global state
     state.get('lock').acquire()
     state.get('connections').add(conn)
     state.get('lock').release()
     print('handler(): {}:{}'.format(*addr))
-    tx(conn, {'ack': 'launcher'})
+    tx([conn], {'ack': 'launcher'})
     while True:
         try:
             msg = conn.recv(1024)
@@ -74,7 +72,7 @@ def handler(conn, addr):
                     state.get('lock').release()
                 else:
                     state.get('lock').acquire()
-                    broadcast(filter(lambda c: c != conn, state.get('connections')), msg)
+                    tx(filter(lambda c: c != conn, state.get('connections')), msg)
                     state.get('lock').release()
         except Exception as ex:
             print('Oopsie! {} ({} ({}:{}))'.format(ex, str(msg), type(msg), len(msg)))
@@ -91,14 +89,14 @@ def integer(val):
         '0b': lambda x: int(x, 2),
     }.get(val[:2], lambda x: int(x))(val)
 def register(connections, cmd, name, data=None):
-    broadcast(connections, {'register': {**{
+    tx(connections, {'register': {**{
             'cmd': cmd,
             'name': name,
         },
         **({'data': integer(data)} if data else {}),
     }})
 def mainmem(connections, cmd, addr, size, data=None):
-    broadcast(connections, {'mainmem': {**{
+    tx(connections, {'mainmem': {**{
             'cmd': cmd,
             'addr': integer(addr),
             'size': integer(size),
@@ -119,13 +117,13 @@ def run(connections, cycle, max_cycles):
     #   }
     # }
     state.get('lock').acquire()
-    broadcast(state.get('connections'), 'run')
+    tx(state.get('connections'), 'run')
     state.get('lock').release()
     while (cycle < max_cycles if max_cycles else True):
         state.get('lock').acquire()
         print('run(): @{:8} futures  : {}'.format(cycle, state.get('futures')))
         cycle = (min(state.get('futures').keys()) if len(state.get('futures').keys()) else 1 + cycle)
-        broadcast(state.get('connections'), {'tick': {
+        tx(state.get('connections'), {'tick': {
             **{'cycle': cycle},
             **dict(state.get('futures').get(cycle, {'results': [], 'events': []})),
         }})
@@ -180,7 +178,7 @@ if __name__ == '__main__':
                 break
             elif 'tick' == cmd:
                 state.update({'cycle': state.get('cycle') + sum(map(lambda x: integer(x), params))})
-                broadcast(state.get('connections'), {
+                tx(state.get('connections'), {
                     'tick': {
                         'cycle': state.get('cycle'),
                         'results': [],
@@ -202,5 +200,5 @@ if __name__ == '__main__':
                     'connections': lambda: print(state.get('connections')),
                     'push': lambda x: push(x),
                 }.get(cmd, lambda : print('Unknown command!'))(*params)
-    broadcast(state.get('connections'), 'bye')
+    tx(state.get('connections'), 'bye')
     [th.join() for th in _services]
