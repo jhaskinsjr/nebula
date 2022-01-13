@@ -22,11 +22,17 @@ Notwithstanding this, I chose to trade away speed for flexibility.
 --
 RUNNING
 
-To quickly run, execute
+If you have not already done so, you will need to set up passwordless SSH
+access to your host machine; see:
 
-python3 launcher.py --services simplecore.py:localhost \
-    regfile.py:localhost \
-    mainmem.py:localhost \
+https://www.ibm.com/support/pages/configuring-ssh-login-without-password
+
+Once passwordless SSH has been set up, to quickly run, execute:
+
+python3 launcher.py --services \
+    ${PWD}/simplecore.py:localhost \
+    ${PWD}/regfile.py:localhost \
+    ${PWD}/mainmem.py:localhost \
     --max_cycles 100 \
     -- 10000 test-01.ussim
 
