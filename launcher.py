@@ -6,6 +6,8 @@ import argparse
 import threading
 import subprocess
 
+import elftools.elf.elffile
+
 def tx(conns, msg):
     _message = {
         str: lambda : json.dumps({'text': msg}),
@@ -103,8 +105,43 @@ def mainmem(connections, cmd, addr, size, data=None):
         },
         **({'data': integer(data)} if data else {}),
     }})
-def loadbin(binary, addr):
-    print('loadbin(): {} @{}'.format(binary, addr))
+def loadbin(binary, addr, mainmem_rawfile):
+    print('loadbin(): {} @{} -> {}'.format(binary, addr, mainmem_rawfile))
+    fd = os.open(mainmem_rawfile, os.O_RDWR | os.O_CREAT)
+    os.ftruncate(fd, 0)
+    os.ftruncate(fd, 2**32) # HACK: hard-wired memory size is dumb, but I don't want to focus on that right now
+    _retval = addr
+    with open(binary, 'rb') as fp:
+        elffile = elftools.elf.elffile.ELFFile(fp)
+        _addr = addr
+        for section in map(lambda n: elffile.get_section_by_name(n), ['.text', '.data', '.rodata', '.bss']):
+            print('{} : 0x{:08x} ({})'.format(section.name, _addr, section.data_size))
+            os.lseek(fd, _addr, os.SEEK_SET)
+            os.write(fd, section.data())
+            _addr += section.data_size
+            _addr += 0x10000
+            _addr |= 0xffff
+            _addr ^= 0xffff
+        _symbol_tables = [s for s in elffile.iter_sections() if isinstance(s, elftools.elf.elffile.SymbolTableSection)]
+        _start = sum([list(filter(lambda s: '_start' == s.name, tab.iter_symbols())) for tab in _symbol_tables], [])
+        assert 1 == len(_start), 'More than one _start symbol?!?!?!?'
+        _start = next(iter(_start))
+        _retval += _start.entry.st_value - elffile.get_section_by_name('.text').header.sh_addr
+#        print('_start : {}, {}'.format(_start.name, _start.entry.st_value))
+#        for tab in _symbol_tables:
+#            _start_pc = next(iter(list(map(lambda t: t, filter(lambda s: '_start' == s.name, tab.iter_symbols())))))
+#            print(dir(_start_pc))
+#            print('_start_pc : ')
+#            print('\t.name  : {}'.format(_start_pc.name))
+#            print('\t.entry : {}'.format(_start_pc.entry))
+#            print('\t.entry.st_name : {}'.format(_start_pc.entry.st_name))
+#            print('\t.entry.st_info : {}'.format(_start_pc.entry.st_info))
+#            print('\t.entry.st_other : {}'.format(_start_pc.entry.st_other))
+#            print('\t.entry.st_shndx : {}'.format(_start_pc.entry.st_shndx))
+#            print('\t.entry.st_value : {}'.format(_start_pc.entry.st_value))
+#            print('\t.entry.st_size : {}'.format(_start_pc.entry.st_size))
+    os.close(fd)
+    return _retval
 def push(val):
     print('push(): @(%sp) <= {}'.format(val))
 def run(cycle, max_cycles):
@@ -193,7 +230,7 @@ if __name__ == '__main__':
                 {
                     'register': lambda x, y, z=None: register(state.get('connections'), x, y, z),
                     'mainmem': lambda w, x, y, z=None: mainmem(state.get('connections'), w, x, y, z),
-                    'loadbin': lambda x, y: loadbin(x, y),
+                    'loadbin': lambda x, y, z: register(state.get('connections'), 'set', '%pc', hex(loadbin(x, int(y, 16), z))),
                     'cycle': lambda: print(state.get('cycle')),
                     'state': lambda: print(state),
                     'connections': lambda: print(state.get('connections')),
