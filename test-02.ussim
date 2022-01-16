@@ -1,6 +1,6 @@
 # Sample μService-SIMulator script
 cycle
-loadbin bin/test 0x00000000 /tmp/mainmem.raw    # load bin/test binary to @0x40000000
+loadbin bin/test 0x40000000 /tmp/mainmem.raw    # load bin/test binary to @0x40000000
 register set %sp 0x80000000                     # set %sp to 0x80000000
 push 5                                          # push the parameter 5... as a string... onto the stack
 run
