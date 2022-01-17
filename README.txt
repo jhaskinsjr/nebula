@@ -22,6 +22,10 @@ Notwithstanding this, I chose to trade away speed for flexibility.
 --
 RUNNING
 
+If you have not already done so, you will need to install pyelftools; see:
+
+https://github.com/eliben/pyelftools
+
 If you have not already done so, you will need to set up passwordless SSH
 access to your host machine; see:
 
