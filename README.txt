@@ -37,6 +37,7 @@ python3 launcher.py --services \
     ${PWD}/simplecore.py:localhost \
     ${PWD}/regfile.py:localhost \
     ${PWD}/mainmem.py:localhost \
+    ${PWD}/decode.py:localhost \
     --max_cycles 100 \
     -- 10000 test-01.ussim
 
