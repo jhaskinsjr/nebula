@@ -9,7 +9,6 @@ def do_execute(service, insns):
             print('do_execute(): {:08x}'.format(insn))
         else:
             print('do_execute(): {:04x}'.format(insn))
-        service.tx({'info': insn})
         # TODO: actually *do* the insn; just print and NOP for now
 
 def do_tick(service, state, cycle, results, events):
