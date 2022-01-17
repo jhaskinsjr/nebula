@@ -3,6 +3,15 @@ import argparse
 
 import service
 
+def do_execute(service, insns):
+    for insn in insns:
+        if 0x3 == insn & 0x3:
+            print('do_execute(): {:08x}'.format(insn))
+        else:
+            print('do_execute(): {:04x}'.format(insn))
+#        print('do_execute(): {:08x} {}'.format(insn, ('' if 0x3 == insn & 0x3 else '(compressed)')))
+        service.tx({'info': insn})
+
 def do_tick(service, state, cycle, results, events):
     for pc in map(lambda w: w.get('data'), filter(lambda x: x and '%pc' == x.get('name'), map(lambda y: y.get('register'), results))):
         service.tx({'event': {
@@ -24,10 +33,20 @@ def do_tick(service, state, cycle, results, events):
         if pc not in state.get('requested_pc'): state.get('requested_pc').append(pc)
     for mem in filter(lambda x: x and x.get('addr') in state.get('requested_pc'), map(lambda y: y.get('mem'), results)):
         state.get('requested_pc').remove(mem.get('addr'))
-        state.update({'pending_pc_request': False})
+        state.update({'pending_fetch': False})
+        state.update({'pending_decode': True})
+        service.tx({'event': {
+            'arrival': 1 + cycle,
+            'decode': {
+                'bytes': mem.get('data'),
+            },
+        }})
+    for insns in filter(lambda x: x, map(lambda y: y.get('insns'), results)):
+        state.update({'pending_decode': False})
+        do_execute(service, insns.get('data'))
         # TODO: actually *do* the instruction spelled by int.from_bytes(mem.get('data'), 'little'); just NOP for now
-    if not state.get('pending_pc_request'):
-        state.update({'pending_pc_request': True})
+    if not state.get('pending_fetch') and not state.get('pending_decode'):
+        state.update({'pending_fetch': True})
         service.tx({'event': {
             'arrival': 1 + cycle,
             'register': {
@@ -54,7 +73,8 @@ if '__main__' == __name__:
         'active': True,
         'running': False,
         'requested_pc': [], # to allow more than one outstanding PC req at a time
-        'pending_pc_request': False,
+        'pending_fetch': False,
+        'pending_decode': False,
         'ack': True,
     }
     while state.get('active'):
