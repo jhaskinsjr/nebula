@@ -9,8 +9,8 @@ def do_execute(service, insns):
             print('do_execute(): {:08x}'.format(insn))
         else:
             print('do_execute(): {:04x}'.format(insn))
-#        print('do_execute(): {:08x} {}'.format(insn, ('' if 0x3 == insn & 0x3 else '(compressed)')))
         service.tx({'info': insn})
+        # TODO: actually *do* the insn; just print and NOP for now
 
 def do_tick(service, state, cycle, results, events):
     for pc in map(lambda w: w.get('data'), filter(lambda x: x and '%pc' == x.get('name'), map(lambda y: y.get('register'), results))):
@@ -44,7 +44,6 @@ def do_tick(service, state, cycle, results, events):
     for insns in filter(lambda x: x, map(lambda y: y.get('insns'), results)):
         state.update({'pending_decode': False})
         do_execute(service, insns.get('data'))
-        # TODO: actually *do* the instruction spelled by int.from_bytes(mem.get('data'), 'little'); just NOP for now
     if not state.get('pending_fetch') and not state.get('pending_decode'):
         state.update({'pending_fetch': True})
         service.tx({'event': {

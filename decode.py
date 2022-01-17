@@ -19,7 +19,6 @@ def do_decode(state, max_insns):
             state.get('buffer').pop(0)
             state.get('buffer').pop(0)
     return _retval
-#    return ([insns] if 0x3 == insns & 0x3 else [(insns & 0xffff), (insns >> 16) & 0xffff])
 
 def do_tick(service, state, cycle, results, events):
     for ev in filter(lambda x: x, map(lambda y: y.get('decode'), events)):
@@ -31,26 +30,6 @@ def do_tick(service, state, cycle, results, events):
                 'data': do_decode(state, 1), # HACK: hard-coded max-instructions-to-decode of 1
             },
         }})
-#        pass
-#        service.tx({'info': ev})
-#        _cmd = ev.get('cmd')
-#        _name = ev.get('name')
-#        _data = ev.get('data')
-#        if 'set' == _cmd:
-#            state.update({'registers': setregister(state.get('registers'), _name, _data)})
-#        elif 'get' == _cmd:
-#            service.tx({'result': {
-#                'arrival': 1 + cycle,
-#                'register': {
-#                    'name': _name,
-#                    'data': getregister(state.get('registers'), _name),
-#                }
-#            }
-#        })
-#        else:
-#            print('ev   : {}'.format(ev))
-#            print('_cmd : {}'.format(_cmd))
-#            assert False
     return cycle
 
 def setregister(registers, reg, val):
