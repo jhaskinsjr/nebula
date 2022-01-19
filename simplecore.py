@@ -5,10 +5,10 @@ import service
 
 def do_execute(service, insns):
     for insn in insns:
-        if 0x3 == insn & 0x3:
-            print('do_execute(): {:08x}'.format(insn))
+        if 0x3 == insn.get('word') & 0x3:
+            print('do_execute(): {:08x} : {}'.format(insn.get('word'), insn.get('cmd')))
         else:
-            print('do_execute(): {:04x}'.format(insn))
+            print('do_execute():     {:04x} : {}'.format(insn.get('word'), insn.get('cmd')))
         # TODO: actually *do* the insn; just print and NOP for now
 
 def do_tick(service, state, cycle, results, events):
@@ -42,8 +42,10 @@ def do_tick(service, state, cycle, results, events):
         }})
     for insns in filter(lambda x: x, map(lambda y: y.get('insns'), results)):
         state.update({'pending_decode': False})
+        state.update({'pending_execute': True})
         do_execute(service, insns.get('data'))
-    if not state.get('pending_fetch') and not state.get('pending_decode'):
+        state.update({'pending_execute': False})
+    if not state.get('pending_fetch') and not state.get('pending_decode') and not state.get('pending_execute'):
         state.update({'pending_fetch': True})
         service.tx({'event': {
             'arrival': 1 + cycle,
@@ -73,6 +75,7 @@ if '__main__' == __name__:
         'requested_pc': [], # to allow more than one outstanding PC req at a time
         'pending_fetch': False,
         'pending_decode': False,
+        'pending_execute': False,
         'ack': True,
     }
     while state.get('active'):
