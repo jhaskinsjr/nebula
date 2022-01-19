@@ -9,7 +9,6 @@ import functools
 def illegal_instruction(word):
     assert False, 'Illegal instruction ({:08x})!'.format(word)
 def unimplemented_instruction(word):
-#    print('Unimplemented instruction {:08x}'.format(word))
     return {
         'cmd': 'Undefined',
         'word': word,
@@ -123,20 +122,16 @@ def do_decode(state, max_insns):
         _word = int.from_bytes(state.get('buffer')[:4], 'little')
         if 0x3 == _word & 0x3:
             if 4 > len(state.get('buffer')): break
-#            _retval.append(_word)
             _retval.append(decode_uncompressed(_word))
             state.get('buffer').pop(0)
             state.get('buffer').pop(0)
             state.get('buffer').pop(0)
             state.get('buffer').pop(0)
-#            decode_uncompressed(_word)
         else:
             _word &= 0xffff
-#            _retval.append(_word & 0xffff)
             _retval.append(decode_compressed(_word))
             state.get('buffer').pop(0)
             state.get('buffer').pop(0)
-#            decode_compressed(_word & 0xffff)
     return _retval
 
 def do_tick(service, state, cycle, results, events):
