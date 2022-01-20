@@ -6,6 +6,16 @@ import service
 def do_unimplemented(service, state, insn):
     print('Unimplemented: {}'.format(state.get('pending_execute')))
     state.update({'pending_execute': None})
+def do_auipc(service, state, insn):
+    service.tx({'event': {
+        'arrival': 1 + state.get('cycle'),
+        'register': {
+            'cmd': 'set',
+            'name': insn.get('rd'),
+            'data': insn.get('imm') + state.get('%pc'),
+        }
+    }})
+    state.update({'pending_execute': None})
 def do_jal(service, state, insn):
 #    state.update({'%pc': insn.get('imm') + state.get('%pc')})
     service.tx({'event': {
@@ -34,6 +44,7 @@ def do_execute(service, state):
             print('do_execute():     {:04x} : {}'.format(insn.get('word'), insn.get('cmd')))
         # TODO: actually *do* the insn; just print and NOP for now
         {
+            'AUIPC': do_auipc,
             'JAL': do_jal,
         }.get(insn.get('cmd'), do_unimplemented)(service, state, insn)
 #    state.update({'pending_execute': None})
@@ -103,7 +114,7 @@ if '__main__' == __name__:
         'pending_fetch': False,
         'pending_decode': False,
         'pending_execute': None,
-        'pc': None,
+        '%pc': None,
         'ack': True,
     }
     while state.get('active'):

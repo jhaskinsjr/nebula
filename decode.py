@@ -17,6 +17,7 @@ def auipc(word):
     return {
         'cmd': 'AUIPC',
         'imm': uncompressed_imm32(word, signed=True),
+        'rd': uncompressed_rd(word),
         'word': word,
     }
 def jal(word):
