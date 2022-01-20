@@ -23,6 +23,7 @@ def jal(word):
     return {
         'cmd': 'JAL',
         'imm': uncompressed_imm21(word, signed=True),
+        'rd': uncompressed_rd(word),
         'word': word,
     }
 
@@ -48,6 +49,11 @@ def compressed_rs1_prime(word):
     return (word >> 7) & 0b111
 compressed_rd = compressed_rs1
 compressed_rd_prime = compressed_rs1_prime
+
+def uncompressed_rd(word):
+    # https://riscv.org/wp-content/uploads/2019/06/riscv-spec.pdf (p. 130)
+    return (word >> 7) & 0b1_1111
+
 def compressed_imm6(word, **kwargs):
     # nzimm[5] 00000 nzimm[4:0]
     # https://riscv.org/wp-content/uploads/2019/06/riscv-spec.pdf (p. 111)
@@ -134,17 +140,16 @@ def do_decode(state, max_insns):
             state.get('buffer').pop(0)
     return _retval
 
-def do_tick(service, state, cycle, results, events):
+def do_tick(service, state, results, events):
     for ev in filter(lambda x: x, map(lambda y: y.get('decode'), events)):
         _bytes = ev.get('bytes')
         state.get('buffer').extend(_bytes)
         service.tx({'result': {
-            'arrival': 1 + cycle,
+            'arrival': 1 + state.get('cycle'),
             'insns': {
                 'data': do_decode(state, 1), # HACK: hard-coded max-instructions-to-decode of 1
             },
         }})
-    return cycle
 
 def setregister(registers, reg, val):
     return {x: y for x, y in tuple(registers.items()) + ((reg, val),)}
@@ -183,9 +188,9 @@ if '__main__' == __name__:
                 state.update({'running': True})
                 state.update({'ack': False})
             elif 'tick' == k:
-                _cycle = v.get('cycle')
+                state.update({'cycle': v.get('cycle')})
                 _results = v.get('results')
                 _events = v.get('events')
-                state.update({'cycle': do_tick(_service, state, _cycle, _results, _events)})
+                do_tick(_service, state, _results, _events)
         if state.get('ack') and state.get('running'): _service.tx({'ack': {'cycle': state.get('cycle')}})
     if not args.quiet: print('Shutting down {}...'.format(sys.argv[0]))

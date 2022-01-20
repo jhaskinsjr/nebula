@@ -3,7 +3,7 @@ import argparse
 
 import service
 
-def do_tick(service, state, cycle, results, events):
+def do_tick(service, state, results, events):
     for ev in filter(lambda x: x, map(lambda y: y.get('register'), events)):
 #        service.tx({'info': ev})
         _cmd = ev.get('cmd')
@@ -13,7 +13,7 @@ def do_tick(service, state, cycle, results, events):
             state.update({'registers': setregister(state.get('registers'), _name, _data)})
         elif 'get' == _cmd:
             service.tx({'result': {
-                'arrival': 1 + cycle,
+                'arrival': 1 + state.get('cycle'),
                 'register': {
                     'name': _name,
                     'data': getregister(state.get('registers'), _name),
@@ -24,7 +24,6 @@ def do_tick(service, state, cycle, results, events):
             print('ev   : {}'.format(ev))
             print('_cmd : {}'.format(_cmd))
             assert False
-    return cycle
 
 def setregister(registers, reg, val):
     return {x: y for x, y in tuple(registers.items()) + ((reg, val),)}
@@ -48,7 +47,10 @@ if '__main__' == __name__:
         'active': True,
         'running': False,
         'ack': True,
-        'registers': {x: 0 for x in ['%r{}'.format(y) for y in range(8)] + ['%sp', '%pc']}
+        'registers': {
+            **{x: 0 for x in ['%r{}'.format(y) for y in range(8)] + ['%sp', '%pc']},
+            **{x: 0 for x in range(32)},
+        }
     }
     while state.get('active'):
         state.update({'ack': True})
@@ -63,10 +65,10 @@ if '__main__' == __name__:
                 state.update({'running': True})
                 state.update({'ack': False})
             elif 'tick' == k:
-                _cycle = v.get('cycle')
+                state.update({'cycle': v.get('cycle')})
                 _results = v.get('results')
                 _events = v.get('events')
-                state.update({'cycle': do_tick(_service, state, _cycle, _results, _events)})
+                do_tick(_service, state, _results, _events)
             elif 'register' == k:
                 _cmd = v.get('cmd')
                 _name = v.get('name')

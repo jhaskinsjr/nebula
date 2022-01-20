@@ -5,7 +5,7 @@ import service
 
 import os
 
-def do_tick(service, state, cycle, results, events):
+def do_tick(service, state, results, events):
     for ev in filter(lambda x: x, map(lambda y: y.get('mem'), events)):
 #        service.tx({'info': ev})
         _cmd = ev.get('cmd')
@@ -16,7 +16,7 @@ def do_tick(service, state, cycle, results, events):
             poke(state, _addr, _size, _data)
         elif 'peek' == _cmd:
             service.tx({'result': {
-                'arrival': 5 + cycle,
+                'arrival': 5 + state.get('cycle'),
                 'mem': {
                     'addr': _addr,
                     'size': _size,
@@ -26,7 +26,6 @@ def do_tick(service, state, cycle, results, events):
         else:
             print('ev : {}'.format(ev))
             assert False
-    return cycle
 
 def poke(state, addr, data):
     # data : list of unsigned char, e.g., to make an integer, X, into a list
@@ -74,10 +73,10 @@ if '__main__' == __name__:
                 state.update({'running': True})
                 state.update({'ack': False})
             elif 'tick' == k:
-                _cycle = v.get('cycle')
+                state.update({'cycle': v.get('cycle')})
                 _results = v.get('results')
                 _events = v.get('events')
-                state.update({'cycle': do_tick(_service, state, _cycle, _results, _events)})
+                do_tick(_service, state, _results, _events)
         if state.get('ack') and state.get('running'): _service.tx({'ack': {'cycle': state.get('cycle')}})
     if not args.quiet: print('Shutting down {}...'.format(sys.argv[0]))
     os.close(state.get('fd'))
