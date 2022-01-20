@@ -7,7 +7,6 @@ def do_unimplemented(service, state, insn):
     print('Unimplemented: {}'.format(state.get('pending_execute')))
     do_complete(service, state)
 def do_auipc(service, state, insn):
-#    service.tx({'info': state.get('%pc')})
     service.tx({'event': {
         'arrival': 1 + state.get('cycle'),
         'register': {
@@ -18,7 +17,6 @@ def do_auipc(service, state, insn):
     }})
     do_complete(service, state)
 def do_jal(service, state, insn):
-    # should always have %pc
     service.tx({'event': {
         'arrival': 1 + state.get('cycle'),
         'register': {
@@ -48,7 +46,6 @@ def do_addi(service, state, insn):
         }})
     if not isinstance(state.get('operands').get('rs1'), int):
         return
-#    service.tx({'info': 'insn : {}'.format(insn)})
     service.tx({'event': {
         'arrival': 1 + state.get('cycle'),
         'register': {
@@ -66,7 +63,6 @@ def do_execute(service, state):
             print('do_execute(): {:08x} : {}'.format(insn.get('word'), insn.get('cmd')))
         else:
             print('do_execute():     {:04x} : {}'.format(insn.get('word'), insn.get('cmd')))
-        # TODO: actually *do* the insn; just print and NOP for now
         {
             'AUIPC': do_auipc,
             'JAL': do_jal,
@@ -112,8 +108,6 @@ if '__main__' == __name__:
         'pending_execute': None,
         '%pc': None,
         'operands': {},
-        '%rs1': None,
-        '%rs2': None,
     }
     while state.get('active'):
         state.update({'ack': True})

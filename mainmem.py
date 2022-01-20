@@ -7,7 +7,6 @@ import os
 
 def do_tick(service, state, results, events):
     for ev in filter(lambda x: x, map(lambda y: y.get('mem'), events)):
-#        service.tx({'info': ev})
         _cmd = ev.get('cmd')
         _addr = ev.get('addr')
         _size = ev.get('size')
