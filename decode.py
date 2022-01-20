@@ -27,6 +27,16 @@ def jal(word):
         'rd': uncompressed_rd(word),
         'word': word,
     }
+def i_type(word):
+    return {
+        0b000: {
+            'cmd': 'ADDI',
+            'imm': uncompressed_i_type_imm12(word, signed=True),
+            'rs1': uncompressed_rs1(word),
+            'rd': uncompressed_rd(word),
+            'word': word,
+        }
+    }.get(uncompressed_i_type_funct3(word), unimplemented_instruction(word))
 
 def decode_compressed(word):
     return {
@@ -35,6 +45,7 @@ def decode_uncompressed(word):
     return {
         0b001_0111: auipc,
         0b110_1111: jal,
+        0b001_0011: i_type,
     }.get(uncompressed_opcode(word), unimplemented_instruction)(word)
 
 def uncompressed_opcode(word):
@@ -51,6 +62,9 @@ def compressed_rs1_prime(word):
 compressed_rd = compressed_rs1
 compressed_rd_prime = compressed_rs1_prime
 
+def uncompressed_rs1(word):
+    # https://riscv.org/wp-content/uploads/2019/06/riscv-spec.pdf (p. 130)
+    return (word >> 15) & 0b1_1111
 def uncompressed_rd(word):
     # https://riscv.org/wp-content/uploads/2019/06/riscv-spec.pdf (p. 130)
     return (word >> 7) & 0b1_1111
@@ -102,6 +116,14 @@ def compressed_imm12(word, **kwargs):
     _retval |= _b030201 << 3
     _retval = functools.reduce(lambda a, b: a | b, map(lambda x: _b11 << x, range(12, 16)), _retval)
     return int.from_bytes(struct.Struct('<H').pack(_retval), 'little', **kwargs)
+def uncompressed_i_type_imm12(word, **kwargs):
+    # imm[11:0]
+    # https://riscv.org/wp-content/uploads/2019/06/riscv-spec.pdf (p. 130)
+    _tmp = (word >> 20) & 0b1111_1111_1111
+    _b11 = (_tmp & 0b1000_0000_0000) >> 11
+    _retval = _tmp
+    _retval = functools.reduce(lambda a, b: a | b, map(lambda x: _b11 << x, range(12, 32)), _retval)
+    return int.from_bytes(struct.Struct('<I').pack(_retval), 'little', **kwargs)
 def uncompressed_imm21(word, **kwargs):
     # imm[20|10:1|11|19:12] rrrrr ooooooo
     # https://riscv.org/wp-content/uploads/2019/06/riscv-spec.pdf (p. 130)
@@ -121,6 +143,10 @@ def uncompressed_imm32(word, **kwargs):
     # https://riscv.org/wp-content/uploads/2019/06/riscv-spec.pdf (p. 130)
     _retval = word & 0b1111_1111_1111_1111_1111_0000_0000_0000
     return int.from_bytes(struct.Struct('<I').pack(_retval), 'little', **kwargs)
+def uncompressed_i_type_funct3(word):
+    # https://riscv.org/wp-content/uploads/2019/06/riscv-spec.pdf (p. 130)
+    return (word >> 12) & 0b111
+
 
 
 def do_decode(state, max_insns):

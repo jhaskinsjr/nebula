@@ -35,6 +35,16 @@ def do_jal(service, state, insn):
         }
     }})
     state.update({'pending_execute': None})
+def do_addi(service, state, insn):
+    service.tx({'event': {
+        'arrival': 1 + state.get('cycle'),
+        'register': {
+            'cmd': 'set',
+            'name': insn.get('rd'),
+            'data': insn.get('imm') + insn.get('rs1'),
+        }
+    }})
+    state.update({'pending_execute': None})
 
 def do_execute(service, state):
     for insn in state.get('pending_execute'):
@@ -46,6 +56,7 @@ def do_execute(service, state):
         {
             'AUIPC': do_auipc,
             'JAL': do_jal,
+            'ADDI': do_addi,
         }.get(insn.get('cmd'), do_unimplemented)(service, state, insn)
 #    state.update({'pending_execute': None})
 
