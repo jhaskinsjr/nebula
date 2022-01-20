@@ -3,65 +3,7 @@ import argparse
 
 import service
 
-def do_unimplemented(service, state, insn):
-    print('Unimplemented: {}'.format(state.get('pending_execute')))
-    state.update({'pending_execute': None})
-def do_auipc(service, state, insn):
-    service.tx({'event': {
-        'arrival': 1 + state.get('cycle'),
-        'register': {
-            'cmd': 'set',
-            'name': insn.get('rd'),
-            'data': insn.get('imm') + state.get('%pc'),
-        }
-    }})
-    state.update({'pending_execute': None})
-def do_jal(service, state, insn):
-#    state.update({'%pc': insn.get('imm') + state.get('%pc')})
-    service.tx({'event': {
-        'arrival': 1 + state.get('cycle'),
-        'register': {
-            'cmd': 'set',
-            'name': '%pc',
-            'data': insn.get('imm') + state.get('%pc'),
-        }
-    }})
-    service.tx({'event': {
-        'arrival': 1 + state.get('cycle'),
-        'register': {
-            'cmd': 'set',
-            'name': insn.get('rd'),
-            'data': 4 + state.get('%pc'),
-        }
-    }})
-    state.update({'pending_execute': None})
-def do_addi(service, state, insn):
-    service.tx({'event': {
-        'arrival': 1 + state.get('cycle'),
-        'register': {
-            'cmd': 'set',
-            'name': insn.get('rd'),
-            'data': insn.get('imm') + insn.get('rs1'),
-        }
-    }})
-    state.update({'pending_execute': None})
-
-def do_execute(service, state):
-    for insn in state.get('pending_execute'):
-        if 0x3 == insn.get('word') & 0x3:
-            print('do_execute(): {:08x} : {}'.format(insn.get('word'), insn.get('cmd')))
-        else:
-            print('do_execute():     {:04x} : {}'.format(insn.get('word'), insn.get('cmd')))
-        # TODO: actually *do* the insn; just print and NOP for now
-        {
-            'AUIPC': do_auipc,
-            'JAL': do_jal,
-            'ADDI': do_addi,
-        }.get(insn.get('cmd'), do_unimplemented)(service, state, insn)
-#    state.update({'pending_execute': None})
-
 def do_tick(service, state, results, events):
-    if state.get('pending_execute'): do_execute(service, state)
     for pc in map(lambda w: w.get('data'), filter(lambda x: x and '%pc' == x.get('name'), map(lambda y: y.get('register'), results))):
         service.tx({'event': {
             'arrival': 1 + state.get('cycle'),
@@ -103,7 +45,15 @@ def do_tick(service, state, results, events):
     for insns in filter(lambda x: x, map(lambda y: y.get('insns'), results)):
         state.update({'pending_decode': False})
         state.update({'pending_execute': insns.get('data')})
-        do_execute(service, state)
+        service.tx({'event': {
+            'arrival': 1 + state.get('cycle'),
+            'execute': {
+                'insns': insns.get('data'), 
+            }
+        }})
+    for completed in filter(lambda x: x, map(lambda y: y.get('complete'), events)):
+        assert completed.get('insns') == state.get('pending_execute'), '{} != {}'.format(completed.get('insns'), state.get('pending_execute'))
+        state.update({'pending_execute': None})
 
 if '__main__' == __name__:
     parser = argparse.ArgumentParser(description='μService-SIMulator: Simple Core')

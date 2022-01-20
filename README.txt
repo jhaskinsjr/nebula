@@ -38,6 +38,7 @@ python3 launcher.py --services \
     ${PWD}/regfile.py:localhost \
     ${PWD}/mainmem.py:localhost \
     ${PWD}/decode.py:localhost \
+    ${PWD}/execute.py:localhost \
     --max_cycles 100 \
     -- 10000 test-01.ussim
 
