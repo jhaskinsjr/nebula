@@ -69,10 +69,6 @@ def do_tick(service, state, results, events):
                 'bytes': mem.get('data'),
             },
         }})
-    for insns in filter(lambda x: x, map(lambda y: y.get('insns'), results)):
-        state.update({'pending_decode': False})
-        state.update({'pending_execute': insns.get('data')})
-        do_execute(service, state)
     if not state.get('pending_fetch') and not state.get('pending_decode') and not state.get('pending_execute'):
         state.update({'pending_fetch': True})
         service.tx({'event': {
@@ -82,6 +78,10 @@ def do_tick(service, state, results, events):
                 'name': '%pc',
             },
         }})
+    for insns in filter(lambda x: x, map(lambda y: y.get('insns'), results)):
+        state.update({'pending_decode': False})
+        state.update({'pending_execute': insns.get('data')})
+        do_execute(service, state)
 
 if '__main__' == __name__:
     parser = argparse.ArgumentParser(description='μService-SIMulator: Simple Core')
