@@ -9,7 +9,8 @@ def do_tick(service, state, results, events):
         _name = ev.get('name')
         _data = ev.get('data')
         if 'set' == _cmd:
-            state.update({'registers': setregister(state.get('registers'), _name, _data)})
+            if 0 != _name:
+                state.update({'registers': setregister(state.get('registers'), _name, _data)})
         elif 'get' == _cmd:
             service.tx({'result': {
                 'arrival': 1 + state.get('cycle'),

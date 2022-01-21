@@ -15,6 +15,16 @@ def c_jr(word):
         'rd': 0,
         'word': word,
     }
+def c_mv(word):
+    # C.MV copies the value in register rs2 into register rd. C.MV expands into add rd, x0, rs2;
+    # see: https://riscv.org/wp-content/uploads/2019/06/riscv-spec.pdf (p.106)
+    return {
+        'cmd': 'ADD',
+        'rs1': 0,
+        'rs2': compressed_rs2(word),
+        'rd': compressed_rs1_or_rd(word),
+        'word': word,
+    }
 
 def auipc(word):
     return {
@@ -61,7 +71,16 @@ def compressed_quadrant_10(word):
     }.get(compressed_opcode(word), unimplemented_instruction)(word)
 def compressed_quadrant_10_opcode_100(word):
 #    print('compressed_quadrant_10_opcode_100()')
-    _b12         = (word >> 12) & 0b1
+    _impl = unimplemented_instruction
+    _b12 = (word >> 12) & 0b1
+    if 0 == _b12:
+        if 0 == compressed_rs2(word):
+            _impl = c_jr
+        else:
+            _impl = c_mv
+    else:
+        pass
+    return _impl(word)
     return {
         (0, 1, 0): c_jr,
     }.get((_b12, compressed_rs1_or_rd(word), compressed_rs2(word)), unimplemented_instruction)(word)
