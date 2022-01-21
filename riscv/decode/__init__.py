@@ -46,21 +46,21 @@ def i_type(word):
 
 
 def decode_compressed(word):
-    print('decode_compressed({:04x})'.format(word))
+#    print('decode_compressed({:04x})'.format(word))
     return {
         0b10: compressed_quadrant_10,
     }.get(compressed_quadrant(word), unimplemented_instruction)(word)
 def compressed_quadrant(word):
-    print('compressed_quadrant({:04x})'.format(word))
+#    print('compressed_quadrant({:04x})'.format(word))
     return word & 0b11
 
 def compressed_quadrant_10(word):
-    print('compressed_quadrant_10({:04x})'.format(word))
+#    print('compressed_quadrant_10({:04x})'.format(word))
     return {
         0b100: compressed_quadrant_10_opcode_100,
     }.get(compressed_opcode(word), unimplemented_instruction)(word)
 def compressed_quadrant_10_opcode_100(word):
-    print('compressed_quadrant_10_opcode_100()')
+#    print('compressed_quadrant_10_opcode_100()')
     _b12         = (word >> 12) & 0b1
     return {
         (0, 1, 0): c_jr,
@@ -68,7 +68,7 @@ def compressed_quadrant_10_opcode_100(word):
 
 
 def compressed_opcode(word):
-    print('compressed_opcode({:04x}): -> {}'.format(word, (word & 0b1110_0000_0000_0000) >> 13))
+#    print('compressed_opcode({:04x}): -> {}'.format(word, (word & 0b1110_0000_0000_0000) >> 13))
     return (word & 0b1110_0000_0000_0000) >> 13
 def compressed_rs1_or_rd(word):
     # https://riscv.org/wp-content/uploads/2019/06/riscv-spec.pdf (p. 111)

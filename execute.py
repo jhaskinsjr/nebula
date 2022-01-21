@@ -5,7 +5,7 @@ import service
 import riscv.execute
 
 def do_unimplemented(service, state, insn):
-    print('Unimplemented: {}'.format(state.get('pending_execute')))
+#    print('Unimplemented: {}'.format(state.get('pending_execute')))
     do_complete(service, state)
 def do_auipc(service, state, insn):
     _result = riscv.execute.auipc(state.get('%pc'), insn.get('imm'))
@@ -97,7 +97,7 @@ def do_execute(service, state):
         if 0x3 == insn.get('word') & 0x3:
             print('do_execute(): @{:8} {:08x} : {}'.format(state.get('cycle'), insn.get('word'), insn.get('cmd')))
         else:
-            print('do_execute(): @{:8}    {:04x} : {}'.format(state.get('cycle'), insn.get('word'), insn.get('cmd')))
+            print('do_execute(): @{:8}     {:04x} : {}'.format(state.get('cycle'), insn.get('word'), insn.get('cmd')))
         {
             'AUIPC': do_auipc,
             'JAL': do_jal,

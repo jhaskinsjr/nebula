@@ -9,12 +9,12 @@ BRANCHES = [] # needs to ben incorporated into riscv module
 
 def do_tick(service, state, results, events):
     for completed in filter(lambda x: x, map(lambda y: y.get('complete'), events)):
-        service.tx({'info': 'completed : {}'.format(completed)})
+#        service.tx({'info': 'completed : {}'.format(completed)})
         _insns = completed.get('insns')
         _jumps = any(map(lambda a: a.get('cmd') in JUMPS, _insns))
         _branches = any(map(lambda a: a.get('cmd') in BRANCHES, _insns))
-        service.tx({'info': '_jumps    : {}'.format(_jumps)})
-        service.tx({'info': '_branches : {}'.format(_branches)})
+#        service.tx({'info': '_jumps    : {}'.format(_jumps)})
+#        service.tx({'info': '_branches : {}'.format(_branches)})
         if _jumps or _branches: state.get('buffer').clear()
     for ev in filter(lambda x: x, map(lambda y: y.get('decode'), events)):
         _bytes = ev.get('bytes')
