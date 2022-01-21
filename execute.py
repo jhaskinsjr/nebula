@@ -2,27 +2,30 @@ import sys
 import argparse
 
 import service
+import riscv.execute
 
 def do_unimplemented(service, state, insn):
     print('Unimplemented: {}'.format(state.get('pending_execute')))
     do_complete(service, state)
 def do_auipc(service, state, insn):
+    _result = riscv.execute.auipc(state.get('%pc'), insn.get('imm'))
     service.tx({'event': {
         'arrival': 1 + state.get('cycle'),
         'register': {
             'cmd': 'set',
             'name': insn.get('rd'),
-            'data': insn.get('imm') + state.get('%pc'),
+            'data': _result # insn.get('imm') + state.get('%pc'),
         }
     }})
     do_complete(service, state)
 def do_jal(service, state, insn):
+    _next_pc, _ret_pc = riscv.execute.jal(state.get('%pc'), insn.get('imm'))
     service.tx({'event': {
         'arrival': 1 + state.get('cycle'),
         'register': {
             'cmd': 'set',
             'name': '%pc',
-            'data': insn.get('imm') + state.get('%pc'),
+            'data': _next_pc # insn.get('imm') + state.get('%pc'),
         }
     }})
     service.tx({'event': {
@@ -30,7 +33,7 @@ def do_jal(service, state, insn):
         'register': {
             'cmd': 'set',
             'name': insn.get('rd'),
-            'data': 4 + state.get('%pc'),
+            'data': _ret_pc,
         }
     }})
     do_complete(service, state)
@@ -46,12 +49,13 @@ def do_addi(service, state, insn):
         }})
     if not isinstance(state.get('operands').get('rs1'), int):
         return
+    _result = riscv.execute.addi(state.get('operands').get('rs1'), insn.get('imm'))
     service.tx({'event': {
         'arrival': 1 + state.get('cycle'),
         'register': {
             'cmd': 'set',
             'name': insn.get('rd'),
-            'data': insn.get('imm') + state.get('operands').get('rs1'),
+            'data': _result # insn.get('imm') + state.get('operands').get('rs1'),
         }
     }})
     state.update({'operands': {}})
@@ -60,9 +64,9 @@ def do_addi(service, state, insn):
 def do_execute(service, state):
     for insn in state.get('pending_execute'):
         if 0x3 == insn.get('word') & 0x3:
-            print('do_execute(): {:08x} : {}'.format(insn.get('word'), insn.get('cmd')))
+            print('do_execute(): @{:8} {:08x} : {}'.format(state.get('cycle'), insn.get('word'), insn.get('cmd')))
         else:
-            print('do_execute():     {:04x} : {}'.format(insn.get('word'), insn.get('cmd')))
+            print('do_execute(): @{:8}    {:04x} : {}'.format(state.get('cycle'), insn.get('word'), insn.get('cmd')))
         {
             'AUIPC': do_auipc,
             'JAL': do_jal,
