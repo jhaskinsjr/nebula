@@ -48,7 +48,7 @@ if '__main__' == __name__:
         'running': False,
         'ack': True,
         'registers': {
-            **{x: 0 for x in ['%r{}'.format(y) for y in range(8)] + ['%sp', '%pc']},
+            **{'%pc': 0},
             **{x: 0 for x in range(32)},
         }
     }
