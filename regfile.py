@@ -7,6 +7,7 @@ def do_tick(service, state, results, events):
     for ev in filter(lambda x: x, map(lambda y: y.get('register'), events)):
         _cmd = ev.get('cmd')
         _name = ev.get('name')
+        assert _name in state.get('registers').keys()
         _data = ev.get('data')
         if 'set' == _cmd:
             if 0 != _name:
