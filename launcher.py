@@ -91,9 +91,14 @@ def integer(val):
         '0b': lambda x: int(x, 2),
     }.get(val[:2], lambda x: int(x))(val)
 def register(connections, cmd, name, data=None):
+    _name = name
+    try:
+        _name = int(_name)
+    except:
+        pass
     tx(connections, {'register': {**{
             'cmd': cmd,
-            'name': name,
+            'name': _name,
         },
         **({'data': integer(data)} if data else {}),
     }})

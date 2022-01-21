@@ -25,6 +25,25 @@ def c_mv(word):
         'rd': compressed_rs1_or_rd(word),
         'word': word,
     }
+def c_ldsp(word):
+    # C.LDSP is an RV64C/RV128C-only instruction that loads a 64-bit value from memory
+    # into register rd. It computes its effective address by adding the zero-extended
+    # offset, scaled by 8, to the stack pointer, x2. It expands to ld rd, offset[8:3](x2);
+    # see: https://riscv.org/wp-content/uploads/2019/06/riscv-spec.pdf (p.99)
+    #
+    # 011 uimm[5] rd̸=0 uimm[4:3|8:6] 10 C.LDSP (RV64/128; RES, rd=0);
+    # see: https://riscv.org/wp-content/uploads/2019/06/riscv-spec.pdf (p.111)
+    _b0403   = (word >> 5) & 0b11
+    _b080706 = (word >> 2) & 0b111
+    _imm = ((_b080706 << 3) | _b0403) << 3
+    return {
+        'cmd': 'LD',
+        'rs1': 2,
+        'imm': _imm,
+        'rd': compressed_rs1_or_rd(word),
+        'size': 8,
+        'word': word,
+    }
 
 def auipc(word):
     return {
@@ -67,6 +86,7 @@ def compressed_quadrant(word):
 def compressed_quadrant_10(word):
 #    print('compressed_quadrant_10({:04x})'.format(word))
     return {
+        0b011: compressed_quadrant_10_opcode_011,
         0b100: compressed_quadrant_10_opcode_100,
     }.get(compressed_opcode(word), unimplemented_instruction)(word)
 def compressed_quadrant_10_opcode_100(word):
@@ -81,9 +101,13 @@ def compressed_quadrant_10_opcode_100(word):
     else:
         pass
     return _impl(word)
-    return {
-        (0, 1, 0): c_jr,
-    }.get((_b12, compressed_rs1_or_rd(word), compressed_rs2(word)), unimplemented_instruction)(word)
+def compressed_quadrant_10_opcode_011(word):
+    _impl = unimplemented_instruction
+    if 0 == compressed_rs1_or_rd:
+        pass
+    else:
+        _impl = c_ldsp
+    return _impl(word)
 
 
 def compressed_opcode(word):

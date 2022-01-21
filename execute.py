@@ -123,6 +123,40 @@ def do_add(service, state, insn):
     }})
     state.update({'operands': {}})
     do_complete(service, state)
+def do_ld(service, state, insn):
+    if not 'rs1' in state.get('operands'):
+        state.get('operands').update({'rs1': '%{}'.format(insn.get('rs1'))})
+        service.tx({'event': {
+            'arrival': 1 + state.get('cycle'),
+            'register': {
+                'cmd': 'get',
+                'name': insn.get('rs1'),
+            }
+        }})
+    if not isinstance(state.get('operands').get('rs1'), int):
+        return
+    if not 'mem' in state.get('operands'):
+        state.get('operands').update({'mem': insn.get('imm') + state.get('operands').get('rs1')})
+        service.tx({'event': {
+            'arrival': 1 + state.get('cycle'),
+            'mem': {
+                'cmd': 'peek',
+                'addr': state.get('operands').get('mem'),
+                'size': insn.get('size'),
+            }
+        }})
+    if not isinstance(state.get('operands').get('mem'), list):
+        return
+    service.tx({'event': {
+        'arrival': 1 + state.get('cycle'),
+        'register': {
+            'cmd': 'set',
+            'name': insn.get('rd'),
+            'data': int.from_bytes(state.get('operands').get('mem'), 'little'),
+        }
+    }})
+    state.update({'operands': {}})
+    do_complete(service, state)
 
 def do_execute(service, state):
     for insn in state.get('pending_execute'):
@@ -136,6 +170,7 @@ def do_execute(service, state):
             'JALR': do_jalr,
             'ADDI': do_addi,
             'ADD': do_add,
+            'LD': do_ld,
         }.get(insn.get('cmd'), do_unimplemented)(service, state, insn)
 def do_complete(service, state):
     service.tx({'event': {
@@ -154,6 +189,10 @@ def do_tick(service, state, results, events):
             state.get('operands').update({'rs1': rs.get('data')})
         elif '%{}'.format(rs.get('name')) == state.get('operands').get('rs2'):
             state.get('operands').update({'rs2': rs.get('data')})
+    for rs in filter(lambda x: x, map(lambda y: y.get('mem'), results)):
+        _mem = rs
+        if _mem.get('addr') == state.get('operands').get('mem'):
+            state.get('operands').update({'mem': _mem.get('data')})
     for ev in filter(lambda x: x, map(lambda y: y.get('execute'), events)):
         state.update({'pending_execute': ev.get('insns')})
     if state.get('pending_execute'): do_execute(service, state)
