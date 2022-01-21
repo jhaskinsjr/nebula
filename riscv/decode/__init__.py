@@ -1,13 +1,21 @@
 import functools
 import struct
 
-def illegal_instruction(word):
-    assert False, 'Illegal instruction ({:08x})!'.format(word)
 def unimplemented_instruction(word):
     return {
         'cmd': 'Undefined',
         'word': word,
     }
+
+def c_jr(word):
+    return {
+        'cmd': 'JALR',
+        'imm': 0,
+        'rs1': compressed_rs1_or_rd(word),
+        'rd': 0,
+        'word': word,
+    }
+
 def auipc(word):
     return {
         'cmd': 'AUIPC',
@@ -33,36 +41,47 @@ def i_type(word):
         }
     }.get(uncompressed_i_type_funct3(word), unimplemented_instruction(word))
 
-def decode_compressed(word):
-    return {
-    }.get(compressed_opcode(word), unimplemented_instruction)(word)
-def decode_uncompressed(word):
-    return {
-        0b001_0111: auipc,
-        0b110_1111: jal,
-        0b001_0011: i_type,
-    }.get(uncompressed_opcode(word), unimplemented_instruction)(word)
 
-def uncompressed_opcode(word):
-    return (word & 0b111_1111)
+
+
+
+def decode_compressed(word):
+    print('decode_compressed({:04x})'.format(word))
+    return {
+        0b10: compressed_quadrant_10,
+    }.get(compressed_quadrant(word), unimplemented_instruction)(word)
+def compressed_quadrant(word):
+    print('compressed_quadrant({:04x})'.format(word))
+    return word & 0b11
+
+def compressed_quadrant_10(word):
+    print('compressed_quadrant_10({:04x})'.format(word))
+    return {
+        0b100: compressed_quadrant_10_opcode_100,
+    }.get(compressed_opcode(word), unimplemented_instruction)(word)
+def compressed_quadrant_10_opcode_100(word):
+    print('compressed_quadrant_10_opcode_100()')
+    _b12         = (word >> 12) & 0b1
+    return {
+        (0, 1, 0): c_jr,
+    }.get((_b12, compressed_rs1_or_rd(word), compressed_rs2(word)), unimplemented_instruction)(word)
+
 
 def compressed_opcode(word):
-    return ((word & 0b1110_0000_0000_0000) >> 11) | (word & 0b11)
-def compressed_rs1(word):
+    print('compressed_opcode({:04x}): -> {}'.format(word, (word & 0b1110_0000_0000_0000) >> 13))
+    return (word & 0b1110_0000_0000_0000) >> 13
+def compressed_rs1_or_rd(word):
     # https://riscv.org/wp-content/uploads/2019/06/riscv-spec.pdf (p. 111)
     return (word >> 7) & 0b1_1111
-def compressed_rs1_prime(word):
+def compressed_rs1_prime_or_rd_prime(word):
     # https://riscv.org/wp-content/uploads/2019/06/riscv-spec.pdf (p. 111)
     return (word >> 7) & 0b111
-compressed_rd = compressed_rs1
-compressed_rd_prime = compressed_rs1_prime
-
-def uncompressed_rs1(word):
-    # https://riscv.org/wp-content/uploads/2019/06/riscv-spec.pdf (p. 130)
-    return (word >> 15) & 0b1_1111
-def uncompressed_rd(word):
-    # https://riscv.org/wp-content/uploads/2019/06/riscv-spec.pdf (p. 130)
-    return (word >> 7) & 0b1_1111
+def compressed_rs2(word):
+    # https://riscv.org/wp-content/uploads/2019/06/riscv-spec.pdf (p. 111)
+    return (word >> 2) & 0b1_1111
+def compressed_rs2_prime(word):
+    # https://riscv.org/wp-content/uploads/2019/06/riscv-spec.pdf (p. 111)
+    return (word >> 2) & 0b111
 
 def compressed_imm6(word, **kwargs):
     # nzimm[5] 00000 nzimm[4:0]
@@ -111,6 +130,29 @@ def compressed_imm12(word, **kwargs):
     _retval |= _b030201 << 3
     _retval = functools.reduce(lambda a, b: a | b, map(lambda x: _b11 << x, range(12, 16)), _retval)
     return int.from_bytes(struct.Struct('<H').pack(_retval), 'little', **kwargs)
+
+
+
+
+
+def uncompressed_illegal_instruction(word):
+    assert False, 'Illegal instruction ({:08x})!'.format(word)
+def decode_uncompressed(word):
+    return {
+        0b001_0111: auipc,
+        0b110_1111: jal,
+        0b001_0011: i_type,
+    }.get(uncompressed_opcode(word), unimplemented_instruction)(word)
+
+def uncompressed_opcode(word):
+    return (word & 0b111_1111)
+def uncompressed_rs1(word):
+    # https://riscv.org/wp-content/uploads/2019/06/riscv-spec.pdf (p. 130)
+    return (word >> 15) & 0b1_1111
+def uncompressed_rd(word):
+    # https://riscv.org/wp-content/uploads/2019/06/riscv-spec.pdf (p. 130)
+    return (word >> 7) & 0b1_1111
+
 def uncompressed_i_type_imm12(word, **kwargs):
     # imm[11:0]
     # https://riscv.org/wp-content/uploads/2019/06/riscv-spec.pdf (p. 130)
@@ -141,6 +183,8 @@ def uncompressed_imm32(word, **kwargs):
 def uncompressed_i_type_funct3(word):
     # https://riscv.org/wp-content/uploads/2019/06/riscv-spec.pdf (p. 130)
     return (word >> 12) & 0b111
+
+
 
 
 

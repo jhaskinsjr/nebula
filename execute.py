@@ -37,6 +37,37 @@ def do_jal(service, state, insn):
         }
     }})
     do_complete(service, state)
+def do_jalr(service, state, insn):
+    if not 'rs1' in state.get('operands'):
+        state.get('operands').update({'rs1': '%{}'.format(insn.get('rs1'))})
+        service.tx({'event': {
+            'arrival': 1 + state.get('cycle'),
+            'register': {
+                'cmd': 'get',
+                'name': insn.get('rs1'),
+            }
+        }})
+    if not isinstance(state.get('operands').get('rs1'), int):
+        return
+    _next_pc, _ret_pc = riscv.execute.jalr(state.get('%pc'), insn.get('imm'), state.get('operands').get('rs1'))
+    service.tx({'event': {
+        'arrival': 1 + state.get('cycle'),
+        'register': {
+            'cmd': 'set',
+            'name': '%pc',
+            'data': _next_pc,
+        }
+    }})
+    service.tx({'event': {
+        'arrival': 1 + state.get('cycle'),
+        'register': {
+            'cmd': 'set',
+            'name': insn.get('rd'),
+            'data': _ret_pc,
+        }
+    }})
+    state.update({'operands': {}})
+    do_complete(service, state)
 def do_addi(service, state, insn):
     if not 'rs1' in state.get('operands'):
         state.get('operands').update({'rs1': '%{}'.format(insn.get('rs1'))})
@@ -70,6 +101,7 @@ def do_execute(service, state):
         {
             'AUIPC': do_auipc,
             'JAL': do_jal,
+            'JALR': do_jalr,
             'ADDI': do_addi,
         }.get(insn.get('cmd'), do_unimplemented)(service, state, insn)
 def do_complete(service, state):
