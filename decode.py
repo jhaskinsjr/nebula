@@ -19,11 +19,6 @@ def do_tick(service, state, results, events):
             },
         }})
 
-def setregister(registers, reg, val):
-    return {x: y for x, y in tuple(registers.items()) + ((reg, val),)}
-def getregister(registers, reg):
-    return registers.get(reg, None)
-
 if '__main__' == __name__:
     parser = argparse.ArgumentParser(description='μService-SIMulator: Instruction Decode')
     parser.add_argument('--debug', '-D', dest='debug', action='store_true', help='print debug messages')

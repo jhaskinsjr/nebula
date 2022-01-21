@@ -14,7 +14,7 @@ def do_auipc(service, state, insn):
         'register': {
             'cmd': 'set',
             'name': insn.get('rd'),
-            'data': _result # insn.get('imm') + state.get('%pc'),
+            'data': _result,
         }
     }})
     do_complete(service, state)
@@ -25,7 +25,7 @@ def do_jal(service, state, insn):
         'register': {
             'cmd': 'set',
             'name': '%pc',
-            'data': _next_pc # insn.get('imm') + state.get('%pc'),
+            'data': _next_pc,
         }
     }})
     service.tx({'event': {
@@ -55,7 +55,7 @@ def do_addi(service, state, insn):
         'register': {
             'cmd': 'set',
             'name': insn.get('rd'),
-            'data': _result # insn.get('imm') + state.get('operands').get('rs1'),
+            'data': _result,
         }
     }})
     state.update({'operands': {}})
@@ -88,7 +88,6 @@ def do_tick(service, state, results, events):
         elif '%{}'.format(rs.get('name')) == state.get('operands').get('rs1'):
             state.get('operands').update({'rs1': rs.get('data')})
     for ev in filter(lambda x: x, map(lambda y: y.get('execute'), events)):
-#        service.tx({'info': ev})
         state.update({'pending_execute': ev.get('insns')})
     if state.get('pending_execute'): do_execute(service, state)
 
