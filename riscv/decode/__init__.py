@@ -14,6 +14,7 @@ def c_jr(word):
         'rs1': compressed_rs1_or_rd(word),
         'rd': 0,
         'word': word,
+        'size': 2,
     }
 def c_mv(word):
     # C.MV copies the value in register rs2 into register rd. C.MV expands into add rd, x0, rs2;
@@ -24,6 +25,7 @@ def c_mv(word):
         'rs2': compressed_rs2(word),
         'rd': compressed_rs1_or_rd(word),
         'word': word,
+        'size': 2,
     }
 def c_ldsp(word):
     # C.LDSP is an RV64C/RV128C-only instruction that loads a 64-bit value from memory
@@ -43,6 +45,20 @@ def c_ldsp(word):
         'rd': compressed_rs1_or_rd(word),
         'size': 8,
         'word': word,
+        'size': 2,
+    }
+def c_addi4spn(word, **kwargs):
+    # C.ADDI4SPN is a CIW-format instruction that adds a zero-extended non-zero
+    # immediate, scaledby 4, to the stack pointer, x2, and writes the result to rd'.
+    # This instruction is used to generate pointers to stack-allocated variables,
+    # and expands to addi rd', x2, nzuimm[9:2].
+    return {
+        'cmd': 'ADDI',
+        'imm': kwargs.get('imm'),
+        'rs1': 2,
+        'rd': compressed_rs1_prime_or_rd_prime(word),
+        'word': word,
+        'size': 2,
     }
 
 def auipc(word):
@@ -51,6 +67,7 @@ def auipc(word):
         'imm': uncompressed_imm32(word, signed=True),
         'rd': uncompressed_rd(word),
         'word': word,
+        'size': 4,
     }
 def jal(word):
     return {
@@ -58,31 +75,58 @@ def jal(word):
         'imm': uncompressed_imm21(word, signed=True),
         'rd': uncompressed_rd(word),
         'word': word,
+        'size': 4,
     }
 def i_type(word):
+    _cmds = {
+        0b000: 'ADDI',
+        0b111: 'ANDI',
+    }
+    if not uncompressed_i_type_funct3(word) in _cmds.keys():
+        return unimplemented_instruction(word)
     return {
-        0b000: {
-            'cmd': 'ADDI',
-            'imm': uncompressed_i_type_imm12(word, signed=True),
-            'rs1': uncompressed_rs1(word),
-            'rd': uncompressed_rd(word),
-            'word': word,
-        }
-    }.get(uncompressed_i_type_funct3(word), unimplemented_instruction(word))
+        'cmd': _cmds.get(uncompressed_i_type_funct3(word)),
+        'imm': uncompressed_i_type_imm12(word, signed=True),
+        'rs1': uncompressed_rs1(word),
+        'rd': uncompressed_rd(word),
+        'word': word,
+        'size': 4,
+    }
 
 
 
 
 
+def compressed_illegal_instruction(word, **kwargs):
+    assert False, 'Illegal instruction ({:04x})!'.format(word)
 def decode_compressed(word):
 #    print('decode_compressed({:04x})'.format(word))
     return {
+        0b00: compressed_quadrant_00,
         0b10: compressed_quadrant_10,
     }.get(compressed_quadrant(word), unimplemented_instruction)(word)
 def compressed_quadrant(word):
 #    print('compressed_quadrant({:04x})'.format(word))
     return word & 0b11
 
+def compressed_quadrant_00(word):
+    return {
+        0b000: compressed_quadrant_00_opcode_000,
+    }.get(compressed_opcode(word), unimplemented_instruction)(word)
+def compressed_quadrant_00_opcode_000(word):
+    # 00 nzuimm[5:4|9:6|2|3] rd ′ 00 ; C.ADDI4SPN (RES, nzuimm=0)
+    # https://riscv.org/wp-content/uploads/2019/06/riscv-spec.pdf (p.110)
+    _impl = unimplemented_instruction
+    _b03       = (word >> 5) * 0b1
+    _b02       = (word >> 6) & 0b1
+    _b09080706 = (word >> 7) & 0b1111
+    _b0504     = (word >> 11) & 0b11
+    _imm = (_b09080706 << 6) | (_b0504 << 4) | (_b03 << 3) | (_b02 << 2)
+    if 0 == _imm:
+        _impl = compressed_illegal_instruction
+    else:
+        _impl = c_addi4spn
+    return _impl(word, imm=_imm)
 def compressed_quadrant_10(word):
 #    print('compressed_quadrant_10({:04x})'.format(word))
     return {

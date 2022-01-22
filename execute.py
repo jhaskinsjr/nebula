@@ -157,6 +157,29 @@ def do_ld(service, state, insn):
     }})
     state.update({'operands': {}})
     do_complete(service, state)
+def do_andi(service, state, insn):
+    if not 'rs1' in state.get('operands'):
+        state.get('operands').update({'rs1': '%{}'.format(insn.get('rs1'))})
+        service.tx({'event': {
+            'arrival': 1 + state.get('cycle'),
+            'register': {
+                'cmd': 'get',
+                'name': insn.get('rs1'),
+            }
+        }})
+    if not isinstance(state.get('operands').get('rs1'), int):
+        return
+    _result = riscv.execute.andi(state.get('operands').get('rs1'), insn.get('imm'))
+    service.tx({'event': {
+        'arrival': 1 + state.get('cycle'),
+        'register': {
+            'cmd': 'set',
+            'name': insn.get('rd'),
+            'data': _result,
+        }
+    }})
+    state.update({'operands': {}})
+    do_complete(service, state)
 
 def do_execute(service, state):
     for insn in state.get('pending_execute'):
@@ -171,6 +194,7 @@ def do_execute(service, state):
             'ADDI': do_addi,
             'ADD': do_add,
             'LD': do_ld,
+            'ANDI': do_andi,
         }.get(insn.get('cmd'), do_unimplemented)(service, state, insn)
 def do_complete(service, state):
     service.tx({'event': {

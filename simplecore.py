@@ -44,6 +44,7 @@ def do_tick(service, state, results, events):
         }})
     for completed in filter(lambda x: x, map(lambda y: y.get('complete'), events)):
         assert completed.get('insns') == state.get('pending_execute'), '{} != {}'.format(completed.get('insns'), state.get('pending_execute'))
+        service.tx({'info': 'completed : {}'.format(completed)})
         state.update({'pending_execute': None})
     if not state.get('pending_fetch') and not state.get('pending_decode') and not state.get('pending_execute'):
         state.update({'pending_fetch': True})
@@ -75,6 +76,7 @@ if '__main__' == __name__:
         'pending_fetch': False,
         'pending_decode': False,
         'pending_execute': None,
+        'fetchptr': None,
         '%pc': None,
         'ack': True,
     }
