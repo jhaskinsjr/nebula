@@ -9,23 +9,15 @@ def do_tick(service, state, results, events):
         if pc != state.get('%pc'):
             state.get('buffer').clear()
         state.update({'%pc': pc})
-#    for completed in filter(lambda x: x, map(lambda y: y.get('complete'), events)):
-#        service.tx({'info': 'completed : {}'.format(completed)})
     for ev in filter(lambda x: x, map(lambda y: y.get('decode'), events)):
         _bytes = ev.get('bytes')
         state.get('buffer').extend(_bytes)
-        service.tx({'info': 'buffer : {}'.format(list(map(lambda x: hex(x), state.get('buffer'))))})
+#        service.tx({'info': 'buffer : {}'.format(list(map(lambda x: hex(x), state.get('buffer'))))})
         _decoded = riscv.decode.do_decode(state.get('buffer'), 1) # HACK: hard-coded max-instructions-to-decode of 1
-        service.tx({'info': '_decoded : {}'.format(_decoded)})
+#        service.tx({'info': '_decoded : {}'.format(_decoded)})
         _bytes_decoded = sum(map(lambda x: x.get('size'), _decoded))
         state.update({'%pc': _bytes_decoded + state.get('%pc')})
         for _ in range(_bytes_decoded): state.get('buffer').pop(0)
-#        for _insn in _decoded:
-#            state.update({'%pc': _insn.get('size') + state.get('%pc')})
-#            for _ in range()
-#        for _size, _ in _decoded:
-#            for x in range(_size): state.get('buffer').pop(0)
-#            state.update({'%pc': _size + state.get('%pc')})
         service.tx({'result': {
             'arrival': 1 + state.get('cycle'),
             'insns': {

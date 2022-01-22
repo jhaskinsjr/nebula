@@ -22,8 +22,8 @@ def do_tick(service, state, results, events):
         state.update({'%pc': pc})
         state.update({'pending_pc': False})
     for mem in filter(lambda x: x, map(lambda y: y.get('mem'), results)):
-        service.tx({'info': 'mem.addr      : {}'.format(mem.get('addr'))})
-        service.tx({'info': 'pending_fetch : {}'.format(state.get('pending_fetch'))})
+#        service.tx({'info': 'mem.addr      : {}'.format(mem.get('addr'))})
+#        service.tx({'info': 'pending_fetch : {}'.format(state.get('pending_fetch'))})
         if mem.get('addr') != state.get('pending_fetch'):
             continue
         state.update({'pending_fetch': None})
@@ -45,12 +45,12 @@ def do_tick(service, state, results, events):
         }})
     for completed in filter(lambda x: x, map(lambda y: y.get('complete'), events)):
         assert completed.get('insns') == state.get('pending_execute'), '{} != {}'.format(completed.get('insns'), state.get('pending_execute'))
-        service.tx({'info': 'completed : {}'.format(completed)})
+#        service.tx({'info': 'completed : {}'.format(completed)})
         _insns = completed.get('insns')
         _jumps = any(map(lambda a: a.get('cmd') in JUMPS, _insns))
         _branches = any(map(lambda a: a.get('cmd') in BRANCHES, _insns))
-        service.tx({'info': '%jp : {}'.format(state.get('%jp'))})
-        service.tx({'info': '%pc : {}'.format(state.get('%pc'))})
+#        service.tx({'info': '%jp : {}'.format(state.get('%jp'))})
+#        service.tx({'info': '%pc : {}'.format(state.get('%pc'))})
         if not _jumps and not _branches:
             _pc = sum(map(lambda x: x.get('size'), completed.get('insns'))) + state.get('%pc')
             service.tx({'event': {
@@ -64,8 +64,8 @@ def do_tick(service, state, results, events):
             state.update({'%pc': _pc})
         else:
             state.update({'%jp': None})
-        service.tx({'info': '%jp : {}'.format(state.get('%jp'))})
-        service.tx({'info': '%pc : {}'.format(state.get('%pc'))})
+#        service.tx({'info': '%jp : {}'.format(state.get('%jp'))})
+#        service.tx({'info': '%pc : {}'.format(state.get('%pc'))})
         state.update({'pending_execute': None})
     if not state.get('pending_pc') and not state.get('pending_fetch') and not state.get('pending_decode') and not state.get('pending_execute'):
         service.tx({'event': {
