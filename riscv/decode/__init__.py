@@ -1,10 +1,17 @@
 import functools
 import struct
 
-def unimplemented_instruction(word):
+def compressed_unimplemented_instruction(word):
     return {
         'cmd': 'Undefined',
         'word': word,
+        'size': 2,
+    }
+def uncompressed_unimplemented_instruction(word):
+    return {
+        'cmd': 'Undefined',
+        'word': word,
+        'size': 4,
     }
 
 def c_jr(word):
@@ -83,7 +90,7 @@ def i_type(word):
         0b111: 'ANDI',
     }
     if not uncompressed_i_type_funct3(word) in _cmds.keys():
-        return unimplemented_instruction(word)
+        return uncompressed_unimplemented_instruction(word)
     return {
         'cmd': _cmds.get(uncompressed_i_type_funct3(word)),
         'imm': uncompressed_i_type_imm12(word, signed=True),
@@ -104,7 +111,7 @@ def decode_compressed(word):
     return {
         0b00: compressed_quadrant_00,
         0b10: compressed_quadrant_10,
-    }.get(compressed_quadrant(word), unimplemented_instruction)(word)
+    }.get(compressed_quadrant(word), compressed_unimplemented_instruction)(word)
 def compressed_quadrant(word):
 #    print('compressed_quadrant({:04x})'.format(word))
     return word & 0b11
@@ -112,11 +119,11 @@ def compressed_quadrant(word):
 def compressed_quadrant_00(word):
     return {
         0b000: compressed_quadrant_00_opcode_000,
-    }.get(compressed_opcode(word), unimplemented_instruction)(word)
+    }.get(compressed_opcode(word), compressed_unimplemented_instruction)(word)
 def compressed_quadrant_00_opcode_000(word):
     # 00 nzuimm[5:4|9:6|2|3] rd ′ 00 ; C.ADDI4SPN (RES, nzuimm=0)
     # https://riscv.org/wp-content/uploads/2019/06/riscv-spec.pdf (p.110)
-    _impl = unimplemented_instruction
+    _impl = compressed_unimplemented_instruction
     _b03       = (word >> 5) * 0b1
     _b02       = (word >> 6) & 0b1
     _b09080706 = (word >> 7) & 0b1111
@@ -132,10 +139,10 @@ def compressed_quadrant_10(word):
     return {
         0b011: compressed_quadrant_10_opcode_011,
         0b100: compressed_quadrant_10_opcode_100,
-    }.get(compressed_opcode(word), unimplemented_instruction)(word)
+    }.get(compressed_opcode(word), compressed_unimplemented_instruction)(word)
 def compressed_quadrant_10_opcode_100(word):
 #    print('compressed_quadrant_10_opcode_100()')
-    _impl = unimplemented_instruction
+    _impl = compressed_unimplemented_instruction
     _b12 = (word >> 12) & 0b1
     if 0 == _b12:
         if 0 == compressed_rs2(word):
@@ -146,7 +153,7 @@ def compressed_quadrant_10_opcode_100(word):
         pass
     return _impl(word)
 def compressed_quadrant_10_opcode_011(word):
-    _impl = unimplemented_instruction
+    _impl = compressed_unimplemented_instruction
     if 0 == compressed_rs1_or_rd:
         pass
     else:
@@ -229,7 +236,7 @@ def decode_uncompressed(word):
         0b001_0111: auipc,
         0b110_1111: jal,
         0b001_0011: i_type,
-    }.get(uncompressed_opcode(word), unimplemented_instruction)(word)
+    }.get(uncompressed_opcode(word), uncompressed_unimplemented_instruction)(word)
 
 def uncompressed_opcode(word):
     return (word & 0b111_1111)
@@ -281,8 +288,8 @@ def do_decode(buffer, max_insns):
         _word = int.from_bytes(buffer[:4], 'little')
         if 0x3 == _word & 0x3:
             if 4 > len(buffer): break
-            _retval.append((4, decode_uncompressed(_word)))
+            _retval.append(decode_uncompressed(_word))
         else:
             _word &= 0xffff
-            _retval.append((2, decode_compressed(_word)))
+            _retval.append(decode_compressed(_word))
     return _retval

@@ -4,25 +4,28 @@ import argparse
 import service
 import riscv.decode
 
-JUMPS = ['JALR', 'JAL'] # needs to be incorporated into riscv module
-BRANCHES = [] # needs to ben incorporated into riscv module
-
 def do_tick(service, state, results, events):
-    for completed in filter(lambda x: x, map(lambda y: y.get('complete'), events)):
+    for pc in map(lambda w: w.get('data'), filter(lambda x: x and '%pc' == x.get('name'), map(lambda y: y.get('register'), results))):
+        if pc != state.get('%pc'):
+            state.get('buffer').clear()
+        state.update({'%pc': pc})
+#    for completed in filter(lambda x: x, map(lambda y: y.get('complete'), events)):
 #        service.tx({'info': 'completed : {}'.format(completed)})
-        _insns = completed.get('insns')
-        _jumps = any(map(lambda a: a.get('cmd') in JUMPS, _insns))
-        _branches = any(map(lambda a: a.get('cmd') in BRANCHES, _insns))
-#        service.tx({'info': '_jumps    : {}'.format(_jumps)})
-#        service.tx({'info': '_branches : {}'.format(_branches)})
-        if _jumps or _branches: state.get('buffer').clear()
     for ev in filter(lambda x: x, map(lambda y: y.get('decode'), events)):
         _bytes = ev.get('bytes')
         state.get('buffer').extend(_bytes)
+        service.tx({'info': 'buffer : {}'.format(list(map(lambda x: hex(x), state.get('buffer'))))})
         _decoded = riscv.decode.do_decode(state.get('buffer'), 1) # HACK: hard-coded max-instructions-to-decode of 1
-        for _size, _ in _decoded:
-            for x in range(_size): state.get('buffer').pop(0)
-        _decoded = [y for _, y in map(lambda x: x, _decoded)]
+        service.tx({'info': '_decoded : {}'.format(_decoded)})
+        _bytes_decoded = sum(map(lambda x: x.get('size'), _decoded))
+        state.update({'%pc': _bytes_decoded + state.get('%pc')})
+        for _ in range(_bytes_decoded): state.get('buffer').pop(0)
+#        for _insn in _decoded:
+#            state.update({'%pc': _insn.get('size') + state.get('%pc')})
+#            for _ in range()
+#        for _size, _ in _decoded:
+#            for x in range(_size): state.get('buffer').pop(0)
+#            state.update({'%pc': _size + state.get('%pc')})
         service.tx({'result': {
             'arrival': 1 + state.get('cycle'),
             'insns': {
@@ -46,6 +49,7 @@ if '__main__' == __name__:
         'cycle': 0,
         'active': True,
         'running': False,
+        '%pc': None,
         'ack': True,
         'buffer': [],
     }

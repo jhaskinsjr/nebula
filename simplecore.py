@@ -3,29 +3,30 @@ import argparse
 
 import service
 
+JUMPS = ['JALR', 'JAL'] # needs to be incorporated into riscv module
+BRANCHES = [] # needs to ben incorporated into riscv module
+
 def do_tick(service, state, results, events):
     for pc in map(lambda w: w.get('data'), filter(lambda x: x and '%pc' == x.get('name'), map(lambda y: y.get('register'), results))):
+        if not state.get('%jp'): state.update({'%jp': pc})
         service.tx({'event': {
             'arrival': 1 + state.get('cycle'),
             'mem': {
                 'cmd': 'peek',
-                'addr': pc,
+                'addr': state.get('%jp'),
                 'size': 4,
             },
         }})
-        service.tx({'event': {
-            'arrival': 1 + state.get('cycle'),
-            'register': {
-                'cmd': 'set',
-                'name': '%pc',
-                'data': 4 + pc,
-            }
-        }})
+        state.update({'pending_fetch': state.get('%jp')})
+        state.update({'%jp': 4 + state.get('%jp')})
         state.update({'%pc': pc})
-        if pc not in state.get('requested_pc'): state.get('requested_pc').append(pc)
-    for mem in filter(lambda x: x and x.get('addr') in state.get('requested_pc'), map(lambda y: y.get('mem'), results)):
-        state.get('requested_pc').remove(mem.get('addr'))
-        state.update({'pending_fetch': False})
+        state.update({'pending_pc': False})
+    for mem in filter(lambda x: x, map(lambda y: y.get('mem'), results)):
+        service.tx({'info': 'mem.addr      : {}'.format(mem.get('addr'))})
+        service.tx({'info': 'pending_fetch : {}'.format(state.get('pending_fetch'))})
+        if mem.get('addr') != state.get('pending_fetch'):
+            continue
+        state.update({'pending_fetch': None})
         state.update({'pending_decode': True})
         service.tx({'event': {
             'arrival': 1 + state.get('cycle'),
@@ -45,9 +46,28 @@ def do_tick(service, state, results, events):
     for completed in filter(lambda x: x, map(lambda y: y.get('complete'), events)):
         assert completed.get('insns') == state.get('pending_execute'), '{} != {}'.format(completed.get('insns'), state.get('pending_execute'))
         service.tx({'info': 'completed : {}'.format(completed)})
+        _insns = completed.get('insns')
+        _jumps = any(map(lambda a: a.get('cmd') in JUMPS, _insns))
+        _branches = any(map(lambda a: a.get('cmd') in BRANCHES, _insns))
+        service.tx({'info': '%jp : {}'.format(state.get('%jp'))})
+        service.tx({'info': '%pc : {}'.format(state.get('%pc'))})
+        if not _jumps and not _branches:
+            _pc = sum(map(lambda x: x.get('size'), completed.get('insns'))) + state.get('%pc')
+            service.tx({'event': {
+                'arrival': 1 + state.get('cycle'),
+                'register': {
+                    'cmd': 'set',
+                    'name': '%pc',
+                    'data': _pc,
+                }
+            }})
+            state.update({'%pc': _pc})
+        else:
+            state.update({'%jp': None})
+        service.tx({'info': '%jp : {}'.format(state.get('%jp'))})
+        service.tx({'info': '%pc : {}'.format(state.get('%pc'))})
         state.update({'pending_execute': None})
-    if not state.get('pending_fetch') and not state.get('pending_decode') and not state.get('pending_execute'):
-        state.update({'pending_fetch': True})
+    if not state.get('pending_pc') and not state.get('pending_fetch') and not state.get('pending_decode') and not state.get('pending_execute'):
         service.tx({'event': {
             'arrival': 1 + state.get('cycle'),
             'register': {
@@ -55,6 +75,7 @@ def do_tick(service, state, results, events):
                 'name': '%pc',
             },
         }})
+        state.update({'pending_pc': True})
 
 if '__main__' == __name__:
     parser = argparse.ArgumentParser(description='μService-SIMulator: Simple Core')
@@ -72,11 +93,11 @@ if '__main__' == __name__:
         'cycle': 0,
         'active': True,
         'running': False,
-        'requested_pc': [], # to allow more than one outstanding PC req at a time
-        'pending_fetch': False,
+        'pending_pc': False,
+        'pending_fetch': None,
         'pending_decode': False,
         'pending_execute': None,
-        'fetchptr': None,
+        '%jp': None, # This is the fetch pointer. Why %jp? Who knows?
         '%pc': None,
         'ack': True,
     }
