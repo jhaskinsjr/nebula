@@ -50,7 +50,7 @@ def c_ldsp(word):
         'rs1': 2,
         'imm': _imm,
         'rd': compressed_rs1_or_rd(word),
-        'size': 8,
+        'nbytes': 8,
         'word': word,
         'size': 2,
     }
@@ -64,6 +64,52 @@ def c_addi4spn(word, **kwargs):
         'imm': kwargs.get('imm'),
         'rs1': 2,
         'rd': compressed_rs1_prime_or_rd_prime(word),
+        'word': word,
+        'size': 2,
+    }
+def c_addi16sp(word, **kwargs):
+    # C.ADDI16SP is used to adjust the stack pointer in procedure prologues and
+    # epilogues. It expands into addi x2, x2, nzimm[9:4]. C.ADDI16SP is only
+    # valid when nzimm̸=0; the code point with nzimm=0 is reserved.
+    return {
+        'cmd': 'ADDI',
+        'imm': kwargs.get('imm'),
+        'rs1': 2,
+        'rd': 2,
+        'word': word,
+        'size': 2,
+    }
+def c_sdsp(word, **kwargs):
+    # C.SDSP is an RV64C/RV128C-only instruction that stores a 64-bit value in
+    # register rs2 to memory. It computes an effective address by adding the
+    # zero-extended offset, scaled by 8, to the stack pointer, x2. It expands to
+    # sd rs2, offset[8:3](x2).
+    return {
+        'cmd': 'SD',
+        'imm': kwargs.get('imm'),
+        'rs1': 2,
+        'rs2': compressed_rs2(word),
+        'nbytes': 8,
+        'word': word,
+        'size': 2,
+    }
+def c_addi(word, **kwargs):
+    # C.ADDI adds the non-zero sign-extended 6-bit immediate to the value in
+    # register rd then writes the result to rd. C.ADDI expands into
+    # addi rd, rd, nzimm[5:0]. C.ADDI is only valid when rd̸=x0. The code point
+    # with both rd=x0 and nzimm=0 encodes the C.NOP instruction; the remaining
+    # code points with either rd=x0 or nzimm=0 encode HINTs.
+    return {
+        'cmd': 'ADDI',
+        'imm': kwargs.get('imm'),
+        'rs1': compressed_rs1_or_rd(word),
+        'rd': compressed_rs1_or_rd(word),
+        'word': word,
+        'size': 2,
+    }
+def c_nop(word):
+    return {
+        'cmd': 'NOP',
         'word': word,
         'size': 2,
     }
@@ -110,6 +156,7 @@ def decode_compressed(word):
 #    print('decode_compressed({:04x})'.format(word))
     return {
         0b00: compressed_quadrant_00,
+        0b01: compressed_quadrant_01,
         0b10: compressed_quadrant_10,
     }.get(compressed_quadrant(word), compressed_unimplemented_instruction)(word)
 def compressed_quadrant(word):
@@ -134,11 +181,47 @@ def compressed_quadrant_00_opcode_000(word):
     else:
         _impl = c_addi4spn
     return _impl(word, imm=_imm)
+def compressed_quadrant_01(word):
+    return {
+        0b000: compressed_quadrant_01_opcode_000,
+        0b011: compressed_quadrant_01_opcode_011,
+    }.get(compressed_opcode(word), compressed_unimplemented_instruction)(word)
+def compressed_quadrant_01_opcode_000(word):
+    # 000 nzimm[5] rs1/rd̸=0 nzimm[4:0] 01 C.ADDI (HINT, nzimm=0) (p.111)
+    _impl = compressed_unimplemented_instruction
+    _b05         = (word >> 12) & 0b1
+    _b0403020100 = (word >> 2) & 0b1_1111
+    _imm = (_b05 << 5) | (_b0403020100)
+    _imm = functools.reduce(lambda a, b: a | b, map(lambda x: _b05 << x, range(6, 16)), _imm)
+    _imm = int.from_bytes(struct.Struct('<H').pack(_imm), 'little', signed=True)
+    if 0 != compressed_rs1_or_rd(word):
+        _impl = c_addi
+    else:
+        _impl = c_nop
+    return _impl(word, imm=_imm)
+def compressed_quadrant_01_opcode_011(word):
+    # 011 nzimm[9] 2 nzimm[4|6|8:7|5] 01 C.ADDI16SP (RES, nzimm=0) (p.111)
+    _impl = compressed_unimplemented_instruction
+    _b05 = (word >> 2) & 0b1
+    _b0807 = (word >> 3) & 0b11
+    _b06 = (word >> 5) & 0b1
+    _b04 = (word >> 6) & 0b1
+    _b09 = (word >> 11) & 0b1
+    _imm = (_b09 << 9) | (_b0807 << 7) | (_b06 << 6) | (_b05 << 4) | (_b04 << 4)
+    _imm = functools.reduce(lambda a, b: a | b, map(lambda x: _b09 << x, range(10, 16)), _imm)
+    _imm = int.from_bytes(struct.Struct('<H').pack(_imm), 'little', signed=True)
+    if 2 == compressed_rs1_or_rd(word):
+        if 0 == _imm:
+            _impl = compressed_illegal_instruction
+        else:
+            _impl = c_addi16sp
+    return _impl(word, imm=_imm)
 def compressed_quadrant_10(word):
 #    print('compressed_quadrant_10({:04x})'.format(word))
     return {
         0b011: compressed_quadrant_10_opcode_011,
         0b100: compressed_quadrant_10_opcode_100,
+        0b111: compressed_quadrant_10_opcode_111,
     }.get(compressed_opcode(word), compressed_unimplemented_instruction)(word)
 def compressed_quadrant_10_opcode_100(word):
 #    print('compressed_quadrant_10_opcode_100()')
@@ -159,6 +242,12 @@ def compressed_quadrant_10_opcode_011(word):
     else:
         _impl = c_ldsp
     return _impl(word)
+def compressed_quadrant_10_opcode_111(word):
+    _impl = c_sdsp
+    _b080706 = (word >> 7) & 0b111
+    _b050403 = (word >> 10) & 0b111
+    _imm = (_b080706 << 6) | (_b050403 << 3)
+    return _impl(word, imm=_imm)
 
 
 def compressed_opcode(word):

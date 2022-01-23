@@ -142,7 +142,7 @@ def do_ld(service, state, insn):
             'mem': {
                 'cmd': 'peek',
                 'addr': state.get('operands').get('mem'),
-                'size': insn.get('size'),
+                'size': insn.get('nbytes'),
             }
         }})
     if not isinstance(state.get('operands').get('mem'), list):
@@ -180,6 +180,42 @@ def do_andi(service, state, insn):
     }})
     state.update({'operands': {}})
     do_complete(service, state)
+def do_sd(service, state, insn):
+    if not 'rs1' in state.get('operands'):
+        state.get('operands').update({'rs1': '%{}'.format(insn.get('rs1'))})
+        service.tx({'event': {
+            'arrival': 1 + state.get('cycle'),
+            'register': {
+                'cmd': 'get',
+                'name': insn.get('rs1'),
+            }
+        }})
+    if not isinstance(state.get('operands').get('rs1'), int):
+        return
+    if not 'rs2' in state.get('operands'):
+        state.get('operands').update({'rs2': '%{}'.format(insn.get('rs2'))})
+        service.tx({'event': {
+            'arrival': 1 + state.get('cycle'),
+            'register': {
+                'cmd': 'get',
+                'name': insn.get('rs2'),
+            }
+        }})
+    if not isinstance(state.get('operands').get('rs2'), int):
+        return
+    service.tx({'event': {
+        'arrival': 1 + state.get('cycle'),
+        'mem': {
+            'cmd': 'poke',
+            'addr': insn.get('imm') + state.get('operands').get('rs1'),
+            'size': insn.get('nbytes'),
+            'data': state.get('operands').get('rs2')
+        }
+    }})
+    state.update({'operands': {}})
+    do_complete(service, state)
+def do_nop(service, state, insn):
+    do_complete(service, state)
 
 def do_execute(service, state):
     for insn in state.get('pending_execute'):
@@ -195,6 +231,8 @@ def do_execute(service, state):
             'ADD': do_add,
             'LD': do_ld,
             'ANDI': do_andi,
+            'SD': do_sd,
+            'NOP': do_nop,
         }.get(insn.get('cmd'), do_unimplemented)(service, state, insn)
 def do_complete(service, state):
     service.tx({'event': {
