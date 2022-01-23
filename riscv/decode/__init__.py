@@ -133,18 +133,29 @@ def jal(word):
 def i_type(word):
     _cmds = {
         0b000: 'ADDI',
+        0b001: 'SLLI',
         0b111: 'ANDI',
     }
     if not uncompressed_i_type_funct3(word) in _cmds.keys():
         return uncompressed_unimplemented_instruction(word)
-    return {
-        'cmd': _cmds.get(uncompressed_i_type_funct3(word)),
-        'imm': uncompressed_i_type_imm12(word, signed=True),
-        'rs1': uncompressed_rs1(word),
-        'rd': uncompressed_rd(word),
-        'word': word,
-        'size': 4,
-    }
+    elif 0b001 == uncompressed_i_type_funct3(word):
+        return {
+            'cmd': _cmds.get(uncompressed_i_type_funct3(word)),
+            'shamt': uncompressed_i_type_shamt(word),
+            'rs1': uncompressed_rs1(word),
+            'rd': uncompressed_rd(word),
+            'word': word,
+            'size': 4,
+        }
+    else:
+        return {
+            'cmd': _cmds.get(uncompressed_i_type_funct3(word)),
+            'imm': uncompressed_i_type_imm12(word, signed=True),
+            'rs1': uncompressed_rs1(word),
+            'rd': uncompressed_rd(word),
+            'word': word,
+            'size': 4,
+        }
 
 
 
@@ -366,6 +377,8 @@ def uncompressed_imm32(word, **kwargs):
 def uncompressed_i_type_funct3(word):
     # https://riscv.org/wp-content/uploads/2019/06/riscv-spec.pdf (p. 130)
     return (word >> 12) & 0b111
+def uncompressed_i_type_shamt(word):
+    return (word >> 20) & 0b1_1111
 
 
 

@@ -216,6 +216,29 @@ def do_sd(service, state, insn):
     do_complete(service, state)
 def do_nop(service, state, insn):
     do_complete(service, state)
+def do_slli(service, state, insn):
+    if not 'rs1' in state.get('operands'):
+        state.get('operands').update({'rs1': '%{}'.format(insn.get('rs1'))})
+        service.tx({'event': {
+            'arrival': 1 + state.get('cycle'),
+            'register': {
+                'cmd': 'get',
+                'name': insn.get('rs1'),
+            }
+        }})
+    if not isinstance(state.get('operands').get('rs1'), int):
+        return
+    _result = riscv.execute.slli(state.get('operands').get('rs1'), insn.get('shamt'))
+    service.tx({'event': {
+        'arrival': 1 + state.get('cycle'),
+        'register': {
+            'cmd': 'set',
+            'name': insn.get('rd'),
+            'data': _result,
+        }
+    }})
+    state.update({'operands': {}})
+    do_complete(service, state)
 
 def do_execute(service, state):
     for insn in state.get('pending_execute'):
@@ -233,6 +256,7 @@ def do_execute(service, state):
             'ANDI': do_andi,
             'SD': do_sd,
             'NOP': do_nop,
+            'SLLI': do_slli,
         }.get(insn.get('cmd'), do_unimplemented)(service, state, insn)
 def do_complete(service, state):
     service.tx({'event': {
