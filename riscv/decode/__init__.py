@@ -23,6 +23,34 @@ def c_jr(word):
         'word': word,
         'size': 2,
     }
+def c_beqz(word, **kwargs):
+    # BEQZ performs conditional control transfers. The offset is
+    # sign-extended and added to the pc to form the branch target address.
+    # It can therefore target a ±256 B range. C.BEQZ takes the branch if
+    # the value in register rs1' is zero. It expands to
+    # beq rs1', x0, offset[8:1].
+    return {
+        'cmd': 'BEQ',
+        'imm': kwargs.get('imm'),
+        'rs1': compressed_rs1_prime_or_rd_prime(word),
+        'rs2': 0,
+        'word': word,
+        'size': 2,
+    }
+def c_bnez(word, **kwargs):
+    # BEQZ performs conditional control transfers. The offset is
+    # sign-extended and added to the pc to form the branch target address.
+    # It can therefore target a ±256 B range. C.BEQZ takes the branch if
+    # the value in register rs1' is zero. It expands to
+    # beq rs1', x0, offset[8:1].
+    return {
+        'cmd': 'BEQ',
+        'imm': kwargs.get('imm'),
+        'rs1': compressed_rs1_prime_or_rd_prime(word),
+        'rs2': 0,
+        'word': word,
+        'size': 2,
+    }
 def c_mv(word):
     # C.MV copies the value in register rs2 into register rd. C.MV expands into add rd, x0, rs2;
     # see: https://riscv.org/wp-content/uploads/2019/06/riscv-spec.pdf (p.106)
@@ -172,11 +200,11 @@ def i_type(word):
         0b001: 'SLLI',
         0b111: 'ANDI',
     }
-    if not uncompressed_i_type_funct3(word) in _cmds.keys():
+    if not uncompressed_funct3(word) in _cmds.keys():
         return uncompressed_unimplemented_instruction(word)
-    elif 0b001 == uncompressed_i_type_funct3(word):
+    elif 0b001 == uncompressed_funct3(word):
         return {
-            'cmd': _cmds.get(uncompressed_i_type_funct3(word)),
+            'cmd': _cmds.get(uncompressed_funct3(word)),
             'shamt': uncompressed_i_type_shamt(word),
             'rs1': uncompressed_rs1(word),
             'rd': uncompressed_rd(word),
@@ -185,13 +213,32 @@ def i_type(word):
         }
     else:
         return {
-            'cmd': _cmds.get(uncompressed_i_type_funct3(word)),
+            'cmd': _cmds.get(uncompressed_funct3(word)),
             'imm': uncompressed_i_type_imm12(word, signed=True),
             'rs1': uncompressed_rs1(word),
             'rd': uncompressed_rd(word),
             'word': word,
             'size': 4,
         }
+def b_type(word):
+    _cmds = {
+        0b000: 'BEQ',
+        0b001: 'BNE',
+        0b100: 'BLT',
+        0b101: 'BGE',
+        0b110: 'BLTU',
+        0b111: 'BGEU',
+    }
+    if not uncompressed_funct3(word) in _cmds.keys(): uncompressed_illegal_instruction(word)
+    _cmd = _cmds.get(uncompressed_funct3(word))
+    return {
+        'cmd': _cmd,
+        'rs1': uncompressed_rs1(word),
+        'rs2': uncompressed_rs2(word),
+        'imm': uncomprssed_b_type_imm13(word, signed=(False if _cmd.endswith('U') else True)),
+        'word': word,
+        'size': 4,
+    }
 def store(word):
     return {
         'cmd': 'SD',
@@ -252,6 +299,7 @@ def compressed_quadrant_01(word):
     return {
         0b000: compressed_quadrant_01_opcode_000,
         0b011: compressed_quadrant_01_opcode_011,
+        0b111: compressed_quadrant_01_opcode_111,
     }.get(compressed_opcode(word), compressed_unimplemented_instruction)(word)
 def compressed_quadrant_01_opcode_000(word):
     # 000 nzimm[5] rs1/rd̸=0 nzimm[4:0] 01 C.ADDI (HINT, nzimm=0) (p.111)
@@ -282,6 +330,30 @@ def compressed_quadrant_01_opcode_011(word):
             _impl = compressed_illegal_instruction
         else:
             _impl = c_addi16sp
+    return _impl(word, imm=_imm)
+def compressed_quadrant_01_opcode_110(word):
+    # 110 imm[8|4:3] rs1 ′ imm[7:6|2:1|5] 01 C.BEQZ
+    _impl = c_beqz
+    _b05   = (word >> 2) & 0b1
+    _b0201 = (word >> 4) & 0b11
+    _b0706 = (word >> 6) & 0b11
+    _b0403 = (word >> 9) & 0b11
+    _b08   = (word >> 11) & 0b1
+    _imm = (_b08 << 8) | (_b0706 << 6) | (_b05 << 5) | (_b0403 << 3) | (_b0201 << 1)
+    _imm = functools.reduce(lambda a, b: a | b, map(lambda x: _b08 << x, range(9, 16)), _imm)
+    _imm = int.from_bytes(struct.Struct('<H').pack(_imm), 'little', signed=True)
+    return _impl(word, imm=_imm)
+def compressed_quadrant_01_opcode_111(word):
+    # 111 imm[8|4:3] rs1 ′ imm[7:6|2:1|5] 01 C.BNEZ
+    _impl = c_bnez
+    _b05   = (word >> 2) & 0b1
+    _b0201 = (word >> 4) & 0b11
+    _b0706 = (word >> 6) & 0b11
+    _b0403 = (word >> 9) & 0b11
+    _b08   = (word >> 11) & 0b1
+    _imm = (_b08 << 8) | (_b0706 << 6) | (_b05 << 5) | (_b0403 << 3) | (_b0201 << 1)
+    _imm = functools.reduce(lambda a, b: a | b, map(lambda x: _b08 << x, range(9, 16)), _imm)
+    _imm = int.from_bytes(struct.Struct('<H').pack(_imm), 'little', signed=True)
     return _impl(word, imm=_imm)
 def compressed_quadrant_10(word):
 #    print('compressed_quadrant_10({:04x})'.format(word))
@@ -389,7 +461,7 @@ def compressed_imm12(word, **kwargs):
 
 
 
-def uncompressed_illegal_instruction(word):
+def uncompressed_illegal_instruction(word, **kwargs):
     assert False, 'Illegal instruction ({:08x})!'.format(word)
 def decode_uncompressed(word):
     return {
@@ -398,6 +470,7 @@ def decode_uncompressed(word):
         0b110_1111: jal,
         0b010_0011: store,
         0b001_0011: i_type,
+        0b110_0011: b_type,
     }.get(uncompressed_opcode(word), uncompressed_unimplemented_instruction)(word)
 
 def uncompressed_opcode(word):
@@ -439,7 +512,7 @@ def uncompressed_imm32(word, **kwargs):
     # https://riscv.org/wp-content/uploads/2019/06/riscv-spec.pdf (p. 130)
     _retval = word & 0b1111_1111_1111_1111_1111_0000_0000_0000
     return int.from_bytes(struct.Struct('<I').pack(_retval), 'little', **kwargs)
-def uncompressed_i_type_funct3(word):
+def uncompressed_funct3(word):
     # https://riscv.org/wp-content/uploads/2019/06/riscv-spec.pdf (p. 130)
     return (word >> 12) & 0b111
 def uncompressed_i_type_shamt(word):
@@ -449,10 +522,23 @@ def uncompressed_store_imm12(word, **kwargs):
     _b0403020100   = (word >> 7) & 0b1_1111
     _b100908070605 = (word >> 25) & 0b111_1111
     _b11           = (word >> 31) & 0b1
-    _retval  = _b11 << 1
+    _retval  = _b11 << 11
     _retval |= _b100908070605 << 5
     _retval |= _b0403020100
     _retval = functools.reduce(lambda a, b: a | b, map(lambda x: _b11 << x, range(12, 32)), _retval)
+    return int.from_bytes(struct.Struct('<I').pack(_retval), 'little', **kwargs)
+def uncomprssed_b_type_imm13(word, **kwargs):
+    # imm[12|10:5] rs2 rs1 000 imm[4:1|11] 1100011 BEQ
+    # https://riscv.org/wp-content/uploads/2019/06/riscv-spec.pdf (p. 130)
+    _b12           = (word >> 31) & 0b1
+    _b100908070605 = (word >> 25) & 0b11_1111
+    _b04030201     = (word >> 9) & 0b1111
+    _b11           = (word >> 7) & 0b1
+    _retval  = _b12 << 12
+    _retval |= _b11 << 11
+    _retval |= _b100908070605 << 5
+    _retval |= _b04030201 << 1
+    _retval = functools.reduce(lambda a, b: a | b, map(lambda x: _b12 << x, range(13, 32)), _retval)
     return int.from_bytes(struct.Struct('<I').pack(_retval), 'little', **kwargs)
 
 

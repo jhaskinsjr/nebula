@@ -79,6 +79,43 @@ def do_jalr(service, state, insn):
     }})
     state.update({'operands': {}})
     do_complete(service, state)
+def do_branch(service, state, insn):
+    if not 'rs1' in state.get('operands'):
+        state.get('operands').update({'rs1': '%{}'.format(insn.get('rs1'))})
+        service.tx({'event': {
+            'arrival': 1 + state.get('cycle'),
+            'register': {
+                'cmd': 'get',
+                'name': insn.get('rs1'),
+            }
+        }})
+    if not isinstance(state.get('operands').get('rs1'), int):
+        return
+    if not 'rs2' in state.get('operands'):
+        state.get('operands').update({'rs2': '%{}'.format(insn.get('rs2'))})
+        service.tx({'event': {
+            'arrival': 1 + state.get('cycle'),
+            'register': {
+                'cmd': 'get',
+                'name': insn.get('rs2'),
+            }
+        }})
+    if not isinstance(state.get('operands').get('rs2'), int):
+        return
+    _next_pc = {
+        'BEQ': riscv.execute.beq,
+        'BNE': riscv.execute.bne,
+    }.get(insn.get('cmd'))(state.get('%pc'), state.get('operands').get('rs1'), state.get('operands').get('rs2'), insn.get('imm'))
+    service.tx({'event': {
+        'arrival': 1 + state.get('cycle'),
+        'register': {
+            'cmd': 'set',
+            'name': '%pc',
+            'data': _next_pc,
+        }
+    }})
+    state.update({'operands': {}})
+    do_complete(service, state)
 def do_addi(service, state, insn):
     if not 'rs1' in state.get('operands'):
         state.get('operands').update({'rs1': '%{}'.format(insn.get('rs1'))})
