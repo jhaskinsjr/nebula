@@ -39,8 +39,8 @@ python3 launcher.py --services \
     ${PWD}/mainmem.py:localhost \
     ${PWD}/decode.py:localhost \
     ${PWD}/execute.py:localhost \
-    --max_cycles 100 \
-    -- 10000 test-01.ussim
+    --max_cycles 1000 \
+    -- 10000 test-02.ussim
 
 This executes the launcher module (launcher.py), which in turn spawns the
 CPU core service (simplecore.py), the register file service (regfile.py), and
