@@ -54,6 +54,21 @@ def c_ldsp(word):
         'word': word,
         'size': 2,
     }
+def c_ld(word, **kwargs):
+    # C.LD is an RV64C/RV128C-only instruction that loads a 64-bit value from memory
+    # into register rd'. It computes an effective address by adding the zero-extended
+    # offset, scaled by 8, to the base address in register rs1'. It expands to ld rd',
+    # offset[7:3](rs1').
+    # see: https://riscv.org/wp-content/uploads/2019/06/riscv-spec.pdf (p.101)
+    return {
+        'cmd': 'LD',
+        'rs1': compressed_rs1_prime_or_rd_prime(word),
+        'imm': kwargs.get('imm'),
+        'rd': compressed_rs1_prime_or_rd_prime(word),
+        'nbytes': 8,
+        'word': word,
+        'size': 2,
+    }
 def c_addi4spn(word, **kwargs):
     # C.ADDI4SPN is a CIW-format instruction that adds a zero-extended non-zero
     # immediate, scaledby 4, to the stack pointer, x2, and writes the result to rd'.
@@ -208,6 +223,7 @@ def compressed_quadrant(word):
 def compressed_quadrant_00(word):
     return {
         0b000: compressed_quadrant_00_opcode_000,
+        0b011: compressed_quadrant_00_opcode_011,
     }.get(compressed_opcode(word), compressed_unimplemented_instruction)(word)
 def compressed_quadrant_00_opcode_000(word):
     # 00 nzuimm[5:4|9:6|2|3] rd ′ 00 ; C.ADDI4SPN (RES, nzuimm=0)
@@ -223,6 +239,15 @@ def compressed_quadrant_00_opcode_000(word):
     else:
         _impl = c_addi4spn
     return _impl(word, imm=_imm)
+def compressed_quadrant_00_opcode_011(word):
+    # 011 uimm[5:3] rs1 ′ uimm[7:6] rd ′ 00 C.LD (RV64/128)
+    # https://riscv.org/wp-content/uploads/2019/06/riscv-spec.pdf (p.110)
+    _impl = c_ld
+    _b0706   = (word >> 5) & 0b11
+    _b050403 = (word >> 8) & 0b111
+    _imm = (_b0706 << 6) | (_b050403 << 3)
+    return _impl(word, imm=_imm)
+
 def compressed_quadrant_01(word):
     return {
         0b000: compressed_quadrant_01_opcode_000,
