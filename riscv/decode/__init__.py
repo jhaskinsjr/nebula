@@ -113,6 +113,19 @@ def c_nop(word):
         'word': word,
         'size': 2,
     }
+def c_add(word):
+    # C.ADD adds the values in registers rd and rs2 and writes the result to
+    # register rd. C.ADD expands into add rd, rd, rs2. C.ADD is only valid when
+    # rs2̸=x0; the code points with rs2=x0 correspond to the C.JALR and C.EBREAK
+    # instructions. The code points with rs2̸=x0 and rd=x0 are HINTs.
+    return {
+        'cmd': 'ADD',
+        'rs1': compressed_rs1_or_rd(word),
+        'rs2': compressed_rs2(word),
+        'rd': compressed_rs1_or_rd(word),
+        'word': word,
+        'size': 2,
+    }
 
 def auipc(word):
     return {
@@ -234,6 +247,13 @@ def compressed_quadrant_10(word):
         0b100: compressed_quadrant_10_opcode_100,
         0b111: compressed_quadrant_10_opcode_111,
     }.get(compressed_opcode(word), compressed_unimplemented_instruction)(word)
+def compressed_quadrant_10_opcode_011(word):
+    _impl = compressed_unimplemented_instruction
+    if 0 == compressed_rs1_or_rd:
+        pass
+    else:
+        _impl = c_ldsp
+    return _impl(word)
 def compressed_quadrant_10_opcode_100(word):
 #    print('compressed_quadrant_10_opcode_100()')
     _impl = compressed_unimplemented_instruction
@@ -244,14 +264,11 @@ def compressed_quadrant_10_opcode_100(word):
         else:
             _impl = c_mv
     else:
-        pass
-    return _impl(word)
-def compressed_quadrant_10_opcode_011(word):
-    _impl = compressed_unimplemented_instruction
-    if 0 == compressed_rs1_or_rd:
-        pass
-    else:
-        _impl = c_ldsp
+        # 100 1 rs1/rd̸=0 rs2̸=0 10 C.ADD (HINT, rd=0)
+        if 0 != compressed_rs1_or_rd(word) and 0 != compressed_rs2(word):
+            _impl = c_add
+        else:
+            pass
     return _impl(word)
 def compressed_quadrant_10_opcode_111(word):
     _impl = c_sdsp
