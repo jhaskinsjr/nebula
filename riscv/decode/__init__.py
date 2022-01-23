@@ -169,6 +169,16 @@ def i_type(word):
             'word': word,
             'size': 4,
         }
+def store(word):
+    return {
+        'cmd': 'SD',
+        'imm': uncompressed_store_imm12(word, signed=True), 
+        'rs1': uncompressed_rs1(word),
+        'rs2': uncompressed_rs2(word),
+        'nbytes': 8,
+        'word': word,
+        'size': 4,
+    }
 
 
 
@@ -352,6 +362,7 @@ def decode_uncompressed(word):
     return {
         0b001_0111: auipc,
         0b110_1111: jal,
+        0b010_0011: store,
         0b001_0011: i_type,
     }.get(uncompressed_opcode(word), uncompressed_unimplemented_instruction)(word)
 
@@ -360,6 +371,9 @@ def uncompressed_opcode(word):
 def uncompressed_rs1(word):
     # https://riscv.org/wp-content/uploads/2019/06/riscv-spec.pdf (p. 130)
     return (word >> 15) & 0b1_1111
+def uncompressed_rs2(word):
+    # https://riscv.org/wp-content/uploads/2019/06/riscv-spec.pdf (p. 130)
+    return (word >> 20) & 0b1_1111
 def uncompressed_rd(word):
     # https://riscv.org/wp-content/uploads/2019/06/riscv-spec.pdf (p. 130)
     return (word >> 7) & 0b1_1111
@@ -396,6 +410,16 @@ def uncompressed_i_type_funct3(word):
     return (word >> 12) & 0b111
 def uncompressed_i_type_shamt(word):
     return (word >> 20) & 0b1_1111
+def uncompressed_store_imm12(word, **kwargs):
+    # imm[11:5] rs2 rs1 011 imm[4:0] 0100011 SD
+    _b0403020100   = (word >> 7) & 0b1_1111
+    _b100908070605 = (word >> 25) & 0b111_1111
+    _b11           = (word >> 31) & 0b1
+    _retval  = _b11 << 1
+    _retval |= _b100908070605 << 5
+    _retval |= _b0403020100
+    _retval = functools.reduce(lambda a, b: a | b, map(lambda x: _b11 << x, range(12, 32)), _retval)
+    return int.from_bytes(struct.Struct('<I').pack(_retval), 'little', **kwargs)
 
 
 
