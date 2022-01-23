@@ -7,6 +7,17 @@ import riscv.execute
 def do_unimplemented(service, state, insn):
 #    print('Unimplemented: {}'.format(state.get('pending_execute')))
     do_complete(service, state)
+
+def do_lui(service, state, insn):
+    service.tx({'event': {
+        'arrival': 1 + state.get('cycle'),
+        'register': {
+            'cmd': 'set',
+            'name': insn.get('rd'),
+            'data': insn.get('imm'),
+        }
+    }})
+    do_complete(service, state)
 def do_auipc(service, state, insn):
     _result = riscv.execute.auipc(state.get('%pc'), insn.get('imm'))
     service.tx({'event': {
@@ -247,6 +258,7 @@ def do_execute(service, state):
         else:
             print('do_execute(): @{:8}     {:04x} : {}'.format(state.get('cycle'), insn.get('word'), insn.get('cmd')))
         {
+            'LUI': do_lui,
             'AUIPC': do_auipc,
             'JAL': do_jal,
             'JALR': do_jalr,

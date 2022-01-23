@@ -127,6 +127,14 @@ def c_add(word):
         'size': 2,
     }
 
+def lui(word):
+    return {
+        'cmd': 'LUI',
+        'imm': uncompressed_imm32(word, signed=True),
+        'rd': uncompressed_rd(word),
+        'word': word,
+        'size': 4,
+    }
 def auipc(word):
     return {
         'cmd': 'AUIPC',
@@ -360,6 +368,7 @@ def uncompressed_illegal_instruction(word):
     assert False, 'Illegal instruction ({:08x})!'.format(word)
 def decode_uncompressed(word):
     return {
+        0b011_0111: lui,
         0b001_0111: auipc,
         0b110_1111: jal,
         0b010_0011: store,
