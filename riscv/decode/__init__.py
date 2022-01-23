@@ -1,6 +1,8 @@
 import functools
 import struct
 
+from psutil import CONN_LISTEN
+
 def compressed_unimplemented_instruction(word):
     return {
         'cmd': 'Undefined',
@@ -169,6 +171,18 @@ def c_add(word):
         'word': word,
         'size': 2,
     }
+def c_li(word, **kwargs):
+    # C.LI loads the sign-extended 6-bit immediate, imm, into register rd. C.LI
+    # expands into addi rd, x0, imm[5:0]. C.LI is only valid when rd̸=x0; the code
+    # points with rd=x0 encode HINTs.
+    return {
+        'cmd': 'ADDI',
+        'rs1': 0,
+        'rd': compressed_rs1_or_rd(word),
+        'imm': kwargs.get('imm'),
+        'word': word,
+        'size': 2,
+    }
 
 def lui(word):
     return {
@@ -298,6 +312,7 @@ def compressed_quadrant_00_opcode_011(word):
 def compressed_quadrant_01(word):
     return {
         0b000: compressed_quadrant_01_opcode_000,
+        0b010: compressed_quadrant_01_opcode_010,
         0b011: compressed_quadrant_01_opcode_011,
         0b111: compressed_quadrant_01_opcode_111,
     }.get(compressed_opcode(word), compressed_unimplemented_instruction)(word)
@@ -330,6 +345,19 @@ def compressed_quadrant_01_opcode_011(word):
             _impl = compressed_illegal_instruction
         else:
             _impl = c_addi16sp
+    return _impl(word, imm=_imm)
+def compressed_quadrant_01_opcode_010(word):
+    # 010 imm[5] rd̸=0 imm[4:0] 01 C.LI (HINT, rd=0)
+    _impl = compressed_unimplemented_instruction
+    _b0403020100 = (word >> 2) & 0b1_1111
+    _b05         = (word >> 12) & 0b1
+    _imm = (_b05 << 5) | _b0403020100
+    _imm = functools.reduce(lambda a, b: a | b, map(lambda x: _b05 << x, range(6, 16)), _imm)
+    _imm = int.from_bytes(struct.Struct('<H').pack(_imm), 'little', signed=True)
+    if 0 == compressed_rs1_or_rd(word):
+        _impl = compressed_illegal_instruction
+    else:
+        _impl = c_li
     return _impl(word, imm=_imm)
 def compressed_quadrant_01_opcode_110(word):
     # 110 imm[8|4:3] rs1 ′ imm[7:6|2:1|5] 01 C.BEQZ
