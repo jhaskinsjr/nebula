@@ -48,3 +48,28 @@ the main memory service (mainmem.py), all on localhost. The simulation will
 run for a total of 100 cycles, set up the launcher module to accept
 TCP connections on the localhost's port 10000, and execute the script
 test-01.ussim.
+
+--
+SAMPLE binary
+
+The sample binary (bin/test) was created using the RISC-V cross compiler
+at https://github.com/riscv-collab/riscv-gnu-toolchain. The source for the
+binary is a do-nothing program; to wit:
+
+    /* test.c */
+    #include <stdio.h>
+
+    int main(int, char **);
+
+    int
+    main(int argc, char ** argv)
+    {
+        return 0;
+    }
+
+which is compiled accordingly
+
+    riscv64-unknown-linux-gnu-gcc -o test -static -march=rv64g test.c
+
+Note well that the binary is statically linked; this is key since the
+simulator at this stage makes NO effort to accommodate dynamic linking.
