@@ -120,6 +120,7 @@ def loadbin(binary, addr, mainmem_rawfile):
         elffile = elftools.elf.elffile.ELFFile(fp)
         _addr = addr
         for section in map(lambda n: elffile.get_section_by_name(n), ['.text', '.data', '.rodata', '.bss']):
+            if not section: continue
             print('{} : 0x{:08x} ({})'.format(section.name, _addr, section.data_size))
             os.lseek(fd, _addr, os.SEEK_SET)
             os.write(fd, section.data())
