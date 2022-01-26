@@ -1,8 +1,8 @@
 # Sample μService-SIMulator script
 cycle
-loadbin bin/test 0x40000000 /tmp/mainmem.raw    # load bin/test binary to @0x40000000
-register set 2 0x80000000                       # set stack pointer (x2) to @0x80000000
-push 5                                          # push the parameter 5... as a string... onto the stack
+loadbin samples/bin/test 0x40000000 /tmp/mainmem.raw    # samples/load bin/test binary to @0x40000000
+register set 2 0x80000000                               # set stack pointer (x2) to @0x80000000
+push 5                                                  # push the parameter 5... as a string... onto the stack
 run
 cycle
 state

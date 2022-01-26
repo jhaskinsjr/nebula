@@ -56,7 +56,7 @@ The sample binary (bin/test) was created using the RISC-V cross compiler
 at https://github.com/riscv-collab/riscv-gnu-toolchain. The source for the
 binary is a do-nothing program; to wit:
 
-    /* test.c */
+    /* samples/src/test.c */
     #include <stdio.h>
 
     int main(int, char **);
@@ -73,3 +73,24 @@ which is compiled accordingly
 
 Note well that the binary is statically linked; this is key since the
 simulator at this stage makes NO effort to accommodate dynamic linking.
+
+--
+TESTS
+
+The simulator is capable of loading full, statically-linked ELF binaries,
+and also capable of loading ELF-formatted object files. This allows TESTS
+of individual instructions to be tested. Consider, for instance, the test
+of the ADDI instruction:
+
+    # tests/src/addi.s
+    _start:
+            addi x15, x3, 1656
+            
+The entire assembly language file consists of a single ADDI instruction,
+which gets assembled into an object file accordingly
+
+    riscv64-unknown-linux-gnu-as -o addi.o -march=rv64v addi.same
+
+This is NOT a complete binary, but the simulator will nevertheless load
+it into memory, set the PC to the address of the _start label, and 
+begin execution.
