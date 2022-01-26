@@ -139,6 +139,17 @@ def loadbin(binary, addr, mainmem_rawfile):
         _retval += _start.entry.st_value - elffile.get_section_by_name('.text').header.sh_addr
     os.close(fd)
     return _retval
+def arguments(args, field, val):
+    _output = 'args.{} : {}'.format(field, args.__getattribute__(field))
+    if val:
+        _val = val
+        try:
+            _val = int(val)
+        except:
+            pass
+        args.__setattr__(field, _val)
+        _output += ' -> {}'.format(args.__getattribute__(field))
+    print(_output)
 def push(val):
     print('push(): @(%sp) <= {}'.format(val))
 def run(cycle, max_cycles, max_instructions):
@@ -232,6 +243,7 @@ if __name__ == '__main__':
                     'loadbin': lambda x, y, z: register(state.get('connections'), 'set', '%pc', hex(loadbin(x, int(y, 16), z))),
                     'cycle': lambda: print(state.get('cycle')),
                     'state': lambda: print(state),
+                    'args': lambda x, y=None: arguments(args, x, y),
                     'connections': lambda: print(state.get('connections')),
                     'push': lambda x: push(x),
                 }.get(cmd, lambda : print('Unknown command!'))(*params)
