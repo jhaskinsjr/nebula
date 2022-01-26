@@ -81,4 +81,4 @@ if '__main__' == __name__:
         if state.get('ack') and state.get('running'): _service.tx({'ack': {'cycle': state.get('cycle')}})
     if not args.quiet: print('Shutting down {}...'.format(sys.argv[0]))
     for k, v in state.get('registers').items():
-        print('{} : {}'.format(k, v))
+        print('register {:2} : {}'.format(k, v))
