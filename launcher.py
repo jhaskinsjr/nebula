@@ -38,6 +38,10 @@ def handler(conn, addr):
                 state.get('connections').remove(conn)
                 state.get('lock').release()
                 break
+            elif 'committed' == k:
+                state.get('lock').acquire()
+                state.update({'instructions_committed': 1 + state.get('instructions_committed')})
+                state.get('lock').release()
             elif 'name' == k:
                 threading.current_thread().name = v
             elif 'info' == k:
@@ -137,7 +141,7 @@ def loadbin(binary, addr, mainmem_rawfile):
     return _retval
 def push(val):
     print('push(): @(%sp) <= {}'.format(val))
-def run(cycle, max_cycles):
+def run(cycle, max_cycles, max_instructions):
     global state
     # {
     #   'tick': {
@@ -149,7 +153,7 @@ def run(cycle, max_cycles):
     state.get('lock').acquire()
     tx(state.get('connections'), 'run')
     state.get('lock').release()
-    while (cycle < max_cycles if max_cycles else True):
+    while (cycle < max_cycles if max_cycles else True) and (state.get('instructions_committed') < max_instructions if max_instructions else True):
         state.get('lock').acquire()
         print('run(): @{:8} futures  : {}'.format(cycle, state.get('futures')))
         cycle = (min(state.get('futures').keys()) if len(state.get('futures').keys()) else 1 + cycle)
@@ -172,6 +176,7 @@ if __name__ == '__main__':
     parser.add_argument('--debug', '-D', dest='debug', action='store_true', help='print debug messages')
     parser.add_argument('--services', dest='services', nargs='+', help='code:host')
     parser.add_argument('--max_cycles', type=int, dest='max_cycles', default=None, help='maximum number of cycles to run for')
+    parser.add_argument('--max_instructions', type=int, dest='max_instructions', default=None, help='maximum number of instructions to execute')
     parser.add_argument('port', type=int, help='port to connect to on host')
     parser.add_argument('script', type=str, help='script to be executed by μService-SIMulator')
     args = parser.parse_args()
@@ -188,6 +193,7 @@ if __name__ == '__main__':
         'futures': {},
         'running': False,
         'cycle': 0,
+        'instructions_committed': 0,
     }
     threading.Thread(target=acceptor, daemon=True).start()
     _services = [
@@ -217,7 +223,7 @@ if __name__ == '__main__':
                 })
             elif 'run' == cmd:
                 state.update({'running': True})
-                state.update({'cycle': run(state.get('cycle'), args.max_cycles)})
+                state.update({'cycle': run(state.get('cycle'), args.max_cycles, args.max_instructions)})
                 state.update({'running': False})
             else:
                 {

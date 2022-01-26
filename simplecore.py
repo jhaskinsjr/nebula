@@ -67,6 +67,11 @@ def do_tick(service, state, results, events):
 #        service.tx({'info': '%jp : {}'.format(state.get('%jp'))})
 #        service.tx({'info': '%pc : {}'.format(state.get('%pc'))})
         state.update({'pending_execute': None})
+    _n_committed = len(list(filter(lambda x: x, map(lambda y: y.get('commit'), events))))
+    if _n_committed: service.tx({'committed': _n_committed})
+#    for committed in filter(lambda x: x, map(lambda y: y.get('commit'), events)):
+#        service.tx({'info': 'committed : {}'.format(committed)})
+#        _n_committed += 1
     if not state.get('pending_pc') and not state.get('pending_fetch') and not state.get('pending_decode') and not state.get('pending_execute'):
         service.tx({'event': {
             'arrival': 1 + state.get('cycle'),

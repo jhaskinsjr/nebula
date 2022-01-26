@@ -6,7 +6,11 @@ import riscv.execute
 
 def do_unimplemented(service, state, insn):
 #    print('Unimplemented: {}'.format(state.get('pending_execute')))
-    do_complete(service, state)
+    do_complete(service, state, state.get('pending_execute'))
+    do_confirm(service, state, state.get('pending_execute'))
+    do_commit(service, state, state.get('pending_execute'))
+    state.update({'operands': {}})
+    state.update({'pending_execute': None})
 
 def do_lui(service, state, insn):
     service.tx({'event': {
@@ -17,7 +21,11 @@ def do_lui(service, state, insn):
             'data': insn.get('imm'),
         }
     }})
-    do_complete(service, state)
+    do_complete(service, state, state.get('pending_execute'))
+    do_confirm(service, state, state.get('pending_execute'))
+    do_commit(service, state, state.get('pending_execute'))
+    state.update({'operands': {}})
+    state.update({'pending_execute': None})
 def do_auipc(service, state, insn):
     _result = riscv.execute.auipc(state.get('%pc'), insn.get('imm'))
     service.tx({'event': {
@@ -28,7 +36,11 @@ def do_auipc(service, state, insn):
             'data': _result,
         }
     }})
-    do_complete(service, state)
+    do_complete(service, state, state.get('pending_execute'))
+    do_confirm(service, state, state.get('pending_execute'))
+    do_commit(service, state, state.get('pending_execute'))
+    state.update({'operands': {}})
+    state.update({'pending_execute': None})
 def do_jal(service, state, insn):
     _next_pc, _ret_pc = riscv.execute.jal(state.get('%pc'), insn.get('imm'))
     service.tx({'event': {
@@ -47,7 +59,11 @@ def do_jal(service, state, insn):
             'data': _ret_pc,
         }
     }})
-    do_complete(service, state)
+    do_complete(service, state, state.get('pending_execute'))
+    do_confirm(service, state, state.get('pending_execute'))
+    do_commit(service, state, state.get('pending_execute'))
+    state.update({'operands': {}})
+    state.update({'pending_execute': None})
 def do_jalr(service, state, insn):
     if not 'rs1' in state.get('operands'):
         state.get('operands').update({'rs1': '%{}'.format(insn.get('rs1'))})
@@ -77,8 +93,11 @@ def do_jalr(service, state, insn):
             'data': _ret_pc,
         }
     }})
+    do_complete(service, state, state.get('pending_execute'))
+    do_confirm(service, state, state.get('pending_execute'))
+    do_commit(service, state, state.get('pending_execute'))
     state.update({'operands': {}})
-    do_complete(service, state)
+    state.update({'pending_execute': None})
 def do_branch(service, state, insn):
     if not 'rs1' in state.get('operands'):
         state.get('operands').update({'rs1': '%{}'.format(insn.get('rs1'))})
@@ -114,8 +133,11 @@ def do_branch(service, state, insn):
             'data': _next_pc,
         }
     }})
+    do_complete(service, state, state.get('pending_execute'))
+    do_confirm(service, state, state.get('pending_execute'))
+    do_commit(service, state, state.get('pending_execute'))
     state.update({'operands': {}})
-    do_complete(service, state)
+    state.update({'pending_execute': None})
 def do_addi(service, state, insn):
     if not 'rs1' in state.get('operands'):
         state.get('operands').update({'rs1': '%{}'.format(insn.get('rs1'))})
@@ -137,8 +159,11 @@ def do_addi(service, state, insn):
             'data': _result,
         }
     }})
+    do_complete(service, state, state.get('pending_execute'))
+    do_confirm(service, state, state.get('pending_execute'))
+    do_commit(service, state, state.get('pending_execute'))
     state.update({'operands': {}})
-    do_complete(service, state)
+    state.update({'pending_execute': None})
 def do_add(service, state, insn):
     if not 'rs1' in state.get('operands'):
         state.get('operands').update({'rs1': '%{}'.format(insn.get('rs1'))})
@@ -169,8 +194,11 @@ def do_add(service, state, insn):
             'data': _result,
         }
     }})
+    do_complete(service, state, state.get('pending_execute'))
+    do_confirm(service, state, state.get('pending_execute'))
+    do_commit(service, state, state.get('pending_execute'))
     state.update({'operands': {}})
-    do_complete(service, state)
+    state.update({'pending_execute': None})
 def do_ld(service, state, insn):
     if not 'rs1' in state.get('operands'):
         state.get('operands').update({'rs1': '%{}'.format(insn.get('rs1'))})
@@ -203,8 +231,11 @@ def do_ld(service, state, insn):
             'data': int.from_bytes(state.get('operands').get('mem'), 'little'),
         }
     }})
+    do_complete(service, state, state.get('pending_execute'))
+    do_confirm(service, state, state.get('pending_execute'))
+    do_commit(service, state, state.get('pending_execute'))
     state.update({'operands': {}})
-    do_complete(service, state)
+    state.update({'pending_execute': None})
 def do_andi(service, state, insn):
     if not 'rs1' in state.get('operands'):
         state.get('operands').update({'rs1': '%{}'.format(insn.get('rs1'))})
@@ -226,8 +257,11 @@ def do_andi(service, state, insn):
             'data': _result,
         }
     }})
+    do_complete(service, state, state.get('pending_execute'))
+    do_confirm(service, state, state.get('pending_execute'))
+    do_commit(service, state, state.get('pending_execute'))
     state.update({'operands': {}})
-    do_complete(service, state)
+    state.update({'pending_execute': None})
 def do_sd(service, state, insn):
     if not 'rs1' in state.get('operands'):
         state.get('operands').update({'rs1': '%{}'.format(insn.get('rs1'))})
@@ -260,10 +294,15 @@ def do_sd(service, state, insn):
             'data': state.get('operands').get('rs2')
         }
     }})
+    do_complete(service, state, state.get('pending_execute'))
+    do_confirm(service, state, state.get('pending_execute'))
+    do_commit(service, state, state.get('pending_execute'))
     state.update({'operands': {}})
-    do_complete(service, state)
+    state.update({'pending_execute': None})
 def do_nop(service, state, insn):
-    do_complete(service, state)
+    do_complete(service, state, state.get('pending_execute'))
+    do_confirm(service, state, state.get('pending_execute'))
+    do_commit(service, state, state.get('pending_execute'))
 def do_slli(service, state, insn):
     if not 'rs1' in state.get('operands'):
         state.get('operands').update({'rs1': '%{}'.format(insn.get('rs1'))})
@@ -285,8 +324,11 @@ def do_slli(service, state, insn):
             'data': _result,
         }
     }})
+    do_complete(service, state, state.get('pending_execute'))
+    do_confirm(service, state, state.get('pending_execute'))
+    do_commit(service, state, state.get('pending_execute'))
     state.update({'operands': {}})
-    do_complete(service, state)
+    state.update({'pending_execute': None})
 
 def do_execute(service, state):
     for insn in state.get('pending_execute'):
@@ -307,14 +349,27 @@ def do_execute(service, state):
             'NOP': do_nop,
             'SLLI': do_slli,
         }.get(insn.get('cmd'), do_unimplemented)(service, state, insn)
-def do_complete(service, state):
+def do_complete(service, state, insns): # finished the work of the instruction, but will not necessarily be committed
     service.tx({'event': {
         'arrival': 1 + state.get('cycle'),
         'complete': {
-            'insns': state.get('pending_execute'),
+            'insns': insns,
         },
     }})
-    state.update({'pending_execute': None})
+def do_confirm(service, state, insns): # definitely will commit
+    service.tx({'event': {
+        'arrival': 1 + state.get('cycle'),
+        'confirm': {
+            'insns': insns,
+        },
+    }})
+def do_commit(service, state, insns):
+    service.tx({'event': {
+        'arrival': 1 + state.get('cycle'),
+        'commit': {
+            'insns': insns,
+        },
+    }})
 
 def do_tick(service, state, results, events):
     for rs in filter(lambda x: x, map(lambda y: y.get('register'), results)):
