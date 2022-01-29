@@ -1,15 +1,16 @@
 import functools
 import struct
+from threading import current_thread
 
 from psutil import CONN_LISTEN
 
-def compressed_unimplemented_instruction(word):
+def compressed_unimplemented_instruction(word, **kwargs):
     return {
         'cmd': 'Undefined',
         'word': word,
         'size': 2,
     }
-def uncompressed_unimplemented_instruction(word):
+def uncompressed_unimplemented_instruction(word, **kwargs):
     return {
         'cmd': 'Undefined',
         'word': word,
@@ -34,7 +35,7 @@ def c_beqz(word, **kwargs):
     return {
         'cmd': 'BEQ',
         'imm': kwargs.get('imm'),
-        'rs1': compressed_rs1_prime_or_rd_prime(word),
+        'rs1': compressed_quadrant_01_rs1_prime_or_rd_prime(word),
         'rs2': 0,
         'word': word,
         'size': 2,
@@ -48,7 +49,7 @@ def c_bnez(word, **kwargs):
     return {
         'cmd': 'BEQ',
         'imm': kwargs.get('imm'),
-        'rs1': compressed_rs1_prime_or_rd_prime(word),
+        'rs1': compressed_quadrant_01_rs1_prime_or_rd_prime(word),
         'rs2': 0,
         'word': word,
         'size': 2,
@@ -61,6 +62,22 @@ def c_mv(word):
         'rs1': 0,
         'rs2': compressed_rs2(word),
         'rd': compressed_rs1_or_rd(word),
+        'word': word,
+        'size': 2,
+    }
+def c_lui(word, **kwargs):
+    # C.LUI loads the non-zero 6-bit immediate field into bits 17–12 of the
+    # destination register, clears the bottom 12 bits, and sign-extends bit
+    # 17 into all higher bits of the destination. C.LUI expands into
+    # lui rd, nzimm[17:12]. C.LUI is only valid when rd̸={x0, x2}, and when
+    # the immediate is not equal to zero.
+    #
+    # C.LUI nzimm[17] dest̸={0, 2} nzimm[16:12] C1
+    # see: https://riscv.org/wp-content/uploads/2019/06/riscv-spec.pdf (p.104)
+    return {
+        'cmd': 'LUI',
+        'rd': compressed_rs1_or_rd(word),
+        'imm': kwargs.get('imm'),
         'word': word,
         'size': 2,
     }
@@ -92,9 +109,9 @@ def c_ld(word, **kwargs):
     # see: https://riscv.org/wp-content/uploads/2019/06/riscv-spec.pdf (p.101)
     return {
         'cmd': 'LD',
-        'rs1': compressed_rs1_prime_or_rd_prime(word),
+        'rs1': compressed_quadrant_00_rs1_prime(word),
         'imm': kwargs.get('imm'),
-        'rd': compressed_rs1_prime_or_rd_prime(word),
+        'rd': compressed_quadrant_00_rs2_prime_or_rd_prime(word),
         'nbytes': 8,
         'word': word,
         'size': 2,
@@ -108,7 +125,7 @@ def c_addi4spn(word, **kwargs):
         'cmd': 'ADDI',
         'imm': kwargs.get('imm'),
         'rs1': 2,
-        'rd': compressed_rs1_prime_or_rd_prime(word),
+        'rd': compressed_quadrant_00_rs2_prime_or_rd_prime(word),
         'word': word,
         'size': 2,
     }
@@ -180,6 +197,21 @@ def c_li(word, **kwargs):
         'rs1': 0,
         'rd': compressed_rs1_or_rd(word),
         'imm': kwargs.get('imm'),
+        'word': word,
+        'size': 2,
+    }
+def c_slli(word, **kwargs):
+    # C.SLLI is a CI-format instruction that performs a logical left shift
+    # of the value in register rd then writes the result to rd. The shift
+    # amount is encoded in the shamt field. For RV128C, a shift amount of
+    # zero is used to encode a shift of 64. C.SLLI expands into
+    # slli rd, rd, shamt[5:0], except for RV128C with shamt=0, which expands
+    # to slli rd, rd, 64.
+    return {
+        'cmd': 'SLLI',
+        'rs1': compressed_rs1_or_rd(word),
+        'rd': compressed_rs1_or_rd(word),
+        'shamt': kwargs.get('imm'),
         'word': word,
         'size': 2,
     }
@@ -287,10 +319,10 @@ def compressed_quadrant_00(word):
         0b011: compressed_quadrant_00_opcode_011,
     }.get(compressed_opcode(word), compressed_unimplemented_instruction)(word)
 def compressed_quadrant_00_opcode_000(word):
-    # 00 nzuimm[5:4|9:6|2|3] rd ′ 00 ; C.ADDI4SPN (RES, nzuimm=0)
+    # 00 nzuimm[5:4|9:6|2|3] rd' 00 ; C.ADDI4SPN (RES, nzuimm=0)
     # https://riscv.org/wp-content/uploads/2019/06/riscv-spec.pdf (p.110)
     _impl = compressed_unimplemented_instruction
-    _b03       = (word >> 5) * 0b1
+    _b03       = (word >> 5) & 0b1
     _b02       = (word >> 6) & 0b1
     _b09080706 = (word >> 7) & 0b1111
     _b0504     = (word >> 11) & 0b11
@@ -308,6 +340,19 @@ def compressed_quadrant_00_opcode_011(word):
     _b050403 = (word >> 8) & 0b111
     _imm = (_b0706 << 6) | (_b050403 << 3)
     return _impl(word, imm=_imm)
+def compressed_quadrant_00_rs1_prime(word):
+    # RVC     Register Number          000 001 010 011 100 101 110 111
+    # Integer Register Number           x8  x9 x10 x11 x12 x13 x14 x15
+    # Integer Register ABI Name         s0  s1  a0  a1  a2  a3  a4  a5
+    # Floating-Point Register Number    f8  f9 f10 f11 f12 f13 f14 f15
+    # Floating-Point Register ABI Name fs0 fs1 fa0 fa1 fa2 fa3 fa4 fa5
+    # Table 16.2: Registers specified by the three-bit rs1 ′, rs2 ′, and rd ′ fields of the CIW, CL, CS, CA,
+    # and CB formats; see: https://riscv.org/wp-content/uploads/2019/06/riscv-spec.pdf (p.98)
+    #
+    # see also: https://riscv.org/wp-content/uploads/2019/06/riscv-spec.pdf (p. 111)
+    return 8 + ((word >> 7) & 0b111)
+def compressed_quadrant_00_rs2_prime_or_rd_prime(word):
+    return 8 + ((word >> 2) & 0b111)
 
 def compressed_quadrant_01(word):
     return {
@@ -331,20 +376,31 @@ def compressed_quadrant_01_opcode_000(word):
     return _impl(word, imm=_imm)
 def compressed_quadrant_01_opcode_011(word):
     # 011 nzimm[9] 2 nzimm[4|6|8:7|5] 01 C.ADDI16SP (RES, nzimm=0) (p.111)
+    # 011 nzimm[17] rd̸={0, 2} nzimm[16:12] 01 C.LUI (RES, nzimm=0; HINT, rd=0)
     _impl = compressed_unimplemented_instruction
-    _b05 = (word >> 2) & 0b1
-    _b0807 = (word >> 3) & 0b11
-    _b06 = (word >> 5) & 0b1
-    _b04 = (word >> 6) & 0b1
-    _b09 = (word >> 11) & 0b1
-    _imm = (_b09 << 9) | (_b0807 << 7) | (_b06 << 6) | (_b05 << 4) | (_b04 << 4)
-    _imm = functools.reduce(lambda a, b: a | b, map(lambda x: _b09 << x, range(10, 16)), _imm)
-    _imm = int.from_bytes(struct.Struct('<H').pack(_imm), 'little', signed=True)
     if 2 == compressed_rs1_or_rd(word):
+        _b05 = (word >> 2) & 0b1
+        _b0807 = (word >> 3) & 0b11
+        _b06 = (word >> 5) & 0b1
+        _b04 = (word >> 6) & 0b1
+        _b09 = (word >> 12) & 0b1
+        _imm = (_b09 << 9) | (_b0807 << 7) | (_b06 << 6) | (_b05 << 5) | (_b04 << 4)
+        _imm = functools.reduce(lambda a, b: a | b, map(lambda x: _b09 << x, range(10, 16)), _imm)
+        _imm = int.from_bytes(struct.Struct('<H').pack(_imm), 'little', signed=True)
         if 0 == _imm:
             _impl = compressed_illegal_instruction
         else:
             _impl = c_addi16sp
+    else:
+        _b17         = (word >> 12) & 0b1
+        _b1615141312 = (word >> 2) & 0b1_1111
+        _imm = (_b17 << 17) | (_b1615141312 << 12)
+        _imm = functools.reduce(lambda a, b: a | b, map(lambda x: _b17 << x, range(18, 32)), _imm)
+        _imm = int.from_bytes(struct.Struct('<I').pack(_imm), 'little', signed=True)
+        if 0 == _imm:
+            _impl = compressed_illegal_instruction
+        else:
+            _impl = c_lui
     return _impl(word, imm=_imm)
 def compressed_quadrant_01_opcode_010(word):
     # 010 imm[5] rd̸=0 imm[4:0] 01 C.LI (HINT, rd=0)
@@ -383,16 +439,42 @@ def compressed_quadrant_01_opcode_111(word):
     _imm = functools.reduce(lambda a, b: a | b, map(lambda x: _b08 << x, range(9, 16)), _imm)
     _imm = int.from_bytes(struct.Struct('<H').pack(_imm), 'little', signed=True)
     return _impl(word, imm=_imm)
+def compressed_quadrant_01_rs1_prime_or_rd_prime(word):
+    # RVC     Register Number          000 001 010 011 100 101 110 111
+    # Integer Register Number           x8  x9 x10 x11 x12 x13 x14 x15
+    # Integer Register ABI Name         s0  s1  a0  a1  a2  a3  a4  a5
+    # Floating-Point Register Number    f8  f9 f10 f11 f12 f13 f14 f15
+    # Floating-Point Register ABI Name fs0 fs1 fa0 fa1 fa2 fa3 fa4 fa5
+    # Table 16.2: Registers specified by the three-bit rs1 ′, rs2 ′, and rd ′ fields of the CIW, CL, CS, CA,
+    # and CB formats; see: https://riscv.org/wp-content/uploads/2019/06/riscv-spec.pdf (p.98)
+    #
+    # see also: https://riscv.org/wp-content/uploads/2019/06/riscv-spec.pdf (p. 111)
+    return 8 + ((word >> 7) & 0b111)
+def compressed_quadrant_01_rs2_prime(word):
+    return 8 + ((word >> 2) & 0b111)
+
 def compressed_quadrant_10(word):
 #    print('compressed_quadrant_10({:04x})'.format(word))
     return {
+        0b000: compressed_quadrant_10_opcode_000,
         0b011: compressed_quadrant_10_opcode_011,
         0b100: compressed_quadrant_10_opcode_100,
         0b111: compressed_quadrant_10_opcode_111,
     }.get(compressed_opcode(word), compressed_unimplemented_instruction)(word)
+def compressed_quadrant_10_opcode_000(word):
+    # 000 nzuimm[5] rs1/rd̸=0 nzuimm[4:0] 10 C.SLLI (HINT, rd=0; RV32 NSE, nzuimm[5]=1)
+    _impl = compressed_unimplemented_instruction
+    if 0 == compressed_rs1_or_rd(word):
+        pass
+    else:
+        _b05         = (word >> 12) & 0b1
+        _b0403020100 = (word >> 2) & 0b1_1111
+        _imm = (_b05 << 5) | _b0403020100
+        _impl = c_slli
+    return _impl(word, imm=_imm)
 def compressed_quadrant_10_opcode_011(word):
     _impl = compressed_unimplemented_instruction
-    if 0 == compressed_rs1_or_rd:
+    if 0 == compressed_rs1_or_rd(word):
         pass
     else:
         _impl = c_ldsp
@@ -427,15 +509,22 @@ def compressed_opcode(word):
 def compressed_rs1_or_rd(word):
     # https://riscv.org/wp-content/uploads/2019/06/riscv-spec.pdf (p. 111)
     return (word >> 7) & 0b1_1111
-def compressed_rs1_prime_or_rd_prime(word):
-    # https://riscv.org/wp-content/uploads/2019/06/riscv-spec.pdf (p. 111)
-    return (word >> 7) & 0b111
 def compressed_rs2(word):
     # https://riscv.org/wp-content/uploads/2019/06/riscv-spec.pdf (p. 111)
     return (word >> 2) & 0b1_1111
-def compressed_rs2_prime(word):
-    # https://riscv.org/wp-content/uploads/2019/06/riscv-spec.pdf (p. 111)
-    return (word >> 2) & 0b111
+#def compressed_rs1_prime_or_rd_prime(word):
+#    # RVC     Register Number          000 001 010 011 100 101 110 111
+#    # Integer Register Number           x8  x9 x10 x11 x12 x13 x14 x15
+#    # Integer Register ABI Name         s0  s1  a0  a1  a2  a3  a4  a5
+#    # Floating-Point Register Number    f8  f9 f10 f11 f12 f13 f14 f15
+#    # Floating-Point Register ABI Name fs0 fs1 fa0 fa1 fa2 fa3 fa4 fa5
+#    # Table 16.2: Registers specified by the three-bit rs1 ′, rs2 ′, and rd ′ fields of the CIW, CL, CS, CA,
+#    # and CB formats; see: https://riscv.org/wp-content/uploads/2019/06/riscv-spec.pdf (p.98)
+#    # see also: https://riscv.org/wp-content/uploads/2019/06/riscv-spec.pdf (p. 111)
+#    return (word >> 7) & 0b111
+#def compressed_rs2_prime(word):
+#    # https://riscv.org/wp-content/uploads/2019/06/riscv-spec.pdf (p. 111)
+#    return (word >> 2) & 0b111
 
 def compressed_imm6(word, **kwargs):
     # nzimm[5] 00000 nzimm[4:0]
@@ -539,6 +628,9 @@ def uncompressed_imm32(word, **kwargs):
     # imm[31:12] rrrrr ooooooo
     # https://riscv.org/wp-content/uploads/2019/06/riscv-spec.pdf (p. 130)
     _retval = word & 0b1111_1111_1111_1111_1111_0000_0000_0000
+#    _retval = (word >> 12) & 0b1111_1111_1111_1111_1111
+#    return _retval
+#    return int.from_bytes(struct.Struct('<I').pack(_retval << 12), 'little', **kwargs)
     return int.from_bytes(struct.Struct('<I').pack(_retval), 'little', **kwargs)
 def uncompressed_funct3(word):
     # https://riscv.org/wp-content/uploads/2019/06/riscv-spec.pdf (p. 130)
