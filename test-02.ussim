@@ -1,8 +1,9 @@
 # Sample μService-SIMulator script
 cycle
-loadbin samples/bin/test 0x40000000 /tmp/mainmem.raw    # samples/load bin/test binary to @0x40000000
-register set 2 0x80000000                               # set stack pointer (x2) to @0x80000000
-push 5                                                  # push the parameter 5... as a string... onto the stack
+loadbin /tmp/mainmem.raw 0x40000000 samples/bin/test    # samples/load bin/test binary to @0x40000000.0/LSB-generic/LSB-generic/baselib---libc-start-main-.html
+parameters /tmp/mainmem.raw 0x80000000 2 3 5 7 11       # set %sp to 0x80000000; place argc, argv **
+register set 10 0x0                                     # moved by _start into x15 to become rtld_fini;
+                                                        # see: https://refspecs.linuxbase.org/LSB_3.1
 run
 cycle
 state

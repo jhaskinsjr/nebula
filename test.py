@@ -165,7 +165,7 @@ class Harness:
         _script  = ['# μService-SIMulator test harness script']
         _script += ['loadbin {} 0x{:x} /tmp/mainmem.raw'.format(os.path.join(args.dir, 'obj', '{}.o'.format(test)), self._start_pc)]
         _script += ['register set 2 0x{:x}'.format(self._sp)]
-        _script += ['args max_instructions {}'.format(_n_instruction)]
+        _script += ['config max_instructions {}'.format(_n_instruction)]
         _script += ['run']
         _script += ['shutdown']
         with open(os.path.join(args.dir, 'test.ussim'), 'w+') as fp: fp.write('\n'.join(_script))

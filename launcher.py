@@ -114,7 +114,7 @@ def mainmem(connections, cmd, addr, size, data=None):
         },
         **({'data': integer(data)} if data else {}),
     }})
-def loadbin(binary, addr, mainmem_rawfile):
+def loadbin(mainmem_rawfile, addr, binary):
     print('loadbin(): {} @{} -> {}'.format(binary, addr, mainmem_rawfile))
     fd = os.open(mainmem_rawfile, os.O_RDWR | os.O_CREAT)
     os.ftruncate(fd, 0)
@@ -139,7 +139,15 @@ def loadbin(binary, addr, mainmem_rawfile):
         _retval += _start.entry.st_value - elffile.get_section_by_name('.text').header.sh_addr
     os.close(fd)
     return _retval
-def arguments(args, field, val):
+def parameters(mainmem_rawfile, sp, *args):
+    fd = os.open(mainmem_rawfile, os.O_RDWR)
+    os.lseek(fd, sp, os.SEEK_SET)
+    os.write(fd, len(args).to_bytes(8, 'little')) # argc
+    os.lseek(fd, 8, os.SEEK_CUR)
+    os.write(fd, bytes(' '.join(args), 'ascii'))
+    os.close(fd)
+    return sp
+def config(args, field, val):
     _output = 'args.{} : {}'.format(field, args.__getattribute__(field))
     if val:
         _val = val
@@ -150,8 +158,6 @@ def arguments(args, field, val):
         args.__setattr__(field, _val)
         _output += ' -> {}'.format(args.__getattribute__(field))
     print(_output)
-def push(val):
-    print('push(): @(%sp) <= {}'.format(val))
 def run(cycle, max_cycles, max_instructions):
     global state
     # {
@@ -241,11 +247,11 @@ if __name__ == '__main__':
                     'register': lambda x, y, z=None: register(state.get('connections'), x, y, z),
                     'mainmem': lambda w, x, y, z=None: mainmem(state.get('connections'), w, x, y, z),
                     'loadbin': lambda x, y, z: register(state.get('connections'), 'set', '%pc', hex(loadbin(x, int(y, 16), z))),
+                    'parameters': lambda x, y, *args: register(state.get('connections'), 'set', 2, hex(parameters(x, int(y, 16), *args))),
                     'cycle': lambda: print(state.get('cycle')),
                     'state': lambda: print(state),
-                    'args': lambda x, y=None: arguments(args, x, y),
+                    'config': lambda x, y=None: config(args, x, y),
                     'connections': lambda: print(state.get('connections')),
-                    'push': lambda x: push(x),
                 }.get(cmd, lambda : print('Unknown command!'))(*params)
     tx(state.get('connections'), 'bye')
     [th.join() for th in _services]
