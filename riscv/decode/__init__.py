@@ -337,7 +337,7 @@ def compressed_quadrant_00_opcode_011(word):
     # https://riscv.org/wp-content/uploads/2019/06/riscv-spec.pdf (p.110)
     _impl = c_ld
     _b0706   = (word >> 5) & 0b11
-    _b050403 = (word >> 8) & 0b111
+    _b050403 = (word >> 10) & 0b111
     _imm = (_b0706 << 6) | (_b050403 << 3)
     return _impl(word, imm=_imm)
 def compressed_quadrant_00_rs1_prime(word):
