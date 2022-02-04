@@ -12,7 +12,7 @@ def do_tick(service, state, results, events):
     for ev in filter(lambda x: x, map(lambda y: y.get('decode'), events)):
         _bytes = ev.get('bytes')
         state.get('buffer').extend(_bytes)
-#        service.tx({'info': 'buffer : {}'.format(list(map(lambda x: hex(x), state.get('buffer'))))})
+        service.tx({'info': 'buffer : {}'.format(list(map(lambda x: hex(x), state.get('buffer'))))})
         _decoded = riscv.decode.do_decode(state.get('buffer'), 1) # HACK: hard-coded max-instructions-to-decode of 1
 #        service.tx({'info': '_decoded : {}'.format(_decoded)})
         _bytes_decoded = sum(map(lambda x: x.get('size'), _decoded))

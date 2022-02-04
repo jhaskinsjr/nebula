@@ -4,7 +4,7 @@ import argparse
 import service
 
 JUMPS = ['JALR', 'JAL'] # needs to be incorporated into riscv module
-BRANCHES = [] # needs to ben incorporated into riscv module
+BRANCHES = ['BEQ', 'BNE', 'BLT', 'BGE', 'BLTU', 'BGEU'] # needs to ben incorporated into riscv module
 
 def do_tick(service, state, results, events):
     for pc in map(lambda w: w.get('data'), filter(lambda x: x and '%pc' == x.get('name'), map(lambda y: y.get('register'), results))):

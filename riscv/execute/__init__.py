@@ -1,6 +1,6 @@
 def auipc(pc, imm): return imm + pc
-def jal(pc, imm): return (imm + pc, 4 + pc) # next_pc, ret_pc
-def jalr(pc, imm, rs1): return (imm + rs1, 4 + pc) # next_pc, ret_pc
+def jal(pc, imm, sz): return (imm + pc, sz + pc) # next_pc, ret_pc
+def jalr(pc, imm, rs1, sz): return (imm + rs1, sz + pc) # next_pc, ret_pc
 def addi(rs1, imm): return imm + rs1
 def add(rs1, rs2): return rs1 + rs2
 #def andi(rs1, imm): return imm & rs1
@@ -18,5 +18,21 @@ def slli(rs1, shamt):
     _retval &= 2**64 - 1
     _retval  = int.from_bytes(_retval.to_bytes(8, 'little'), 'little')
     return _retval
-def beq(pc, rs1, rs2, imm): return (imm + pc if rs1 == rs2 else 4 + pc)
-def bne(pc, rs1, rs2, imm): return (imm + pc if rs1 != rs2 else 4 + pc)
+def beq(pc, rs1, rs2, imm, sz): return (imm + pc if rs1 == rs2 else sz + pc)
+def bne(pc, rs1, rs2, imm, sz):
+    print('bne(): pc  : {}'.format(pc))
+    print('bne(): rs1 : {}'.format(rs1))
+    print('bne(): rs2 : {}'.format(rs2))
+    _retval = (imm + pc if rs1 != rs2 else sz + pc)
+    print('bne(): _retval : {}'.format(_retval))
+    return _retval
+def blt(pc, rs1, rs2, imm, sz): return (imm + pc if rs1 <  rs2 else sz + pc)
+def bge(pc, rs1, rs2, imm, sz): return (imm + pc if rs1 >= rs2 else sz + pc)
+def bltu(pc, rs1, rs2, imm, sz):
+    _rs1 = int.from_bytes(rs1.to_bytes(8, 'little', signed=True), 'little')
+    _rs2 = int.from_bytes(rs2.to_bytes(8, 'little', signed=True), 'little')
+    return (imm + pc if _rs1 < _rs2 else sz + pc)
+def bgeu(pc, rs1, rs2, imm, sz):
+    _rs1 = int.from_bytes(rs1.to_bytes(8, 'little', signed=True), 'little')
+    _rs2 = int.from_bytes(rs2.to_bytes(8, 'little', signed=True), 'little')
+    return (imm + pc if _rs1 >= _rs2 else sz + pc)

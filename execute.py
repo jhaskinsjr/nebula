@@ -42,7 +42,7 @@ def do_auipc(service, state, insn):
     state.update({'operands': {}})
     state.update({'pending_execute': None})
 def do_jal(service, state, insn):
-    _next_pc, _ret_pc = riscv.execute.jal(state.get('%pc'), insn.get('imm'))
+    _next_pc, _ret_pc = riscv.execute.jal(state.get('%pc'), insn.get('imm'), insn.get('size'))
     service.tx({'event': {
         'arrival': 1 + state.get('cycle'),
         'register': {
@@ -76,7 +76,7 @@ def do_jalr(service, state, insn):
         }})
     if not isinstance(state.get('operands').get('rs1'), int):
         return
-    _next_pc, _ret_pc = riscv.execute.jalr(state.get('%pc'), insn.get('imm'), state.get('operands').get('rs1'))
+    _next_pc, _ret_pc = riscv.execute.jalr(state.get('%pc'), insn.get('imm'), state.get('operands').get('rs1'), insn.get('size'))
     service.tx({'event': {
         'arrival': 1 + state.get('cycle'),
         'register': {
@@ -124,7 +124,11 @@ def do_branch(service, state, insn):
     _next_pc = {
         'BEQ': riscv.execute.beq,
         'BNE': riscv.execute.bne,
-    }.get(insn.get('cmd'))(state.get('%pc'), state.get('operands').get('rs1'), state.get('operands').get('rs2'), insn.get('imm'))
+        'BLT': riscv.execute.blt,
+        'BGE': riscv.execute.bge,
+        'BLTU': riscv.execute.bltu,
+        'BGEU': riscv.execute.bgeu,
+    }.get(insn.get('cmd'))(state.get('%pc'), state.get('operands').get('rs1'), state.get('operands').get('rs2'), insn.get('imm'), insn.get('size'))
     service.tx({'event': {
         'arrival': 1 + state.get('cycle'),
         'register': {
@@ -348,6 +352,12 @@ def do_execute(service, state):
             'SD': do_sd,
             'NOP': do_nop,
             'SLLI': do_slli,
+            'BEQ': do_branch,
+            'BNE': do_branch,
+            'BLT': do_branch,
+            'BGE': do_branch,
+            'BLTU': do_branch,
+            'BGEU': do_branch,
         }.get(insn.get('cmd'), do_unimplemented)(service, state, insn)
 def do_complete(service, state, insns): # finished the work of the instruction, but will not necessarily be committed
     service.tx({'event': {

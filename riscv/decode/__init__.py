@@ -47,7 +47,7 @@ def c_bnez(word, **kwargs):
     # the value in register rs1' is zero. It expands to
     # beq rs1', x0, offset[8:1].
     return {
-        'cmd': 'BEQ',
+        'cmd': 'BNE',
         'imm': kwargs.get('imm'),
         'rs1': compressed_quadrant_01_rs1_prime_or_rd_prime(word),
         'rs2': 0,
@@ -359,6 +359,7 @@ def compressed_quadrant_01(word):
         0b000: compressed_quadrant_01_opcode_000,
         0b010: compressed_quadrant_01_opcode_010,
         0b011: compressed_quadrant_01_opcode_011,
+        0b110: compressed_quadrant_01_opcode_110,
         0b111: compressed_quadrant_01_opcode_111,
     }.get(compressed_opcode(word), compressed_unimplemented_instruction)(word)
 def compressed_quadrant_01_opcode_000(word):
@@ -373,6 +374,19 @@ def compressed_quadrant_01_opcode_000(word):
         _impl = c_addi
     else:
         _impl = c_nop
+    return _impl(word, imm=_imm)
+def compressed_quadrant_01_opcode_010(word):
+    # 010 imm[5] rd̸=0 imm[4:0] 01 C.LI (HINT, rd=0)
+    _impl = compressed_unimplemented_instruction
+    _b0403020100 = (word >> 2) & 0b1_1111
+    _b05         = (word >> 12) & 0b1
+    _imm = (_b05 << 5) | _b0403020100
+    _imm = functools.reduce(lambda a, b: a | b, map(lambda x: _b05 << x, range(6, 16)), _imm)
+    _imm = int.from_bytes(struct.Struct('<H').pack(_imm), 'little', signed=True)
+    if 0 == compressed_rs1_or_rd(word):
+        _impl = compressed_illegal_instruction
+    else:
+        _impl = c_li
     return _impl(word, imm=_imm)
 def compressed_quadrant_01_opcode_011(word):
     # 011 nzimm[9] 2 nzimm[4|6|8:7|5] 01 C.ADDI16SP (RES, nzimm=0) (p.111)
@@ -402,39 +416,28 @@ def compressed_quadrant_01_opcode_011(word):
         else:
             _impl = c_lui
     return _impl(word, imm=_imm)
-def compressed_quadrant_01_opcode_010(word):
-    # 010 imm[5] rd̸=0 imm[4:0] 01 C.LI (HINT, rd=0)
-    _impl = compressed_unimplemented_instruction
-    _b0403020100 = (word >> 2) & 0b1_1111
-    _b05         = (word >> 12) & 0b1
-    _imm = (_b05 << 5) | _b0403020100
-    _imm = functools.reduce(lambda a, b: a | b, map(lambda x: _b05 << x, range(6, 16)), _imm)
-    _imm = int.from_bytes(struct.Struct('<H').pack(_imm), 'little', signed=True)
-    if 0 == compressed_rs1_or_rd(word):
-        _impl = compressed_illegal_instruction
-    else:
-        _impl = c_li
-    return _impl(word, imm=_imm)
 def compressed_quadrant_01_opcode_110(word):
     # 110 imm[8|4:3] rs1 ′ imm[7:6|2:1|5] 01 C.BEQZ
+    # https://riscv.org/wp-content/uploads/2019/06/riscv-spec.pdf (p.111)
     _impl = c_beqz
     _b05   = (word >> 2) & 0b1
-    _b0201 = (word >> 4) & 0b11
-    _b0706 = (word >> 6) & 0b11
-    _b0403 = (word >> 9) & 0b11
-    _b08   = (word >> 11) & 0b1
+    _b0201 = (word >> 3) & 0b11
+    _b0706 = (word >> 5) & 0b11
+    _b0403 = (word >> 10) & 0b11
+    _b08   = (word >> 12) & 0b1
     _imm = (_b08 << 8) | (_b0706 << 6) | (_b05 << 5) | (_b0403 << 3) | (_b0201 << 1)
     _imm = functools.reduce(lambda a, b: a | b, map(lambda x: _b08 << x, range(9, 16)), _imm)
     _imm = int.from_bytes(struct.Struct('<H').pack(_imm), 'little', signed=True)
     return _impl(word, imm=_imm)
 def compressed_quadrant_01_opcode_111(word):
     # 111 imm[8|4:3] rs1 ′ imm[7:6|2:1|5] 01 C.BNEZ
+    # https://riscv.org/wp-content/uploads/2019/06/riscv-spec.pdf (p.111)
     _impl = c_bnez
     _b05   = (word >> 2) & 0b1
-    _b0201 = (word >> 4) & 0b11
-    _b0706 = (word >> 6) & 0b11
-    _b0403 = (word >> 9) & 0b11
-    _b08   = (word >> 11) & 0b1
+    _b0201 = (word >> 3) & 0b11
+    _b0706 = (word >> 5) & 0b11
+    _b0403 = (word >> 10) & 0b11
+    _b08   = (word >> 12) & 0b1
     _imm = (_b08 << 8) | (_b0706 << 6) | (_b05 << 5) | (_b0403 << 3) | (_b0201 << 1)
     _imm = functools.reduce(lambda a, b: a | b, map(lambda x: _b08 << x, range(9, 16)), _imm)
     _imm = int.from_bytes(struct.Struct('<H').pack(_imm), 'little', signed=True)
