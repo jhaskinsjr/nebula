@@ -297,6 +297,16 @@ def b_type(word):
         'word': word,
         'size': 4,
     }
+def load(word):
+    return {
+        'cmd': 'LD',
+        'imm': uncompressed_load_imm12(word, signed=True),
+        'rs1': uncompressed_rs1(word),
+        'rd': uncompressed_rd(word),
+        'nbytes': 8,
+        'word': word,
+        'size': 4,
+    }
 def store(word):
     return {
         'cmd': 'SD',
@@ -615,6 +625,7 @@ def uncompressed_illegal_instruction(word, **kwargs):
     assert False, 'Illegal instruction ({:08x})!'.format(word)
 def decode_uncompressed(word):
     return {
+        0b000_0011: load,
         0b011_0111: lui,
         0b001_0111: auipc,
         0b110_1111: jal,
@@ -670,6 +681,12 @@ def uncompressed_funct3(word):
     return (word >> 12) & 0b111
 def uncompressed_i_type_shamt(word):
     return (word >> 20) & 0b1_1111
+def uncompressed_load_imm12(word, **kwargs):
+    # imm[11:0] rs1 011 rd 0000011 LD
+    _b11 = (word >> 31) & 0b1
+    _retval = (word >> 20) & 0b1111_1111_1111
+    _retval = functools.reduce(lambda a, b: a | b, map(lambda x: _b11 << x, range(12, 32)), _retval)
+    return int.from_bytes(struct.Struct('<I').pack(_retval), 'little', **kwargs)
 def uncompressed_store_imm12(word, **kwargs):
     # imm[11:5] rs2 rs1 011 imm[4:0] 0100011 SD
     _b0403020100   = (word >> 7) & 0b1_1111
