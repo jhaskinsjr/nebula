@@ -44,14 +44,19 @@ def do_tick(service, state, results, events):
             }
         }})
     for completed in filter(lambda x: x, map(lambda y: y.get('complete'), events)):
-        assert completed.get('insns') == state.get('pending_execute'), '{} != {}'.format(completed.get('insns'), state.get('pending_execute'))
-#        service.tx({'info': 'completed : {}'.format(completed)})
+        _completed = {'insns': [{x: y for x, y in filter(lambda z: 'taken' not in z, a.items())} for a in completed.get('insns')]}
+        _pending = {'insns': [{x: y for x, y in filter(lambda z: 'taken' not in z, a.items())} for a in state.get('pending_execute')]}
+        service.tx({'info': 'completed  : {}'.format(completed)})
+        service.tx({'info': '_completed : {}'.format(_completed)})
+        service.tx({'info': '_pending   : {}'.format(_pending)})
+#        assert completed.get('insns') == state.get('pending_execute'), '{} != {}'.format(completed.get('insns'), state.get('pending_execute'))
+        assert _completed.get('insns') == _pending.get('insns'), '{} != {}'.format(completed.get('insns'), state.get('pending_execute'))
         _insns = completed.get('insns')
         _jumps = any(map(lambda a: a.get('cmd') in JUMPS, _insns))
-        _branches = any(map(lambda a: a.get('cmd') in BRANCHES, _insns))
+        _taken_branches = any(map(lambda a: a.get('cmd') in BRANCHES and a.get('taken'), _insns))
 #        service.tx({'info': '%jp : {}'.format(state.get('%jp'))})
 #        service.tx({'info': '%pc : {}'.format(state.get('%pc'))})
-        if not _jumps and not _branches:
+        if not _jumps and not _taken_branches:
             _pc = sum(map(lambda x: x.get('size'), completed.get('insns'))) + state.get('%pc')
             service.tx({'event': {
                 'arrival': 1 + state.get('cycle'),

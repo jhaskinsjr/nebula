@@ -49,6 +49,7 @@ def c_beqz(word, **kwargs):
         'imm': kwargs.get('imm'),
         'rs1': compressed_quadrant_01_rs1_prime_or_rd_prime(word),
         'rs2': 0,
+        'taken': None,
         'word': word,
         'size': 2,
     }
@@ -63,6 +64,7 @@ def c_bnez(word, **kwargs):
         'imm': kwargs.get('imm'),
         'rs1': compressed_quadrant_01_rs1_prime_or_rd_prime(word),
         'rs2': 0,
+        'taken': None,
         'word': word,
         'size': 2,
     }
@@ -294,6 +296,7 @@ def b_type(word):
         'rs1': uncompressed_rs1(word),
         'rs2': uncompressed_rs2(word),
         'imm': uncomprssed_b_type_imm13(word, signed=(False if _cmd.endswith('U') else True)),
+        'taken': None,
         'word': word,
         'size': 4,
     }

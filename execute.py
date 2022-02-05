@@ -129,6 +129,7 @@ def do_branch(service, state, insn):
         'BLTU': riscv.execute.bltu,
         'BGEU': riscv.execute.bgeu,
     }.get(insn.get('cmd'))(state.get('%pc'), state.get('operands').get('rs1'), state.get('operands').get('rs2'), insn.get('imm'), insn.get('size'))
+    insn.update({'taken': _next_pc != state.get('%pc') + insn.get('size')})
     service.tx({'event': {
         'arrival': 1 + state.get('cycle'),
         'register': {
