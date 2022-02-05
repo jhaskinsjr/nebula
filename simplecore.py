@@ -46,10 +46,9 @@ def do_tick(service, state, results, events):
     for completed in filter(lambda x: x, map(lambda y: y.get('complete'), events)):
         _completed = {'insns': [{x: y for x, y in filter(lambda z: 'taken' not in z, a.items())} for a in completed.get('insns')]}
         _pending = {'insns': [{x: y for x, y in filter(lambda z: 'taken' not in z, a.items())} for a in state.get('pending_execute')]}
-        service.tx({'info': 'completed  : {}'.format(completed)})
-        service.tx({'info': '_completed : {}'.format(_completed)})
-        service.tx({'info': '_pending   : {}'.format(_pending)})
-#        assert completed.get('insns') == state.get('pending_execute'), '{} != {}'.format(completed.get('insns'), state.get('pending_execute'))
+#        service.tx({'info': 'completed  : {}'.format(completed)})
+#        service.tx({'info': '_completed : {}'.format(_completed)})
+#        service.tx({'info': '_pending   : {}'.format(_pending)})
         assert _completed.get('insns') == _pending.get('insns'), '{} != {}'.format(completed.get('insns'), state.get('pending_execute'))
         _insns = completed.get('insns')
         _jumps = any(map(lambda a: a.get('cmd') in JUMPS, _insns))
