@@ -17,6 +17,18 @@ def uncompressed_unimplemented_instruction(word, **kwargs):
         'size': 4,
     }
 
+def c_j(word, **kwargs):
+    # C.J performs an unconditional control transfer. The offset is
+    # sign-extended and added to the pc to form the jump target address.
+    # C.J can therefore target a ±2 KiB range. C.J expands to jal x0,
+    # offset[11:1].
+    return {
+        'cmd': 'JAL',
+        'imm': kwargs.get('imm'),
+        'rd': 0,
+        'word': word,
+        'size': 2,
+    }
 def c_jr(word):
     return {
         'cmd': 'JALR',
@@ -359,6 +371,7 @@ def compressed_quadrant_01(word):
         0b000: compressed_quadrant_01_opcode_000,
         0b010: compressed_quadrant_01_opcode_010,
         0b011: compressed_quadrant_01_opcode_011,
+        0b101: compressed_quadrant_01_opcode_101,
         0b110: compressed_quadrant_01_opcode_110,
         0b111: compressed_quadrant_01_opcode_111,
     }.get(compressed_opcode(word), compressed_unimplemented_instruction)(word)
@@ -416,6 +429,22 @@ def compressed_quadrant_01_opcode_011(word):
         else:
             _impl = c_lui
     return _impl(word, imm=_imm)
+def compressed_quadrant_01_opcode_101(word):
+    # 101 imm[11|4|9:8|10|6|7|3:1|5] 01 C.J
+    # https://riscv.org/wp-content/uploads/2019/06/riscv-spec.pdf (p.111)
+    _impl = c_j
+    _b05     = (word >> 2) & 0b1
+    _b030201 = (word >> 3) & 0b111
+    _b07     = (word >> 6) & 0b1
+    _b06     = (word >> 7) & 0b1
+    _b10     = (word >> 8) & 0b1
+    _b0908   = (word >> 9) & 0b11
+    _b04     = (word >> 11) & 0b1
+    _b11     = (word >> 12) & 0b1
+    _imm = (_b11 << 11) | (_b10 << 10) | (_b0908 << 8) | (_b07 << 7) | (_b06 << 6) | (_b05 << 5) | (_b04 << 4) | (_b030201 << 1)
+    _imm = functools.reduce(lambda a, b: a | b, map(lambda x: _b11 << x, range(12, 16)), _imm)
+    _imm = int.from_bytes(struct.Struct('<H').pack(_imm), 'little', signed=True)
+    return _impl(word, imm=_imm)
 def compressed_quadrant_01_opcode_110(word):
     # 110 imm[8|4:3] rs1 ′ imm[7:6|2:1|5] 01 C.BEQZ
     # https://riscv.org/wp-content/uploads/2019/06/riscv-spec.pdf (p.111)
@@ -469,6 +498,7 @@ def compressed_quadrant_10_opcode_000(word):
     _impl = compressed_unimplemented_instruction
     if 0 == compressed_rs1_or_rd(word):
         pass
+        _imm = None
     else:
         _b05         = (word >> 12) & 0b1
         _b0403020100 = (word >> 2) & 0b1_1111
@@ -652,11 +682,12 @@ def uncompressed_store_imm12(word, **kwargs):
     return int.from_bytes(struct.Struct('<I').pack(_retval), 'little', **kwargs)
 def uncomprssed_b_type_imm13(word, **kwargs):
     # imm[12|10:5] rs2 rs1 000 imm[4:1|11] 1100011 BEQ
+    # imm[12|10:5] rs2 rs1 001 imm[4:1|11] 1100011 BNE
     # https://riscv.org/wp-content/uploads/2019/06/riscv-spec.pdf (p. 130)
-    _b12           = (word >> 31) & 0b1
-    _b100908070605 = (word >> 25) & 0b11_1111
-    _b04030201     = (word >> 9) & 0b1111
     _b11           = (word >> 7) & 0b1
+    _b04030201     = (word >> 8) & 0b1111
+    _b100908070605 = (word >> 25) & 0b11_1111
+    _b12           = (word >> 31) & 0b1
     _retval  = _b12 << 12
     _retval |= _b11 << 11
     _retval |= _b100908070605 << 5
