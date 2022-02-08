@@ -301,14 +301,31 @@ def b_type(word):
         'size': 4,
     }
 def load(word):
+    # imm[11:0] rs1 000 rd 0000011 LB
+    # imm[11:0] rs1 001 rd 0000011 LH
+    # imm[11:0] rs1 010 rd 0000011 LW
+    # imm[11:0] rs1 011 rd 0000011 LD
+    # imm[11:0] rs1 100 rd 0000011 LBU
+    # imm[11:0] rs1 101 rd 0000011 LHU
+    # imm[11:0] rs1 110 rd 0000011 LWU
+    _variety = {
+        0b000: {'cmd': 'LB', 'nbytes': 1},
+        0b001: {'cmd': 'LH', 'nbytes': 2},
+        0b010: {'cmd': 'LW', 'nbytes': 4},
+        0b011: {'cmd': 'LD', 'nbytes': 8},
+        0b100: {'cmd': 'LBU', 'nbytes': 1},
+        0b101: {'cmd': 'LHU', 'nbytes': 2},
+        0b110: {'cmd': 'LWU', 'nbytes': 4},
+    }.get((word >> 12) & 0b111)
     return {
-        'cmd': 'LD',
-        'imm': uncompressed_load_imm12(word, signed=True),
-        'rs1': uncompressed_rs1(word),
-        'rd': uncompressed_rd(word),
-        'nbytes': 8,
-        'word': word,
-        'size': 4,
+        **_variety,
+        **{
+            'imm': uncompressed_load_imm12(word, signed=True),
+            'rs1': uncompressed_rs1(word),
+            'rd': uncompressed_rd(word),
+            'word': word,
+            'size': 4,
+        },
     }
 def store(word):
     return {

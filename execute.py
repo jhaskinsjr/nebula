@@ -1,5 +1,7 @@
 import sys
 import argparse
+import functools
+import struct
 
 import service
 import riscv.execute
@@ -204,7 +206,7 @@ def do_add(service, state, insn):
     do_commit(service, state, state.get('pending_execute'))
     state.update({'operands': {}})
     state.update({'pending_execute': None})
-def do_ld(service, state, insn):
+def do_load(service, state, insn):
     if not 'rs1' in state.get('operands'):
         state.get('operands').update({'rs1': '%{}'.format(insn.get('rs1'))})
         service.tx({'event': {
@@ -228,12 +230,25 @@ def do_ld(service, state, insn):
         }})
     if not isinstance(state.get('operands').get('mem'), list):
         return
+    _data = int.from_bytes(state.get('operands').get('mem'), 'little')
+    if insn.get('cmd') == 'LW':
+        _msb = (_data >> 31) & 0b1
+        _data = functools.reduce(lambda a, b: a | b, map(lambda x: _msb << x, range(32, 64)), _data)
+        _data = int.from_bytes(struct.Struct('<Q').pack(_data), 'little', signed=True)
+    elif insn.get('cmd') == 'LH':
+        _msb = (_data >> 15) & 0b1
+        _data = functools.reduce(lambda a, b: a | b, map(lambda x: _msb << x, range(16, 64)), _data)
+        _data = int.from_bytes(struct.Struct('<Q').pack(_data), 'little', signed=True)
+    elif insn.get('cmd') == 'LB':
+        _msb = (_data >> 7) & 0b1
+        _data = functools.reduce(lambda a, b: a | b, map(lambda x: _msb << x, range(8, 64)), _data)
+        _data = int.from_bytes(struct.Struct('<Q').pack(_data), 'little', signed=True)
     service.tx({'event': {
         'arrival': 1 + state.get('cycle'),
         'register': {
             'cmd': 'set',
             'name': insn.get('rd'),
-            'data': int.from_bytes(state.get('operands').get('mem'), 'little'),
+            'data': _data,
         }
     }})
     do_complete(service, state, state.get('pending_execute'))
@@ -348,7 +363,13 @@ def do_execute(service, state):
             'JALR': do_jalr,
             'ADDI': do_addi,
             'ADD': do_add,
-            'LD': do_ld,
+            'LD': do_load,
+            'LW': do_load,
+            'LH': do_load,
+            'LB': do_load,
+            'LWU': do_load,
+            'LHU': do_load,
+            'LBU': do_load,
             'ANDI': do_andi,
             'SD': do_sd,
             'NOP': do_nop,
