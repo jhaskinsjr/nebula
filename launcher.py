@@ -38,6 +38,11 @@ def handler(conn, addr):
                 state.get('connections').remove(conn)
                 state.get('lock').release()
                 break
+            elif 'undefined' == k:
+#                assert False
+                state.get('lock').acquire()
+                state.update({'undefined': v})
+                state.get('lock').release()
             elif 'committed' == k:
                 state.get('lock').acquire()
                 state.update({'instructions_committed': 1 + state.get('instructions_committed')})
@@ -158,7 +163,7 @@ def config(args, field, val):
         args.__setattr__(field, _val)
         _output += ' -> {}'.format(args.__getattribute__(field))
     print(_output)
-def run(cycle, max_cycles, max_instructions):
+def run(cycle, max_cycles, max_instructions, break_on_undefined):
     global state
     # {
     #   'tick': {
@@ -170,7 +175,9 @@ def run(cycle, max_cycles, max_instructions):
     state.get('lock').acquire()
     tx(state.get('connections'), 'run')
     state.get('lock').release()
-    while (cycle < max_cycles if max_cycles else True) and (state.get('instructions_committed') < max_instructions if max_instructions else True):
+    while (cycle < max_cycles if max_cycles else True) and \
+          (state.get('instructions_committed') < max_instructions if max_instructions else True) and \
+          (None == state.get('undefined') if break_on_undefined else True):
         state.get('lock').acquire()
         print('run(): @{:8} futures  : {}'.format(cycle, state.get('futures')))
         cycle = (min(state.get('futures').keys()) if len(state.get('futures').keys()) else 1 + cycle)
@@ -191,6 +198,7 @@ def run(cycle, max_cycles, max_instructions):
 if __name__ == '__main__':
     parser = argparse.ArgumentParser(description='μService-SIMulator')
     parser.add_argument('--debug', '-D', dest='debug', action='store_true', help='print debug messages')
+    parser.add_argument('--break_on_undefined', '-B', dest='break_on_undefined', action='store_true', help='cease execution on undefined instruction')
     parser.add_argument('--services', dest='services', nargs='+', help='code:host')
     parser.add_argument('--max_cycles', type=int, dest='max_cycles', default=None, help='maximum number of cycles to run for')
     parser.add_argument('--max_instructions', type=int, dest='max_instructions', default=None, help='maximum number of instructions to execute')
@@ -211,6 +219,7 @@ if __name__ == '__main__':
         'running': False,
         'cycle': 0,
         'instructions_committed': 0,
+        'undefined': None,
     }
     threading.Thread(target=acceptor, daemon=True).start()
     _services = [
@@ -240,7 +249,7 @@ if __name__ == '__main__':
                 })
             elif 'run' == cmd:
                 state.update({'running': True})
-                state.update({'cycle': run(state.get('cycle'), args.max_cycles, args.max_instructions)})
+                state.update({'cycle': run(state.get('cycle'), args.max_cycles, args.max_instructions, args.break_on_undefined)})
                 state.update({'running': False})
             else:
                 {

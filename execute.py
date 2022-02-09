@@ -8,6 +8,7 @@ import riscv.execute
 
 def do_unimplemented(service, state, insn):
 #    print('Unimplemented: {}'.format(state.get('pending_execute')))
+    service.tx({'undefined': insn})
     do_complete(service, state, state.get('pending_execute'))
     do_confirm(service, state, state.get('pending_execute'))
     do_commit(service, state, state.get('pending_execute'))
