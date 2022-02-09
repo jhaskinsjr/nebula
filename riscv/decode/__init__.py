@@ -103,9 +103,10 @@ def c_ldsp(word):
     #
     # 011 uimm[5] rd̸=0 uimm[4:3|8:6] 10 C.LDSP (RV64/128; RES, rd=0);
     # see: https://riscv.org/wp-content/uploads/2019/06/riscv-spec.pdf (p.111)
-    _b0403   = (word >> 5) & 0b11
     _b080706 = (word >> 2) & 0b111
-    _imm = ((_b080706 << 3) | _b0403) << 3
+    _b0403   = (word >> 5) & 0b11
+    _b05     = (word >> 13) & 0b1
+    _imm = (_b080706 << 6) | (_b05 << 5) | (_b0403 << 3)
     return {
         'cmd': 'LD',
         'rs1': 2,
@@ -297,6 +298,36 @@ def b_type(word):
         'rs2': uncompressed_rs2(word),
         'imm': uncomprssed_b_type_imm13(word, signed=(False if _cmd.endswith('U') else True)),
         'taken': None,
+        'word': word,
+        'size': 4,
+    }
+def r_type(word):
+    # 0000000 rs2 rs1 000 rd 0110011 ADD
+    # 0100000 rs2 rs1 000 rd 0110011 SUB
+    # 0000000 rs2 rs1 001 rd 0110011 SLL
+    # 0000000 rs2 rs1 010 rd 0110011 SLT
+    # 0000000 rs2 rs1 011 rd 0110011 SLTU
+    # 0000000 rs2 rs1 100 rd 0110011 XOR
+    # 0000000 rs2 rs1 101 rd 0110011 SRL
+    # 0100000 rs2 rs1 101 rd 0110011 SRA
+    # 0000000 rs2 rs1 110 rd 0110011 OR
+    # 0000000 rs2 rs1 111 rd 0110011 AND
+    # 0000000 rs2 rs1 000 rd 0111011 ADDW
+    # 0100000 rs2 rs1 000 rd 0111011 SUBW
+    # 0000000 rs2 rs1 001 rd 0111011 SLLW
+    # 0000000 rs2 rs1 101 rd 0111011 SRLW
+    # 0100000 rs2 rs1 101 rd 0111011 SRAW
+    # see: 
+    # https://riscv.org/wp-content/uploads/2019/06/riscv-spec.pdf (p.130, 131)
+    _cmds = {
+        (0b000_0000, 0b000): 'ADD',
+    }
+    _cmd = _cmds.get((uncompressed_funct7(word), uncompressed_funct3(word)), 'Undefined')
+    return {
+        'cmd': _cmd,
+        'rs1': uncompressed_rs1(word),
+        'rs2': uncompressed_rs2(word),
+        'rd': uncompressed_rd(word),
         'word': word,
         'size': 4,
     }
@@ -559,6 +590,8 @@ def compressed_quadrant_10_opcode_100(word):
             pass
     return _impl(word)
 def compressed_quadrant_10_opcode_111(word):
+    # 111 uimm[5:3|8:6] rs2 10 C.SDSP (RV64/128
+    # https://riscv.org/wp-content/uploads/2019/06/riscv-spec.pdf (p.111)
     _impl = c_sdsp
     _b080706 = (word >> 7) & 0b111
     _b050403 = (word >> 10) & 0b111
@@ -652,6 +685,7 @@ def decode_uncompressed(word):
         0b010_0011: store,
         0b001_0011: i_type,
         0b110_0011: b_type,
+        0b011_0011: r_type,
     }.get(uncompressed_opcode(word), uncompressed_unimplemented_instruction)(word)
 
 def uncompressed_opcode(word):
@@ -700,8 +734,11 @@ def uncompressed_imm32(word, **kwargs):
 #    return _retval
 #    return int.from_bytes(struct.Struct('<I').pack(_retval << 12), 'little', **kwargs)
     return int.from_bytes(struct.Struct('<I').pack(_retval), 'little', **kwargs)
+def uncompressed_funct7(word):
+    # https://riscv.org/wp-content/uploads/2019/06/riscv-spec.pdf (p. 16)
+    return (word >> 25) & 0b111_1111
 def uncompressed_funct3(word):
-    # https://riscv.org/wp-content/uploads/2019/06/riscv-spec.pdf (p. 130)
+    # https://riscv.org/wp-content/uploads/2019/06/riscv-spec.pdf (p. 16)
     return (word >> 12) & 0b111
 def uncompressed_i_type_shamt(word):
     return (word >> 20) & 0b1_1111
