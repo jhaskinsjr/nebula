@@ -5,6 +5,7 @@ import json
 import argparse
 import threading
 import subprocess
+import itertools
 
 import elftools.elf.elffile
 
@@ -119,7 +120,7 @@ def mainmem(connections, cmd, addr, size, data=None):
         },
         **({'data': integer(data)} if data else {}),
     }})
-def loadbin(mainmem_rawfile, addr, binary):
+def loadbin_0(mainmem_rawfile, addr, binary):
     print('loadbin(): {} @{} -> {}'.format(binary, addr, mainmem_rawfile))
     fd = os.open(mainmem_rawfile, os.O_RDWR | os.O_CREAT)
     os.ftruncate(fd, 0)
@@ -144,14 +145,60 @@ def loadbin(mainmem_rawfile, addr, binary):
         _retval += _start.entry.st_value - elffile.get_section_by_name('.text').header.sh_addr
     os.close(fd)
     return _retval
-def parameters(mainmem_rawfile, sp, *args):
-    fd = os.open(mainmem_rawfile, os.O_RDWR)
+def loadbin(connections, mainmem_rawfile, sp, pc, binary, *args):
+    fd = os.open(mainmem_rawfile, os.O_RDWR | os.O_CREAT)
+    os.ftruncate(fd, 0)
+    os.ftruncate(fd, 2**32) # HACK: hard-wired memory size is dumb, but I don't want to focus on that right now
+    _start_pc = pc
+    with open(binary, 'rb') as fp:
+        elffile = elftools.elf.elffile.ELFFile(fp)
+        _addr = pc
+        for section in map(lambda n: elffile.get_section_by_name(n), ['.text', '.data', '.rodata', '.bss']):
+            if not section: continue
+            print('{} : 0x{:08x} ({})'.format(section.name, _addr, section.data_size))
+            os.lseek(fd, _addr, os.SEEK_SET)
+            os.write(fd, section.data())
+            _addr += section.data_size
+            _addr += 0x10000
+            _addr |= 0xffff
+            _addr ^= 0xffff
+        _symbol_tables = [s for s in elffile.iter_sections() if isinstance(s, elftools.elf.elffile.SymbolTableSection)]
+        _start = sum([list(filter(lambda s: '_start' == s.name, tab.iter_symbols())) for tab in _symbol_tables], [])
+        assert 0 < len(_start), 'No _start symbol!'
+        assert 2 > len(_start), 'More than one _start symbol?!?!?!?'
+        _start = next(iter(_start))
+        _start_pc += _start.entry.st_value - elffile.get_section_by_name('.text').header.sh_addr
+    # The value of the argc argument is the number of command line
+    # arguments. The argv argument is a vector of C strings; its elements
+    # are the individual command line argument strings. The file name of
+    # the program being run is also included in the vector as the first
+    # element; the value of argc counts this element. A null pointer
+    # always follows the last element: argv[argc] is this null pointer.
+    #
+    # For the command ‘cat foo bar’, argc is 3 and argv has three
+    # elements, "cat", "foo" and "bar". 
+    #
+    # https://www.gnu.org/software/libc/manual/html_node/Program-Arguments.html
+    _argc = 1 + len(args)   # add 1 since binary name is argv[0]
+    _args = list(map(lambda a: '{}\0'.format(a), args))
+    _fp  = sp
+    _fp += 8                # 8 bytes for argc
+    _fp += 8 * len(_args)   # 8 bytes for each argv *
+    _addr = list(itertools.accumulate([_fp] + list(map(lambda a: len(a), _args))))
+    print('loadbin(): argc : {}'.format(_argc))
+    print('loadbin(): len(_args) : {}'.format(sum(map(lambda a: len(a), _args))))
+    for x, y in zip(_addr, _args):
+        print('loadbin(): @{:08x} : {} ({})'.format(x, y, len(y)))
     os.lseek(fd, sp, os.SEEK_SET)
-    os.write(fd, len(args).to_bytes(8, 'little')) # argc
+    os.write(fd, _argc.to_bytes(8, 'little')) # argc
     os.lseek(fd, 8, os.SEEK_CUR)
     os.write(fd, bytes(' '.join(args), 'ascii'))
     os.close(fd)
-    return sp
+    # 'parameters': lambda x, y, *args: register(state.get('connections'), 'set', 2, hex(parameters(x, int(y, 16), *args))),
+    # 'loadbin': lambda x, y, z: register(state.get('connections'), 'set', '%pc', hex(loadbin(x, int(y, 16), z))),
+    # return sp, _start_pc
+    register(connections, 'set', 2, hex(sp))
+    register(connections, 'set', '%pc', hex(_start_pc))
 def config(args, field, val):
     _output = 'args.{} : {}'.format(field, args.__getattribute__(field))
     if val:
@@ -255,8 +302,9 @@ if __name__ == '__main__':
                 {
                     'register': lambda x, y, z=None: register(state.get('connections'), x, y, z),
                     'mainmem': lambda w, x, y, z=None: mainmem(state.get('connections'), w, x, y, z),
-                    'loadbin': lambda x, y, z: register(state.get('connections'), 'set', '%pc', hex(loadbin(x, int(y, 16), z))),
-                    'parameters': lambda x, y, *args: register(state.get('connections'), 'set', 2, hex(parameters(x, int(y, 16), *args))),
+#                    'loadbin': lambda x, y, z: register(state.get('connections'), 'set', '%pc', hex(loadbin(x, int(y, 16), z))),
+#                    'parameters': lambda x, y, *args: register(state.get('connections'), 'set', 2, hex(parameters(x, int(y, 16), *args))),
+                    'loadbin': lambda w, x, y, z, *args: loadbin(state.get('connections'), w, integer(x), integer(y), z, *args),
                     'cycle': lambda: print(state.get('cycle')),
                     'state': lambda: print(state),
                     'config': lambda x, y=None: config(args, x, y),
