@@ -120,31 +120,6 @@ def mainmem(connections, cmd, addr, size, data=None):
         },
         **({'data': integer(data)} if data else {}),
     }})
-def loadbin_0(mainmem_rawfile, addr, binary):
-    print('loadbin(): {} @{} -> {}'.format(binary, addr, mainmem_rawfile))
-    fd = os.open(mainmem_rawfile, os.O_RDWR | os.O_CREAT)
-    os.ftruncate(fd, 0)
-    os.ftruncate(fd, 2**32) # HACK: hard-wired memory size is dumb, but I don't want to focus on that right now
-    _retval = addr
-    with open(binary, 'rb') as fp:
-        elffile = elftools.elf.elffile.ELFFile(fp)
-        _addr = addr
-        for section in map(lambda n: elffile.get_section_by_name(n), ['.text', '.data', '.rodata', '.bss']):
-            if not section: continue
-            print('{} : 0x{:08x} ({})'.format(section.name, _addr, section.data_size))
-            os.lseek(fd, _addr, os.SEEK_SET)
-            os.write(fd, section.data())
-            _addr += section.data_size
-            _addr += 0x10000
-            _addr |= 0xffff
-            _addr ^= 0xffff
-        _symbol_tables = [s for s in elffile.iter_sections() if isinstance(s, elftools.elf.elffile.SymbolTableSection)]
-        _start = sum([list(filter(lambda s: '_start' == s.name, tab.iter_symbols())) for tab in _symbol_tables], [])
-        assert 1 == len(_start), 'More than one _start symbol?!?!?!?'
-        _start = next(iter(_start))
-        _retval += _start.entry.st_value - elffile.get_section_by_name('.text').header.sh_addr
-    os.close(fd)
-    return _retval
 def loadbin(connections, mainmem_rawfile, sp, pc, binary, *args):
     fd = os.open(mainmem_rawfile, os.O_RDWR | os.O_CREAT)
     os.ftruncate(fd, 0)
@@ -194,9 +169,6 @@ def loadbin(connections, mainmem_rawfile, sp, pc, binary, *args):
     os.lseek(fd, 8, os.SEEK_CUR)
     os.write(fd, bytes(' '.join(args), 'ascii'))
     os.close(fd)
-    # 'parameters': lambda x, y, *args: register(state.get('connections'), 'set', 2, hex(parameters(x, int(y, 16), *args))),
-    # 'loadbin': lambda x, y, z: register(state.get('connections'), 'set', '%pc', hex(loadbin(x, int(y, 16), z))),
-    # return sp, _start_pc
     register(connections, 'set', 2, hex(sp))
     register(connections, 'set', '%pc', hex(_start_pc))
 def config(args, field, val):
@@ -302,8 +274,6 @@ if __name__ == '__main__':
                 {
                     'register': lambda x, y, z=None: register(state.get('connections'), x, y, z),
                     'mainmem': lambda w, x, y, z=None: mainmem(state.get('connections'), w, x, y, z),
-#                    'loadbin': lambda x, y, z: register(state.get('connections'), 'set', '%pc', hex(loadbin(x, int(y, 16), z))),
-#                    'parameters': lambda x, y, *args: register(state.get('connections'), 'set', 2, hex(parameters(x, int(y, 16), *args))),
                     'loadbin': lambda w, x, y, z, *args: loadbin(state.get('connections'), w, integer(x), integer(y), z, *args),
                     'cycle': lambda: print(state.get('cycle')),
                     'state': lambda: print(state),

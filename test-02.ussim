@@ -1,7 +1,10 @@
 # Sample μService-SIMulator script
 cycle
-loadbin /tmp/mainmem.raw 0x40000000 samples/bin/test    # samples/load bin/test binary to @0x40000000.0/LSB-generic/LSB-generic/baselib---libc-start-main-.html
-parameters /tmp/mainmem.raw 0x80000000 2 3 5 7 11       # set %sp to 0x80000000; place argc, argv **
+loadbin /tmp/mainmem.raw 0x80000000 0x40000000 samples/bin/test 2 3 5 7 11 13 
+                                                        # using /tmp/mainmem.raw as the main memory file,
+                                                        # set %sp to 0x80000000 and %pc to 0x40000000, then
+                                                        # load samples/bin/test, with command
+                                                        # line parameters "2 3 5 7 11 13
 register set 10 0x0                                     # moved by _start into x15 to become rtld_fini;
                                                         # see: https://refspecs.linuxbase.org/LSB_3.1
 run
