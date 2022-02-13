@@ -207,6 +207,41 @@ def do_add(service, state, insn):
     do_commit(service, state, state.get('pending_execute'))
     state.update({'operands': {}})
     state.update({'pending_execute': None})
+def do_sub(service, state, insn):
+    if not 'rs1' in state.get('operands'):
+        state.get('operands').update({'rs1': '%{}'.format(insn.get('rs1'))})
+        service.tx({'event': {
+            'arrival': 1 + state.get('cycle'),
+            'register': {
+                'cmd': 'get',
+                'name': insn.get('rs1'),
+            }
+        }})
+    if not 'rs2' in state.get('operands'):
+        state.get('operands').update({'rs2': '%{}'.format(insn.get('rs2'))})
+        service.tx({'event': {
+            'arrival': 1 + state.get('cycle'),
+            'register': {
+                'cmd': 'get',
+                'name': insn.get('rs2'),
+            }
+        }})
+    if not isinstance(state.get('operands').get('rs1'), int) or not isinstance(state.get('operands').get('rs2'), int):
+        return
+    _result = riscv.execute.sub(state.get('operands').get('rs1'), state.get('operands').get('rs2'))
+    service.tx({'event': {
+        'arrival': 1 + state.get('cycle'),
+        'register': {
+            'cmd': 'set',
+            'name': insn.get('rd'),
+            'data': _result,
+        }
+    }})
+    do_complete(service, state, state.get('pending_execute'))
+    do_confirm(service, state, state.get('pending_execute'))
+    do_commit(service, state, state.get('pending_execute'))
+    state.update({'operands': {}})
+    state.update({'pending_execute': None})
 def do_load(service, state, insn):
     if not 'rs1' in state.get('operands'):
         state.get('operands').update({'rs1': '%{}'.format(insn.get('rs1'))})
@@ -364,6 +399,7 @@ def do_execute(service, state):
             'JALR': do_jalr,
             'ADDI': do_addi,
             'ADD': do_add,
+            'SUB': do_sub,
             'LD': do_load,
             'LW': do_load,
             'LH': do_load,

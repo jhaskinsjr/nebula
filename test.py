@@ -19,6 +19,8 @@ class Harness:
             'slli': self.slli,
             'andi': self.andi,
             'addi': self.addi,
+            'add': self.add,
+            'sub': self.sub,
             'lui': self.lui,
             'auipc': self.auipc,
         }
@@ -130,6 +132,30 @@ class Harness:
         _assembly = ['addi x31, x0, {}'.format(_const)]
         _correct_answer = _const
         return _correct_answer, _assembly
+    def add(self):
+        _const_0 = random.randint(0, 2**20 - 1)
+        _assembly  = ['lui x29, {}'.format(_const_0)]
+        _const_0 <<= 12
+        _const_0 = int.from_bytes(struct.Struct('<I').pack(_const_0), 'little', signed=True)
+        _const_1 = random.randint(0, 2**20 - 1)
+        _assembly += ['lui x30, {}'.format(_const_1)]
+        _const_1 <<= 12
+        _const_1 = int.from_bytes(struct.Struct('<I').pack(_const_1), 'little', signed=True)
+        _assembly += ['add x31, x29, x30']
+        _correct_answer = _const_0 + _const_1
+        return _correct_answer, _assembly
+    def sub(self):
+        _const_0 = random.randint(0, 2**20 - 1)
+        _assembly  = ['lui x29, {}'.format(_const_0)]
+        _const_0 <<= 12
+        _const_0 = int.from_bytes(struct.Struct('<I').pack(_const_0), 'little', signed=True)
+        _const_1 = random.randint(0, 2**20 - 1)
+        _assembly += ['lui x30, {}'.format(_const_1)]
+        _const_1 <<= 12
+        _const_1 = int.from_bytes(struct.Struct('<I').pack(_const_1), 'little', signed=True)
+        _assembly += ['sub x31, x29, x30']
+        _correct_answer = _const_0 - _const_1
+        return _correct_answer, _assembly
     def lui(self):
         _const = random.randint(0, 2**20 - 1)
 #        _const = 2**3
@@ -163,7 +189,7 @@ class Harness:
             os.path.join(args.dir, 'src', '{}.s'.format(test))
         ).split())
         _script  = ['# μService-SIMulator test harness script']
-        _script += ['loadbin {} 0x{:x} /tmp/mainmem.raw'.format(os.path.join(args.dir, 'obj', '{}.o'.format(test)), self._start_pc)]
+        _script += ['loadbin /tmp/mainmem.raw 0x{:08x} 0x{:08x} {}'.format(self._sp, self._start_pc, os.path.join(args.dir, 'obj', '{}.o'.format(test)))]
         _script += ['register set 2 0x{:x}'.format(self._sp)]
         _script += ['config max_instructions {}'.format(_n_instruction)]
         _script += ['run']
@@ -220,7 +246,7 @@ if __name__ == '__main__':
     if not os.path.exists(os.path.join(args.dir, 'obj')): os.mkdir(os.path.join(args.dir, 'obj'))
     if args.debug: print('args : {}'.format(args))
     _harness = Harness()
-    [_harness.generate(args, n) for n in _harness.tests.keys()]
+#    [_harness.generate(args, n) for n in _harness.tests.keys()]
 #    _harness.generate(args, 'c.lui')
 #    _harness.generate(args, 'c.add')
 #    _harness.generate(args, 'c.addi16sp')
@@ -231,5 +257,7 @@ if __name__ == '__main__':
 #    _harness.generate(args, 'slli')
 #    _harness.generate(args, 'andi')
 #    _harness.generate(args, 'addi')
+#    _harness.generate(args, 'add')
+    _harness.generate(args, 'sub')
 #    _harness.generate(args, 'lui')
 #    _harness.generate(args, 'auipc')

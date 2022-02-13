@@ -321,6 +321,7 @@ def r_type(word):
     # https://riscv.org/wp-content/uploads/2019/06/riscv-spec.pdf (p.130, 131)
     _cmds = {
         (0b000_0000, 0b000): 'ADD',
+        (0b010_0000, 0b000): 'SUB',
     }
     _cmd = _cmds.get((uncompressed_funct7(word), uncompressed_funct3(word)), 'Undefined')
     return {

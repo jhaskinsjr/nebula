@@ -3,6 +3,7 @@ def jal(pc, imm, sz): return (imm + pc, sz + pc) # next_pc, ret_pc
 def jalr(pc, imm, rs1, sz): return (imm + rs1, sz + pc) # next_pc, ret_pc
 def addi(rs1, imm): return imm + rs1
 def add(rs1, rs2): return rs1 + rs2
+def sub(rs1, rs2): return rs1 - rs2
 #def andi(rs1, imm): return imm & rs1
 def andi(rs1, imm):
 #    print('andi(): rs1 : {}'.format(list(map(lambda x: '{:08b}'.format(x), rs1.to_bytes(8, 'little', signed=True)))))
