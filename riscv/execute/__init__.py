@@ -1,3 +1,5 @@
+import functools
+
 def auipc(pc, imm): return imm + pc
 def jal(pc, imm, sz): return (imm + pc, sz + pc) # next_pc, ret_pc
 def jalr(pc, imm, rs1, sz): return (imm + rs1, sz + pc) # next_pc, ret_pc
@@ -18,6 +20,18 @@ def slli(rs1, shamt):
     _retval  = int.from_bytes(rs1.to_bytes(8, 'little', signed=True), 'little') << shamt
     _retval &= 2**64 - 1
     _retval  = int.from_bytes(_retval.to_bytes(8, 'little'), 'little')
+    return _retval
+def srli(rs1, shamt):
+    _mask = ((2 ** shamt) - 1) << (64 - shamt)
+    _retval  = srai(rs1, shamt)
+    _retval |= _mask
+    _retval ^= _mask
+    return _retval
+def srai(rs1, shamt):
+    _retval  = int.from_bytes(rs1.to_bytes(8, 'little', signed=True), 'little') >> shamt
+    _msbs = (((2 ** shamt) - 1) << (64 - shamt) if ((rs1 >> 63) & 0b1) else 0)
+    _retval |= _msbs
+#    _retval  = int.from_bytes(_retval.to_bytes(8, 'little'), 'little')
     return _retval
 def beq(pc, rs1, rs2, imm, sz): return (imm + pc if rs1 == rs2 else sz + pc)
 def bne(pc, rs1, rs2, imm, sz):

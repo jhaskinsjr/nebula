@@ -359,7 +359,7 @@ def do_nop(service, state, insn):
     do_complete(service, state, state.get('pending_execute'))
     do_confirm(service, state, state.get('pending_execute'))
     do_commit(service, state, state.get('pending_execute'))
-def do_slli(service, state, insn):
+def do_shift(service, state, insn):
     if not 'rs1' in state.get('operands'):
         state.get('operands').update({'rs1': '%{}'.format(insn.get('rs1'))})
         service.tx({'event': {
@@ -371,7 +371,13 @@ def do_slli(service, state, insn):
         }})
     if not isinstance(state.get('operands').get('rs1'), int):
         return
-    _result = riscv.execute.slli(state.get('operands').get('rs1'), insn.get('shamt'))
+    _rs1 = state.get('operands').get('rs1')
+    _shamt = insn.get('shamt')
+    _result = {
+        'SLLI': riscv.execute.slli(_rs1, _shamt),
+        'SRLI': riscv.execute.srli(_rs1, _shamt),
+        'SRAI': riscv.execute.srai(_rs1, _shamt),
+    }.get(insn.get('cmd'))
     service.tx({'event': {
         'arrival': 1 + state.get('cycle'),
         'register': {
@@ -410,7 +416,9 @@ def do_execute(service, state):
             'ANDI': do_andi,
             'SD': do_sd,
             'NOP': do_nop,
-            'SLLI': do_slli,
+            'SLLI': do_shift,
+            'SRLI': do_shift,
+            'SRAI': do_shift,
             'BEQ': do_branch,
             'BNE': do_branch,
             'BLT': do_branch,

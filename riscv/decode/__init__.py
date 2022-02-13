@@ -256,31 +256,53 @@ def jal(word):
         'size': 4,
     }
 def i_type(word):
+    # imm[11:0] rs1 000 rd 0010011 ADDI
+    # imm[11:0] rs1 010 rd 0010011 SLTI
+    # imm[11:0] rs1 011 rd 0010011 SLTIU
+    # imm[11:0] rs1 100 rd 0010011 XORI
+    # imm[11:0] rs1 110 rd 0010011 ORI
+    # imm[11:0] rs1 111 rd 0010011 ANDI
+    # 0000000 shamt rs1 001 rd 0010011 SLLI
+    # 0000000 shamt rs1 101 rd 0010011 SRLI
+    # 0100000 shamt rs1 101 rd 0010011 SRAI
+    # see: https://riscv.org/wp-content/uploads/2019/06/riscv-spec.pdf (p.130)
     _cmds = {
-        0b000: 'ADDI',
-        0b001: 'SLLI',
-        0b111: 'ANDI',
+        0b000: {'cmd': 'ADDI', 'imm': uncompressed_i_type_imm12(word, signed=True)},
+        0b001: {'cmd': 'SLLI', 'shamt': uncompressed_i_type_shamt(word)},
+        0b101: {'cmd': ('SRLI' if 0 == uncompressed_funct7(word) else 'SRAI'), 'shamt': uncompressed_i_type_shamt(word)},
+        0b111: {'cmd': 'ANDI', 'imm': uncompressed_i_type_imm12(word, signed=True)},
     }
     if not uncompressed_funct3(word) in _cmds.keys():
         return uncompressed_unimplemented_instruction(word)
-    elif 0b001 == uncompressed_funct3(word):
-        return {
-            'cmd': _cmds.get(uncompressed_funct3(word)),
-            'shamt': uncompressed_i_type_shamt(word),
+    _retval = {
+        **_cmds.get(uncompressed_funct3(word)),
+        **{
             'rs1': uncompressed_rs1(word),
             'rd': uncompressed_rd(word),
             'word': word,
             'size': 4,
-        }
-    else:
-        return {
-            'cmd': _cmds.get(uncompressed_funct3(word)),
-            'imm': uncompressed_i_type_imm12(word, signed=True),
-            'rs1': uncompressed_rs1(word),
-            'rd': uncompressed_rd(word),
-            'word': word,
-            'size': 4,
-        }
+        },
+    }
+    print('i_type(): _retval : {}'.format(_retval))
+    return _retval
+#    elif 0b001 == uncompressed_funct3(word):
+#        return {
+#            'cmd': _cmds.get(uncompressed_funct3(word)),
+#            'shamt': uncompressed_i_type_shamt(word),
+#            'rs1': uncompressed_rs1(word),
+#            'rd': uncompressed_rd(word),
+#            'word': word,
+#            'size': 4,
+#        }
+#    else:
+#        return {
+#            'cmd': _cmds.get(uncompressed_funct3(word)),
+#            'imm': uncompressed_i_type_imm12(word, signed=True),
+#            'rs1': uncompressed_rs1(word),
+#            'rd': uncompressed_rd(word),
+#            'word': word,
+#            'size': 4,
+#        }
 def b_type(word):
     _cmds = {
         0b000: 'BEQ',
