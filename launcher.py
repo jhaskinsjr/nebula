@@ -157,17 +157,21 @@ def loadbin(connections, mainmem_rawfile, sp, pc, binary, *args):
     _argc = 1 + len(args)   # add 1 since binary name is argv[0]
     _args = list(map(lambda a: '{}\0'.format(a), args))
     _fp  = sp
-    _fp += 8                # 8 bytes for argc
-    _fp += 8 * len(_args)   # 8 bytes for each argv *
+    _fp += 8           # 8 bytes for argc
+    _fp += 8 * _argc   # 8 bytes for each argv * plus 1 NULL pointer
     _addr = list(itertools.accumulate([_fp] + list(map(lambda a: len(a), _args))))
     print('loadbin(): argc : {}'.format(_argc))
     print('loadbin(): len(_args) : {}'.format(sum(map(lambda a: len(a), _args))))
     for x, y in zip(_addr, _args):
         print('loadbin(): @{:08x} : {} ({})'.format(x, y, len(y)))
     os.lseek(fd, sp, os.SEEK_SET)
-    os.write(fd, _argc.to_bytes(8, 'little')) # argc
+    os.write(fd, _argc.to_bytes(8, 'little'))       # argc
     os.lseek(fd, 8, os.SEEK_CUR)
-    os.write(fd, bytes(' '.join(args), 'ascii'))
+    for a in _addr:                                 # argv pointers
+        os.write(fd, a.to_bytes(8, 'little'))
+        os.lseek(fd, 8, os.SEEK_CUR)
+    os.lseek(fd, 8, os.SEEK_CUR)                    # NULL pointer
+    os.write(fd, bytes(''.join(_args), 'ascii'))    # argv data
     os.close(fd)
     register(connections, 'set', 2, hex(sp))
     register(connections, 'set', '%pc', hex(_start_pc))
