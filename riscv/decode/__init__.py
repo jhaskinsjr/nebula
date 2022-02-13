@@ -285,24 +285,6 @@ def i_type(word):
     }
     print('i_type(): _retval : {}'.format(_retval))
     return _retval
-#    elif 0b001 == uncompressed_funct3(word):
-#        return {
-#            'cmd': _cmds.get(uncompressed_funct3(word)),
-#            'shamt': uncompressed_i_type_shamt(word),
-#            'rs1': uncompressed_rs1(word),
-#            'rd': uncompressed_rd(word),
-#            'word': word,
-#            'size': 4,
-#        }
-#    else:
-#        return {
-#            'cmd': _cmds.get(uncompressed_funct3(word)),
-#            'imm': uncompressed_i_type_imm12(word, signed=True),
-#            'rs1': uncompressed_rs1(word),
-#            'rd': uncompressed_rd(word),
-#            'word': word,
-#            'size': 4,
-#        }
 def b_type(word):
     _cmds = {
         0b000: 'BEQ',

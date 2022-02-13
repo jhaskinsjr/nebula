@@ -31,7 +31,6 @@ def srai(rs1, shamt):
     _retval  = int.from_bytes(rs1.to_bytes(8, 'little', signed=True), 'little') >> shamt
     _msbs = (((2 ** shamt) - 1) << (64 - shamt) if ((rs1 >> 63) & 0b1) else 0)
     _retval |= _msbs
-#    _retval  = int.from_bytes(_retval.to_bytes(8, 'little'), 'little')
     return _retval
 def beq(pc, rs1, rs2, imm, sz): return (imm + pc if rs1 == rs2 else sz + pc)
 def bne(pc, rs1, rs2, imm, sz):
