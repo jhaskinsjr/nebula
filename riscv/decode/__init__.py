@@ -283,7 +283,6 @@ def i_type(word):
             'size': 4,
         },
     }
-    print('i_type(): _retval : {}'.format(_retval))
     return _retval
 def b_type(word):
     _cmds = {
