@@ -203,6 +203,18 @@ def c_add(word):
         'word': word,
         'size': 2,
     }
+def c_sub(word):
+    # C.SUB subtracts the value in register rs2 ′ from the value in register rd',
+    # then writes the result to register rd ′. C.SUB expands into
+    # sub rd', rd', rs2'.
+    return {
+        'cmd': 'SUB',
+        'rs1': compressed_quadrant_01_rs1_prime_or_rd_prime(word),
+        'rs2': compressed_quadrant_01_rs2_prime(word),
+        'rd': compressed_quadrant_01_rs1_prime_or_rd_prime(word),
+        'word': word,
+        'size': 2,
+    }
 def c_li(word, **kwargs):
     # C.LI loads the sign-extended 6-bit immediate, imm, into register rd. C.LI
     # expands into addi rd, x0, imm[5:0]. C.LI is only valid when rd̸=x0; the code
@@ -436,6 +448,7 @@ def compressed_quadrant_01(word):
         0b000: compressed_quadrant_01_opcode_000,
         0b010: compressed_quadrant_01_opcode_010,
         0b011: compressed_quadrant_01_opcode_011,
+        0b100: compressed_quadrant_01_opcode_100,
         0b101: compressed_quadrant_01_opcode_101,
         0b110: compressed_quadrant_01_opcode_110,
         0b111: compressed_quadrant_01_opcode_111,
@@ -494,6 +507,31 @@ def compressed_quadrant_01_opcode_011(word):
         else:
             _impl = c_lui
     return _impl(word, imm=_imm)
+def compressed_quadrant_01_opcode_100(word):
+    # 100 nzuimm[5] 00 rs1 ′/rd ′ nzuimm[4:0] 01 C.SRLI (RV32 NSE, nzuimm[5]=1)
+    # 100 0 00 rs1 ′/rd ′ 0 01 C.SRLI64 (RV128; RV32/64 HINT)
+    # 100 nzuimm[5] 01 rs1 ′/rd ′ nzuimm[4:0] 01 C.SRAI (RV32 NSE, nzuimm[5]=1)
+    # 100 0 01 rs1 ′/rd ′ 0 01 C.SRAI64 (RV128; RV32/64 HINT)
+    # 100 imm[5] 10 rs1 ′/rd ′ imm[4:0] 01 C.ANDI
+    # 100 0 11 rs1 ′/rd ′ 00 rs2 ′ 01 C.SUB
+    # 100 0 11 rs1 ′/rd ′ 01 rs2 ′ 01 C.XOR
+    # 100 0 11 rs1 ′/rd ′ 10 rs2 ′ 01 C.OR
+    # 100 0 11 rs1 ′/rd ′ 11 rs2 ′ 01 C.AND
+    # 100 1 11 rs1 ′/rd ′ 00 rs2 ′ 01 C.SUBW (RV64/128; RV32 RES)
+    # 100 1 11 rs1 ′/rd ′ 01 rs2 ′ 01 C.ADDW (RV64/128; RV32 RES)
+    # 100 1 11 — 10 — 01 Reserved
+    # 100 1 11 — 11 — 01 Reserved
+    _impl = compressed_unimplemented_instruction
+    _b12   = (word >> 12) & 0b1
+    _b1110 = (word >> 10) & 0b11
+    _b0605 = (word >> 5) & 0b11
+    if 0b11 == _b1110:
+        if 0b0 == _b12:
+            _impl = {
+                0b00: c_sub,
+            }.get(_b0605)
+    return _impl(word)
+
 def compressed_quadrant_01_opcode_101(word):
     # 101 imm[11|4|9:8|10|6|7|3:1|5] 01 C.J
     # https://riscv.org/wp-content/uploads/2019/06/riscv-spec.pdf (p.111)
