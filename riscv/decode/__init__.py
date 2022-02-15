@@ -1,4 +1,5 @@
 import functools
+from sre_constants import CATEGORY_LOC_WORD
 import struct
 from threading import current_thread
 
@@ -113,6 +114,21 @@ def c_ldsp(word):
         'imm': _imm,
         'rd': compressed_rs1_or_rd(word),
         'nbytes': 8,
+        'word': word,
+        'size': 2,
+    }
+def c_lw(word, **kwargs):
+    # C.LW loads a 32-bit value from memory into register rd ′. It computes
+    # an effective address by adding the zero-extended offset, scaled by 4,
+    # to the base address in register rs1 ′. It expands to
+    # lw rd', offset[6:2](rs1').
+    # see: https://riscv.org/wp-content/uploads/2019/06/riscv-spec.pdf (p.101)
+    return {
+        'cmd': 'LW',
+        'rs1': compressed_quadrant_00_rs1_prime(word),
+        'imm': kwargs.get('imm'),
+        'rd': compressed_quadrant_00_rs2_prime_or_rd_prime(word),
+        'nbytes': 4,
         'word': word,
         'size': 2,
     }
@@ -405,6 +421,7 @@ def compressed_quadrant(word):
 def compressed_quadrant_00(word):
     return {
         0b000: compressed_quadrant_00_opcode_000,
+        0b010: compressed_quadrant_00_opcode_010,
         0b011: compressed_quadrant_00_opcode_011,
     }.get(compressed_opcode(word), compressed_unimplemented_instruction)(word)
 def compressed_quadrant_00_opcode_000(word):
@@ -420,6 +437,15 @@ def compressed_quadrant_00_opcode_000(word):
         _impl = compressed_illegal_instruction
     else:
         _impl = c_addi4spn
+    return _impl(word, imm=_imm)
+def compressed_quadrant_00_opcode_010(word):
+    # 010 uimm[5:3] rs1' uimm[2|6] rd' 00 C.LW
+    # https://riscv.org/wp-content/uploads/2019/06/riscv-spec.pdf (p.110)
+    _impl = c_lw
+    _b06     = (word >> 5) & 0b1
+    _b02     = (word >> 6) & 0b1
+    _b050403 = (word >> 9) & 0b111
+    _imm = (_b06 << 6) | (_b050403 << 3) | (_b02 << 2)
     return _impl(word, imm=_imm)
 def compressed_quadrant_00_opcode_011(word):
     # 011 uimm[5:3] rs1 ′ uimm[7:6] rd ′ 00 C.LD (RV64/128)
