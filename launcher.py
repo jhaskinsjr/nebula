@@ -28,7 +28,7 @@ def handler(conn, addr):
         try:
             msg = conn.recv(1024)
             if not len(msg):
-                time.sleep(1)
+                time.sleep(0.01)
                 continue
             msg = json.loads(msg.decode('ascii'))
 #            print('{}: {}'.format(threading.current_thread().name, msg))
@@ -213,6 +213,7 @@ def run(cycle, max_cycles, max_instructions, break_on_undefined):
         state.get('lock').release()
         _ack = False
         while not _ack:
+            time.sleep(0.01)
             state.get('lock').acquire()
             _ack = len(state.get('ack')) == len(state.get('connections'))
             state.get('lock').release()
