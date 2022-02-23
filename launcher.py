@@ -20,7 +20,7 @@ def tx(conns, msg):
 def handler(conn, addr):
     global state
     state.get('lock').acquire()
-    state.get('connections').add(conn)
+    state.get('connections').append(conn)
     state.get('lock').release()
     print('handler(): {}:{}'.format(*addr))
     tx([conn], {'ack': 'launcher'})
@@ -237,7 +237,7 @@ if __name__ == '__main__':
     _s.listen(5)
     state = {
         'lock': threading.Lock(),
-        'connections': set(),
+        'connections': [],
         'ack': [],
         'futures': {},
         'running': False,
