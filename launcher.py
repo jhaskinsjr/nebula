@@ -110,7 +110,7 @@ def register(connections, cmd, name, data=None):
             'cmd': cmd,
             'name': _name,
         },
-        **({'data': integer(data)} if data else {}),
+        **({'data': (integer(data) if isinstance(data, str) else data)} if data else {}),
     }})
 def mainmem(connections, cmd, addr, size, data=None):
     tx(connections, {'mainmem': {**{
@@ -121,6 +121,8 @@ def mainmem(connections, cmd, addr, size, data=None):
         **({'data': integer(data)} if data else {}),
     }})
 def loadbin(connections, mainmem_rawfile, sp, pc, binary, *args):
+    global state
+    state.update({'mainmem_rawfile': mainmem_rawfile})
     fd = os.open(mainmem_rawfile, os.O_RDWR | os.O_CREAT)
     os.ftruncate(fd, 0)
     os.ftruncate(fd, 2**32) # HACK: hard-wired memory size is dumb, but I don't want to focus on that right now
@@ -186,7 +188,48 @@ def config(args, field, val):
         args.__setattr__(field, _val)
         _output += ' -> {}'.format(args.__getattribute__(field))
     print(_output)
-def run(cycle, max_cycles, max_instructions, break_on_undefined):
+def snapshot(mainmem_rawfile, snapshot_rawfile, cycle):
+    global state
+    subprocess.run('cp {} {}'.format(mainmem_rawfile, snapshot_rawfile).split())
+    fd = os.open(snapshot_rawfile, os.O_RDWR)
+    os.lseek(fd, 0x10000000, os.SEEK_SET) # HACK: hard-coding snapshot metadata to 0x10000000 is dumb, but I don't want to be bothered with that now
+    os.write(fd, (1 + cycle).to_bytes(8, 'little'))
+    os.lseek(fd, 8, os.SEEK_CUR)
+    os.fsync(fd)
+    os.close(fd)
+    _res_evt = state.get('futures').get(1 + cycle, {'results': [], 'events': []})
+    _res_evt.get('events').append({
+        'register': {
+            'cmd': 'snapshot',
+            'name': '{}'.format(snapshot_rawfile),
+            'data': 0x20000000, # HACK: hard-coding snapshot metadata to 0x20000000 is dumb, but I don't want to be bothere with that now
+        }
+    })
+    state.get('futures').update({1 + cycle: _res_evt})
+def restore(mainmem_rawfile, snapshot_rawfile):
+    global state
+    state.update({'mainmem_rawfile': mainmem_rawfile})
+    subprocess.run('cp {} {}'.format(snapshot_rawfile, mainmem_rawfile).split())
+    fd = os.open(mainmem_rawfile, os.O_RDWR)
+    os.lseek(fd, 0x10000000, os.SEEK_SET)
+    cycle = int.from_bytes(os.read(fd, 8), 'little')
+#    os.write(fd, (0).to_bytes(4096, 'little'))
+    os.lseek(fd, 0x20000000, os.SEEK_SET)
+    pc = int.from_bytes(os.read(fd, 8), 'little')
+#    os.write(fd, (0).to_bytes(4096, 'little'))
+    os.close(fd)
+    _res_evt = state.get('futures').get(cycle, {'results': [], 'events': []})
+    _res_evt.get('events').append({
+        'register': {
+            'cmd': 'restore',
+            'name': '{}'.format(snapshot_rawfile),
+            'data': 0x20000000, # HACK: hard-coding snapshot metadata to 0x20000000 is dumb, but I don't want to be bothere with that now
+        }
+    })
+    state.get('futures').update({cycle: _res_evt})
+    register(state.get('connections'), 'set', '%pc', hex(pc))
+    return cycle - 1
+def run(cycle, max_cycles, max_instructions, break_on_undefined, snapshot_frequency):
     global state
     # {
     #   'tick': {
@@ -198,10 +241,14 @@ def run(cycle, max_cycles, max_instructions, break_on_undefined):
     state.get('lock').acquire()
     tx(state.get('connections'), 'run')
     state.get('lock').release()
+    snapshot_at = snapshot_frequency
     while (cycle < max_cycles if max_cycles else True) and \
           (state.get('instructions_committed') < max_instructions if max_instructions else True) and \
           (None == state.get('undefined') if break_on_undefined else True):
         state.get('lock').acquire()
+        if snapshot_at and cycle >= snapshot_at:
+            snapshot(state.get('mainmem_rawfile'), '{}.snapshot'.format(state.get('mainmem_rawfile')), cycle)
+            snapshot_at += snapshot_frequency
         print('run(): @{:8} futures  : {}'.format(cycle, state.get('futures')))
         cycle = (min(state.get('futures').keys()) if len(state.get('futures').keys()) else 1 + cycle)
         tx(state.get('connections'), {'tick': {
@@ -226,6 +273,7 @@ if __name__ == '__main__':
     parser.add_argument('--services', dest='services', nargs='+', help='code:host')
     parser.add_argument('--max_cycles', type=int, dest='max_cycles', default=None, help='maximum number of cycles to run for')
     parser.add_argument('--max_instructions', type=int, dest='max_instructions', default=None, help='maximum number of instructions to execute')
+    parser.add_argument('--snapshots', type=int, dest='snapshots', default=0, help='number of cycles per snapshot')
     parser.add_argument('port', type=int, help='port to connect to on host')
     parser.add_argument('script', type=str, help='script to be executed by μService-SIMulator')
     args = parser.parse_args()
@@ -238,6 +286,7 @@ if __name__ == '__main__':
     state = {
         'lock': threading.Lock(),
         'connections': [],
+        'mainmem_rawfile': None,
         'ack': [],
         'futures': {},
         'running': False,
@@ -273,13 +322,14 @@ if __name__ == '__main__':
                 })
             elif 'run' == cmd:
                 state.update({'running': True})
-                state.update({'cycle': run(state.get('cycle'), args.max_cycles, args.max_instructions, args.break_on_undefined)})
+                state.update({'cycle': run(state.get('cycle'), args.max_cycles, args.max_instructions, args.break_on_undefined, args.snapshots)})
                 state.update({'running': False})
             else:
                 {
                     'register': lambda x, y, z=None: register(state.get('connections'), x, y, z),
                     'mainmem': lambda w, x, y, z=None: mainmem(state.get('connections'), w, x, y, z),
                     'loadbin': lambda w, x, y, z, *args: loadbin(state.get('connections'), w, integer(x), integer(y), z, *args),
+                    'restore': lambda x, y: state.update({'cycle': restore(x, y)}),
                     'cycle': lambda: print(state.get('cycle')),
                     'state': lambda: print(state),
                     'config': lambda x, y=None: config(args, x, y),

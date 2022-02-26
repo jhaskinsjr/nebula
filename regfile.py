@@ -1,3 +1,4 @@
+import os
 import sys
 import argparse
 
@@ -7,12 +8,13 @@ def do_tick(service, state, results, events):
     for ev in filter(lambda x: x, map(lambda y: y.get('register'), events)):
         _cmd = ev.get('cmd')
         _name = ev.get('name')
-        assert _name in state.get('registers').keys()
         _data = ev.get('data')
         if 'set' == _cmd:
+            assert _name in state.get('registers').keys()
             if 0 != _name:
                 state.update({'registers': setregister(state.get('registers'), _name, _data)})
         elif 'get' == _cmd:
+            assert _name in state.get('registers').keys()
             service.tx({'result': {
                 'arrival': 1 + state.get('cycle'),
                 'register': {
@@ -21,6 +23,25 @@ def do_tick(service, state, results, events):
                 }
             }
         })
+        elif 'snapshot' == _cmd:
+            fd = os.open(_name, os.O_RDWR)
+            os.lseek(fd, _data, os.SEEK_SET)
+            for k in ['%pc'] + sorted(filter(lambda x: not '%pc' == x, state.get('registers').keys()), key=str):
+                v = getregister(state.get('registers'), k)
+                os.write(fd, v.to_bytes(8, 'little'))
+                os.lseek(fd, 8, os.SEEK_CUR)
+                service.tx({'info': 'snapshot: {} : {}'.format(k, v)})
+            os.fsync(fd)
+            os.close(fd)
+        elif 'restore' == _cmd:
+            fd = os.open(_name, os.O_RDWR)
+            os.lseek(fd, _data, os.SEEK_SET)
+            for k in ['%pc'] + sorted(filter(lambda x: not '%pc' == x, state.get('registers').keys()), key=str):
+                v = int.from_bytes(os.read(fd, 8), 'little')
+                os.lseek(fd, 8, os.SEEK_CUR)
+                state.update({'registers': setregister(state.get('registers'), k, v)})
+                service.tx({'info': 'restore: {} : {}'.format(k, v)})
+            os.close(fd)
         else:
             print('ev   : {}'.format(ev))
             print('_cmd : {}'.format(_cmd))
