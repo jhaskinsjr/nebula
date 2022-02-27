@@ -138,10 +138,7 @@ class Harness:
         return _correct_answer, _assembly
     def c_srai(self):
         _const = random.randint(0, 2**20 - 1)
-#        _const = int.from_bytes((-789958656 // (2**12) & 0xffff_ffff).to_bytes(8, 'little'), 'little') >> 12
-#        print('_const : {:08x} ({})'.format(_const, _const))
-        _shamt = random.randint(0, 2**6 - 1)
-#        _shamt = 7
+        _shamt = random.randint(1, 2**6 - 1)
         _assembly  = ['lui x15, {}'.format(_const)]
         _assembly += ['c.srai x15, {}'.format(_shamt)]
         _assembly += ['c.mv x31, x15']
