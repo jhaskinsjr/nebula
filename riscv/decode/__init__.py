@@ -258,8 +258,39 @@ def c_slli(word, **kwargs):
         'word': word,
         'size': 2,
     }
+def c_srli(word, **kwargs):
+    # C.SRLI is a CB-format instruction that performs a logical right shift
+    # of the value in register rd' then writes the result to rd'. The shift
+    # amount is encoded in the shamt field. For RV128C, a shift amount of
+    # zero is used to encode a shift of 64. Furthermore, the shift amount
+    # is sign-extended for RV128C, and so the legal shift amounts are 1–31,
+    # 64, and 96–127. C.SRLI expands into srli rd', rd', shamt[5:0], except
+    # for RV128C with shamt=0, which expands to srli rd ′, rd ′, 64
+    return {
+        'cmd': 'SRLI',
+        'rs1': compressed_quadrant_01_rs1_prime_or_rd_prime(word),
+        'rd': compressed_quadrant_01_rs1_prime_or_rd_prime(word),
+        'shamt': kwargs.get('imm'),
+        'word': word,
+        'size': 2,
+    }
+def c_srai(word, **kwargs):
+    # C.SRAI is defined analogously to C.SRLI, but instead performs an
+    # arithmetic right shift. C.SRAI expands to srai rd', rd', shamt[5:0].
+    return {
+        'cmd': 'SRAI',
+        'rs1': compressed_quadrant_01_rs1_prime_or_rd_prime(word),
+        'rd': compressed_quadrant_01_rs1_prime_or_rd_prime(word),
+        'shamt': kwargs.get('imm'),
+        'word': word,
+        'size': 2,
+    }
 
 def lui(word):
+    # LUI (load upper immediate) is used to build 32-bit constants and
+    # uses the U-type format. LUI places the U-immediate value in the top
+    # 20 bits of the destination register rd, filling in the lowest 12
+    # bits with zeros.
     return {
         'cmd': 'LUI',
         'imm': uncompressed_imm32(word, signed=True),
@@ -268,6 +299,11 @@ def lui(word):
         'size': 4,
     }
 def auipc(word):
+    # AUIPC (add upper immediate to pc) is used to build pc-relative
+    # addresses and uses the U-type format. AUIPC forms a 32-bit offset
+    # from the 20-bit U-immediate, filling in the lowest 12 bits with
+    # zeros, adds this offset to the address of the AUIPC instruction,
+    # then places the result in register rd.
     return {
         'cmd': 'AUIPC',
         'imm': uncompressed_imm32(word, signed=True),
@@ -548,15 +584,22 @@ def compressed_quadrant_01_opcode_100(word):
     # 100 1 11 — 10 — 01 Reserved
     # 100 1 11 — 11 — 01 Reserved
     _impl = compressed_unimplemented_instruction
+    _imm = 0
     _b12   = (word >> 12) & 0b1
     _b1110 = (word >> 10) & 0b11
     _b0605 = (word >> 5) & 0b11
-    if 0b11 == _b1110:
+    if 0b00 == _b1110:
+        _impl = c_srli
+        _imm = (_b12 << 5) | (word >> 2) & 0b1_1111
+    elif 0b01 == _b1110:
+        _impl = c_srai
+        _imm = (_b12 << 5) | (word >> 2) & 0b1_1111
+    elif 0b11 == _b1110:
         if 0b0 == _b12:
             _impl = {
                 0b00: c_sub,
             }.get(_b0605)
-    return _impl(word)
+    return _impl(word, imm=_imm)
 
 def compressed_quadrant_01_opcode_101(word):
     # 101 imm[11|4|9:8|10|6|7|3:1|5] 01 C.J
