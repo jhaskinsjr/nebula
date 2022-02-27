@@ -39,15 +39,61 @@ python3 launcher.py --services \
     ${PWD}/mainmem.py:localhost \
     ${PWD}/decode.py:localhost \
     ${PWD}/execute.py:localhost \
-    --max_cycles 1000 \
+    --max_cycles 32000 \
+    --snapshots 1000 \
+    --break_on_undefined \
     -- 10000 test-02.ussim
 
 This executes the launcher module (launcher.py), which in turn spawns the
-CPU core service (simplecore.py), the register file service (regfile.py), and
-the main memory service (mainmem.py), all on localhost. The simulation will
-run for a total of 100 cycles, set up the launcher module to accept
-TCP connections on the localhost's port 10000, and execute the script
-test-01.ussim.
+CPU core service (simplecore.py), the register file service (regfile.py),
+the main memory service (mainmem.py), the instruction decode service
+(decode.py), and the instruction execute service (execute.py), all on
+localhost. The launcher module will then begin accepting TCP connections
+on the localhost's port 10000 and execute the script test-02.ussim,
+simulating for a maximum of 32,000 simulated cycles, taking snapshots (of
+the main memory and register file) every 1,000 simulated cycles, but will
+cease execution if it encounters an instruction that is not (yet) defined.
+
+--
+SIMULATOR SCRIPTS
+
+The simulator executes according to instructions in an execute script.
+Consider the script test-02.ussim:
+
+    # Sample μService-SIMulator script
+    cycle
+    loadbin /tmp/mainmem.raw 0x80000000 0x40000000 samples/bin/test 2 3 5 7 11 13 
+                                                            # using /tmp/mainmem.raw as the main memory file,
+                                                            # set %sp to 0x80000000 and %pc to 0x40000000, then
+                                                            # load samples/bin/test, with command
+                                                            # line parameters "2 3 5 7 11 13
+    register set 10 0x0                                     # moved by _start into x15 to become rtld_fini;
+                                                            # see: https://refspecs.linuxbase.org/LSB_3.1
+    run
+    cycle
+    state
+    shutdown
+
+The script is comprised of commands
+
+    cycle                           print the cycle count to stdout
+    loadbin A B C D X               load the binary D with arguments X into main memory file B;
+                                    set initial SP to C; set initial PC to D
+    restore A B                     restore previously captured state in B to main memory file A
+    register set A B                set register A to value B
+    run                             begin execution
+    state                           print launcher's state (i.e., variables, etc) to stdout
+    shutdown                        send shutdown signal to services, exit launcher
+
+The script test-03.ussim is very similar to test-02.ussim, but, rather than
+a loadbin command, instead features a restore command:
+
+    ...
+    restore /tmp/mainmem.raw /tmp/mainmem.raw.snapshot
+    ...
+
+The simulator places the state of the register file into an unused address
+inside the main memory snapshot.
 
 --
 SAMPLE binary
@@ -78,8 +124,8 @@ simulator at this stage makes NO effort to accommodate dynamic linking.
 TESTS
 
 The simulator is capable of loading full, statically-linked ELF binaries,
-and also capable of loading ELF-formatted object files. This allows TESTS
-of individual instructions to be tested. Consider, for instance, the test
+and also capable of loading ELF-formatted object files. This allows
+individual instructions to be tested. Consider, for instance, the test
 of the ADDI instruction:
 
     # tests/src/addi.s
@@ -89,7 +135,7 @@ of the ADDI instruction:
 The entire assembly language file consists of a single ADDI instruction,
 which gets assembled into an object file accordingly
 
-    riscv64-unknown-linux-gnu-as -o addi.o -march=rv64v addi.same
+    riscv64-unknown-linux-gnu-as -o addi.o -march=rv64v addi.s
 
 This is NOT a complete binary, but the simulator will nevertheless load
 it into memory, set the PC to the address of the _start label, and 
