@@ -584,7 +584,7 @@ def compressed_quadrant_01_opcode_100(word):
     # 100 1 11 — 10 — 01 Reserved
     # 100 1 11 — 11 — 01 Reserved
     _impl = compressed_unimplemented_instruction
-    _imm = 0
+    _imm = None
     _b12   = (word >> 12) & 0b1
     _b1110 = (word >> 10) & 0b11
     _b0605 = (word >> 5) & 0b11
@@ -599,7 +599,7 @@ def compressed_quadrant_01_opcode_100(word):
             _impl = {
                 0b00: c_sub,
             }.get(_b0605)
-    return _impl(word, imm=_imm)
+    return (_impl(word, imm=_imm) if _imm else _impl(word))
 
 def compressed_quadrant_01_opcode_101(word):
     # 101 imm[11|4|9:8|10|6|7|3:1|5] 01 C.J
