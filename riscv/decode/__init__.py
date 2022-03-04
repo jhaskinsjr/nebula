@@ -1,9 +1,6 @@
 import functools
 from sre_constants import CATEGORY_LOC_WORD
 import struct
-from threading import current_thread
-
-from psutil import CONN_CLOSE_WAIT, CONN_LISTEN
 
 def compressed_unimplemented_instruction(word, **kwargs):
     return {
