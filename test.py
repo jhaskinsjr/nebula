@@ -12,6 +12,8 @@ class Harness:
             'c.lui': self.c_lui,
             'c.add': self.c_add,
             'c.sub': self.c_sub,
+            'c.addw': self.c_addw,
+            'c.subw': self.c_subw,
             'c.addi16sp': self.c_addi16sp,
             'c.addi4spn': self.c_addi4spn,
             'c.mv': self.c_mv,
@@ -71,6 +73,36 @@ class Harness:
         _const_0 = int.from_bytes(struct.Struct('<I').pack(_const_0 << 12), 'little', signed=True)
         _const_1 = int.from_bytes(struct.Struct('<I').pack(_const_1 << 12), 'little', signed=True)
         _correct_answer = _const_0 - _const_1
+#        _correct_answer = 1
+#        _correct_answer = int.from_bytes(struct.Struct('<I').pack(_correct_answer), 'little', signed=True)
+        return _correct_answer, _assembly
+    def c_addw(self):
+        _const_0 = random.randint(0, 2**20 - 1)
+        _const_1 = random.randint(0, 2**20 - 1)
+#        _const_0 = 2**20 - 1
+#        _const_1 = 8
+        _assembly  = ['lui x15, {}'.format(_const_0)]
+        _assembly += ['lui x14, {}'.format(_const_1)]
+        _assembly += ['c.addw x15, x14']
+        _assembly += ['c.mv x31, x15']
+        _const_0 = int.from_bytes(struct.Struct('<I').pack(_const_0 << 12), 'little', signed=True)
+        _const_1 = int.from_bytes(struct.Struct('<I').pack(_const_1 << 12), 'little', signed=True)
+        _correct_answer = ((_const_0 + _const_1) << 32) >> 32
+#        _correct_answer = 1
+#        _correct_answer = int.from_bytes(struct.Struct('<I').pack(_correct_answer), 'little', signed=True)
+        return _correct_answer, _assembly
+    def c_subw(self):
+        _const_0 = random.randint(0, 2**20 - 1)
+        _const_1 = random.randint(0, 2**20 - 1)
+#        _const_0 = 2**20 - 1
+#        _const_1 = 8
+        _assembly  = ['lui x15, {}'.format(_const_0)]
+        _assembly += ['lui x14, {}'.format(_const_1)]
+        _assembly += ['c.subw x15, x14']
+        _assembly += ['c.mv x31, x15']
+        _const_0 = int.from_bytes(struct.Struct('<I').pack(_const_0 << 12), 'little', signed=True)
+        _const_1 = int.from_bytes(struct.Struct('<I').pack(_const_1 << 12), 'little', signed=True)
+        _correct_answer = ((_const_0 - _const_1) << 32) >> 32
 #        _correct_answer = 1
 #        _correct_answer = int.from_bytes(struct.Struct('<I').pack(_correct_answer), 'little', signed=True)
         return _correct_answer, _assembly
@@ -339,6 +371,8 @@ if __name__ == '__main__':
 #    _harness.generate(args, 'c.lui')
 #    _harness.generate(args, 'c.add')
 #    _harness.generate(args, 'c.sub')
+#    _harness.generate(args, 'c.addw')
+    _harness.generate(args, 'c.subw')
 #    _harness.generate(args, 'c.addi16sp')
 #    _harness.generate(args, 'c.addi4spn')
 #    _harness.generate(args, 'c.mv')
@@ -346,7 +380,7 @@ if __name__ == '__main__':
 #    _harness.generate(args, 'c.li')
 #    _harness.generate(args, 'c.slli')
 #    _harness.generate(args, 'c.srli')
-    _harness.generate(args, 'c.srai')
+#    _harness.generate(args, 'c.srai')
 #    _harness.generate(args, 'slli')
 #    _harness.generate(args, 'srli')
 #    _harness.generate(args, 'srai')

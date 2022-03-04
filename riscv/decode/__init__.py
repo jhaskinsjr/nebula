@@ -257,6 +257,32 @@ def c_sub(word):
         'word': word,
         'size': 2,
     }
+def c_subw(word):
+    # C.SUBW is an RV64C/RV128C-only instruction that subtracts the value
+    # in register rs2' from the value in register rd', then sign-extends
+    # the lower 32 bits of the difference before writing the result to
+    # register rd'. C.SUBW expands into subw rd', rd', rs2 ′.
+    return {
+        'cmd': 'SUBW',
+        'rs1': compressed_quadrant_01_rs1_prime_or_rd_prime(word),
+        'rs2': compressed_quadrant_01_rs2_prime(word),
+        'rd': compressed_quadrant_01_rs1_prime_or_rd_prime(word),
+        'word': word,
+        'size': 2,
+    }
+def c_addw(word):
+    # C.ADDW is an RV64C/RV128C-only instruction that adds the values
+    # in registers rd' and rs2', then sign-extends the lower 32 bits of
+    # the sum before writing the result to register rd'. C.ADDW
+    # expands into addw rd', rd', rs2'
+    return {
+        'cmd': 'ADDW',
+        'rs1': compressed_quadrant_01_rs1_prime_or_rd_prime(word),
+        'rs2': compressed_quadrant_01_rs2_prime(word),
+        'rd': compressed_quadrant_01_rs1_prime_or_rd_prime(word),
+        'word': word,
+        'size': 2,
+    }
 def c_li(word, **kwargs):
     # C.LI loads the sign-extended 6-bit immediate, imm, into register rd. C.LI
     # expands into addi rd, x0, imm[5:0]. C.LI is only valid when rd̸=x0; the code
@@ -642,6 +668,11 @@ def compressed_quadrant_01_opcode_100(word):
         if 0b0 == _b12:
             _impl = {
                 0b00: c_sub,
+            }.get(_b0605)
+        else:
+            _impl = {
+                0b00: c_subw,
+                0b01: c_addw,
             }.get(_b0605)
     return (_impl(word, imm=_imm) if _imm else _impl(word))
 
