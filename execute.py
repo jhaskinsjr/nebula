@@ -318,7 +318,7 @@ def do_andi(service, state, insn):
     do_commit(service, state, state.get('pending_execute'))
     state.update({'operands': {}})
     state.update({'pending_execute': None})
-def do_sd(service, state, insn):
+def do_store(service, state, insn):
     if not 'rs1' in state.get('operands'):
         state.get('operands').update({'rs1': '%{}'.format(insn.get('rs1'))})
         service.tx({'event': {
@@ -341,13 +341,20 @@ def do_sd(service, state, insn):
         }})
     if not isinstance(state.get('operands').get('rs2'), int):
         return
+    _size = insn.get('nbytes')
+    _data = state.get('operands').get('rs2') & {
+        8: 0xffffffffffffffff,
+        4: 0xffffffff,
+        2: 0xffff,
+        1: 0xff,
+    }.get(_size)
     service.tx({'event': {
         'arrival': 1 + state.get('cycle'),
         'mem': {
             'cmd': 'poke',
             'addr': insn.get('imm') + state.get('operands').get('rs1'),
-            'size': insn.get('nbytes'),
-            'data': state.get('operands').get('rs2')
+            'size': _size,
+            'data': _data
         }
     }})
     do_complete(service, state, state.get('pending_execute'))
@@ -414,7 +421,8 @@ def do_execute(service, state):
             'LHU': do_load,
             'LBU': do_load,
             'ANDI': do_andi,
-            'SD': do_sd,
+            'SD': do_store,
+            'SW': do_store,
             'NOP': do_nop,
             'SLLI': do_shift,
             'SRLI': do_shift,

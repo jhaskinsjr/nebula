@@ -3,7 +3,7 @@ from sre_constants import CATEGORY_LOC_WORD
 import struct
 from threading import current_thread
 
-from psutil import CONN_LISTEN
+from psutil import CONN_CLOSE_WAIT, CONN_LISTEN
 
 def compressed_unimplemented_instruction(word, **kwargs):
     return {
@@ -144,6 +144,35 @@ def c_ld(word, **kwargs):
         'imm': kwargs.get('imm'),
         'rd': compressed_quadrant_00_rs2_prime_or_rd_prime(word),
         'nbytes': 8,
+        'word': word,
+        'size': 2,
+    }
+def c_sd(word, **kwargs):
+    # C.SD is an RV64C/RV128C-only instruction that stores a 64-bit value in
+    # register rs2' to memory. It computes an effective address by adding the
+    # zero-extended offset, scaled by 8, to the base address in register rs1'.
+    # It expands to sd rs2', offset[7:3](rs1')
+    # see: https://riscv.org/wp-content/uploads/2019/06/riscv-spec.pdf (p.102)
+    return {
+        'cmd': 'SD',
+        'rs1': compressed_quadrant_00_rs1_prime(word),
+        'rs2': compressed_quadrant_00_rs2_prime_or_rd_prime(word),
+        'imm': kwargs.get('imm'),
+        'nbytes': 8,
+        'word': word,
+        'size': 2,
+    }
+def c_sw(word, **kwargs):
+    # C.SW stores a 32-bit value in register rs2' to memory. It computes an
+    # effective address by adding the zero-extended offset, scaled by 4, to
+    # the base address in register rs1'. It expands to sw rs2', offset[6:2](rs1')
+    # see: https://riscv.org/wp-content/uploads/2019/06/riscv-spec.pdf (p.102)
+    return {
+        'cmd': 'SW',
+        'rs1': compressed_quadrant_00_rs1_prime(word),
+        'rs2': compressed_quadrant_00_rs2_prime_or_rd_prime(word),
+        'imm': kwargs.get('imm'),
+        'nbytes': 4,
         'word': word,
         'size': 2,
     }
@@ -459,6 +488,7 @@ def compressed_quadrant_00(word):
         0b000: compressed_quadrant_00_opcode_000,
         0b010: compressed_quadrant_00_opcode_010,
         0b011: compressed_quadrant_00_opcode_011,
+        0b110: compressed_quadrant_00_opcode_110,
     }.get(compressed_opcode(word), compressed_unimplemented_instruction)(word)
 def compressed_quadrant_00_opcode_000(word):
     # 00 nzuimm[5:4|9:6|2|3] rd' 00 ; C.ADDI4SPN (RES, nzuimm=0)
@@ -488,6 +518,23 @@ def compressed_quadrant_00_opcode_011(word):
     # https://riscv.org/wp-content/uploads/2019/06/riscv-spec.pdf (p.110)
     _impl = c_ld
     _b0706   = (word >> 5) & 0b11
+    _b050403 = (word >> 10) & 0b111
+    _imm = (_b0706 << 6) | (_b050403 << 3)
+    return _impl(word, imm=_imm)
+def compressed_quadrant_00_opcode_110(word):
+    # 110 uimm[5:3] rs1' uimm[2|6] rs2' 00 C.SW
+    # https://riscv.org/wp-content/uploads/2019/06/riscv-spec.pdf (p.110)
+    _impl = c_sw
+    _b06 = (word >> 5) & 0b1
+    _b02 = (word >> 6) & 0b1
+    _b050403 = (word >> 10) & 0b111
+    _imm = (_b06 << 6) | (_b050403 << 3) | (_b02 << 2)
+    return _impl(word, imm=_imm)
+def compressed_quadrant_00_opcode_111(word):
+    # 111 uimm[5:3] rs1' uimm[7:6] rs2' 00 C.SD (RV64/128)
+    # https://riscv.org/wp-content/uploads/2019/06/riscv-spec.pdf (p.110)
+    _impl = c_sd
+    _b0706 = (word >> 5) & 0b11
     _b050403 = (word >> 10) & 0b111
     _imm = (_b0706 << 6) | (_b050403 << 3)
     return _impl(word, imm=_imm)
