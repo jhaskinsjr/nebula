@@ -241,7 +241,7 @@ def run(cycle, max_cycles, max_instructions, break_on_undefined, snapshot_freque
     state.get('lock').acquire()
     tx(state.get('connections'), 'run')
     state.get('lock').release()
-    snapshot_at = snapshot_frequency
+    snapshot_at = cycle + snapshot_frequency
     while (cycle < max_cycles if max_cycles else True) and \
           (state.get('instructions_committed') < max_instructions if max_instructions else True) and \
           (None == state.get('undefined') if break_on_undefined else True):
