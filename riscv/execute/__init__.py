@@ -8,6 +8,7 @@ def add(rs1, rs2): return rs1 + rs2
 def sub(rs1, rs2): return rs1 - rs2
 def addw(rs1, rs2): return (add(rs1, rs2) << 32) >> 32
 def subw(rs1, rs2): return (sub(rs1, rs2) << 32) >> 32
+def addiw(rs1, imm): return (addi(rs1, imm) << 32) >> 32
 #def andi(rs1, imm): return imm & rs1
 def andi(rs1, imm):
 #    print('andi(): rs1 : {}'.format(list(map(lambda x: '{:08b}'.format(x), rs1.to_bytes(8, 'little', signed=True)))))
@@ -34,6 +35,9 @@ def srai(rs1, shamt):
     _msbs = (((2 ** shamt) - 1) << (64 - shamt) if ((rs1 >> 63) & 0b1) else 0)
     _retval |= _msbs
     return _retval
+def slliw(rs1, shamt): return (slli(rs1, shamt) << 32) >> 32
+def srliw(rs1, shamt): return (srli(rs1, shamt) << 32) >> 32
+def sraiw(rs1, shamt): return (srai(rs1, shamt) << 32) >> 32
 def beq(pc, rs1, rs2, imm, sz): return (imm + pc if rs1 == rs2 else sz + pc)
 def bne(pc, rs1, rs2, imm, sz):
     print('bne(): pc  : {}'.format(pc))

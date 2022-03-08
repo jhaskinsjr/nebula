@@ -312,6 +312,32 @@ def do_subw(service, state, insn):
     do_commit(service, state, state.get('pending_execute'))
     state.update({'operands': {}})
     state.update({'pending_execute': None})
+def do_addiw(service, state, insn):
+    if not 'rs1' in state.get('operands'):
+        state.get('operands').update({'rs1': '%{}'.format(insn.get('rs1'))})
+        service.tx({'event': {
+            'arrival': 1 + state.get('cycle'),
+            'register': {
+                'cmd': 'get',
+                'name': insn.get('rs1'),
+            }
+        }})
+    if not isinstance(state.get('operands').get('rs1'), int):
+        return
+    _result = riscv.execute.addiw(state.get('operands').get('rs1'), insn.get('imm'))
+    service.tx({'event': {
+        'arrival': 1 + state.get('cycle'),
+        'register': {
+            'cmd': 'set',
+            'name': insn.get('rd'),
+            'data': _result,
+        }
+    }})
+    do_complete(service, state, state.get('pending_execute'))
+    do_confirm(service, state, state.get('pending_execute'))
+    do_commit(service, state, state.get('pending_execute'))
+    state.update({'operands': {}})
+    state.update({'pending_execute': None})
 def do_load(service, state, insn):
     if not 'rs1' in state.get('operands'):
         state.get('operands').update({'rs1': '%{}'.format(insn.get('rs1'))})
@@ -454,6 +480,9 @@ def do_shift(service, state, insn):
         'SLLI': riscv.execute.slli(_rs1, _shamt),
         'SRLI': riscv.execute.srli(_rs1, _shamt),
         'SRAI': riscv.execute.srai(_rs1, _shamt),
+        'SLLIW': riscv.execute.slliw(_rs1, _shamt),
+        'SRLIW': riscv.execute.srliw(_rs1, _shamt),
+        'SRAIW': riscv.execute.sraiw(_rs1, _shamt),
     }.get(insn.get('cmd'))
     service.tx({'event': {
         'arrival': 1 + state.get('cycle'),
@@ -485,6 +514,7 @@ def do_execute(service, state):
             'SUB': do_sub,
             'ADDW': do_addw,
             'SUBW': do_subw,
+            'ADDIW': do_addiw,
             'LD': do_load,
             'LW': do_load,
             'LH': do_load,
@@ -499,6 +529,9 @@ def do_execute(service, state):
             'SLLI': do_shift,
             'SRLI': do_shift,
             'SRAI': do_shift,
+            'SLLIW': do_shift,
+            'SRLIW': do_shift,
+            'SRAIW': do_shift,
             'BEQ': do_branch,
             'BNE': do_branch,
             'BLT': do_branch,

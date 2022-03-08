@@ -23,10 +23,14 @@ class Harness:
             'c.srli': self.c_srli,
             'c.srai': self.c_srai,
             'slli': self.slli,
+            'slliw': self.slliw,
             'srli': self.srli,
+            'srliw': self.srliw,
             'srai': self.srai,
+            'sraiw': self.sraiw,
             'andi': self.andi,
             'addi': self.addi,
+            'addiw': self.addiw,
             'add': self.add,
             'sub': self.sub,
             'lui': self.lui,
@@ -193,6 +197,20 @@ class Harness:
         _correct_answer &= 2**64 - 1
         _correct_answer = int.from_bytes(struct.Struct('<Q').pack(_correct_answer), 'little')
         return _correct_answer, _assembly
+    def slliw(self):
+        _const = random.randint(0, 2**20 - 1)
+#        _const = 17
+        _shamt = random.randint(0, 2**5 - 1)
+#        _shamt = 0x20
+        _assembly  = ['lui x31, {}'.format(_const)]
+        _assembly += ['slliw x31, x31, {}'.format(_shamt)]
+        _correct_answer = _const << 12
+        _correct_answer = int.from_bytes(struct.Struct('<I').pack(_correct_answer), 'little', signed=True)
+        _correct_answer <<= _shamt
+        _correct_answer &= 2**64 - 1
+        _correct_answer = int.from_bytes(struct.Struct('<Q').pack(_correct_answer), 'little')
+        _correct_answer = (_correct_answer << 32) >> 32
+        return _correct_answer, _assembly
     def srli(self):
         _const = random.randint(0, 2**20 - 1)
 #        _const = int.from_bytes((-789958656 // (2**12) & 0xffff_ffff).to_bytes(8, 'little'), 'little') >> 12
@@ -210,6 +228,24 @@ class Harness:
         _correct_answer |= _mask
         _correct_answer ^= _mask
         return _correct_answer, _assembly
+    def srliw(self):
+        _const = random.randint(0, 2**20 - 1)
+#        _const = int.from_bytes((-789958656 // (2**12) & 0xffff_ffff).to_bytes(8, 'little'), 'little') >> 12
+#        print('_const : {:08x} ({})'.format(_const, _const))
+        _shamt = random.randint(0, 2**5 - 1)
+#        _shamt = 7
+        _mask = ((2 ** _shamt) - 1) << (64 - _shamt)
+        _assembly  = ['lui x31, {}'.format(_const)]
+        _assembly += ['srliw x31, x31, {}'.format(_shamt)]
+        _correct_answer = _const << 12
+        _correct_answer = int.from_bytes(struct.Struct('<I').pack(_correct_answer), 'little', signed=True)
+        _correct_answer >>= _shamt
+        _correct_answer &= 2**64 - 1
+        _correct_answer = int.from_bytes(struct.Struct('<Q').pack(_correct_answer), 'little')
+        _correct_answer |= _mask
+        _correct_answer ^= _mask
+        _correct_answer = (_correct_answer << 32) >> 32
+        return _correct_answer, _assembly
     def srai(self):
         _const = random.randint(0, 2**20 - 1)
 #        _const = int.from_bytes((-789958656 // (2**12) & 0xffff_ffff).to_bytes(8, 'little'), 'little') >> 12
@@ -223,6 +259,21 @@ class Harness:
         _correct_answer >>= _shamt
         _correct_answer &= 2**64 - 1
         _correct_answer = int.from_bytes(struct.Struct('<Q').pack(_correct_answer), 'little')
+        return _correct_answer, _assembly
+    def sraiw(self):
+        _const = random.randint(0, 2**20 - 1)
+#        _const = int.from_bytes((-789958656 // (2**12) & 0xffff_ffff).to_bytes(8, 'little'), 'little') >> 12
+#        print('_const : {:08x} ({})'.format(_const, _const))
+        _shamt = random.randint(0, 2**5 - 1)
+#        _shamt = 7
+        _assembly  = ['lui x31, {}'.format(_const)]
+        _assembly += ['sraiw x31, x31, {}'.format(_shamt)]
+        _correct_answer = _const << 12
+        _correct_answer = int.from_bytes(struct.Struct('<I').pack(_correct_answer), 'little', signed=True)
+        _correct_answer >>= _shamt
+        _correct_answer &= 2**64 - 1
+        _correct_answer = int.from_bytes(struct.Struct('<Q').pack(_correct_answer), 'little')
+        _correct_answer = (_correct_answer << 32) >> 32
         return _correct_answer, _assembly
     def andi(self):
         _const_0 = random.randint(0, 2**20 - 1)
@@ -252,6 +303,15 @@ class Harness:
         _const = random.randint(-2**11, 2**11 - 1)
         _assembly = ['addi x31, x0, {}'.format(_const)]
         _correct_answer = _const
+        return _correct_answer, _assembly
+    def addiw(self):
+        _const_0 = random.randint(0, 2**20 - 1)
+        _const_1 = random.randint(-2**11, 2**11 - 1)
+        _assembly  = ['lui x15, {}'.format(_const_0)]
+        _assembly += ['addiw x15, x15, {}'.format(_const_1)]
+        _assembly += ['c.mv x31, x15']
+        _const_0 = int.from_bytes(struct.Struct('<I').pack(_const_0 << 12), 'little', signed=True)
+        _correct_answer = ((_const_0 + _const_1) << 32) >> 32
         return _correct_answer, _assembly
     def add(self):
         _const_0 = random.randint(0, 2**20 - 1)
@@ -372,7 +432,7 @@ if __name__ == '__main__':
 #    _harness.generate(args, 'c.add')
 #    _harness.generate(args, 'c.sub')
 #    _harness.generate(args, 'c.addw')
-    _harness.generate(args, 'c.subw')
+#    _harness.generate(args, 'c.subw')
 #    _harness.generate(args, 'c.addi16sp')
 #    _harness.generate(args, 'c.addi4spn')
 #    _harness.generate(args, 'c.mv')
@@ -382,10 +442,14 @@ if __name__ == '__main__':
 #    _harness.generate(args, 'c.srli')
 #    _harness.generate(args, 'c.srai')
 #    _harness.generate(args, 'slli')
+#    _harness.generate(args, 'slliw')
 #    _harness.generate(args, 'srli')
+#    _harness.generate(args, 'srliw')
 #    _harness.generate(args, 'srai')
+    _harness.generate(args, 'sraiw')
 #    _harness.generate(args, 'andi')
 #    _harness.generate(args, 'addi')
+#    _harness.generate(args, 'addiw')
 #    _harness.generate(args, 'add')
 #    _harness.generate(args, 'sub')
 #    _harness.generate(args, 'lui')

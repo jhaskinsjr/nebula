@@ -372,22 +372,34 @@ def jal(word):
         'size': 4,
     }
 def i_type(word):
-    # imm[11:0] rs1 000 rd 0010011 ADDI
-    # imm[11:0] rs1 010 rd 0010011 SLTI
-    # imm[11:0] rs1 011 rd 0010011 SLTIU
-    # imm[11:0] rs1 100 rd 0010011 XORI
-    # imm[11:0] rs1 110 rd 0010011 ORI
-    # imm[11:0] rs1 111 rd 0010011 ANDI
+    # imm[11:0]     rs1 000 rd 0010011 ADDI
+    # imm[11:0]     rs1 010 rd 0010011 SLTI
+    # imm[11:0]     rs1 011 rd 0010011 SLTIU
+    # imm[11:0]     rs1 100 rd 0010011 XORI
+    # imm[11:0]     rs1 110 rd 0010011 ORI
+    # imm[11:0]     rs1 111 rd 0010011 ANDI
     # 0000000 shamt rs1 001 rd 0010011 SLLI
     # 0000000 shamt rs1 101 rd 0010011 SRLI
     # 0100000 shamt rs1 101 rd 0010011 SRAI
+    # imm[11:0]     rs1 000 rd 0011011 ADDIW
+    # 0000000 shamt rs1 001 rd 0011011 SLLIW
+    # 0000000 shamt rs1 101 rd 0011011 SRLIW
+    # 0100000 shamt rs1 101 rd 0011011 SRAIW
     # see: https://riscv.org/wp-content/uploads/2019/06/riscv-spec.pdf (p.130)
+
     _cmds = {
-        0b000: {'cmd': 'ADDI', 'imm': uncompressed_i_type_imm12(word, signed=True)},
-        0b001: {'cmd': 'SLLI', 'shamt': uncompressed_i_type_shamt(word)},
-        0b101: {'cmd': ('SRLI' if 0 == uncompressed_funct7(word) else 'SRAI'), 'shamt': uncompressed_i_type_shamt(word)},
-        0b111: {'cmd': 'ANDI', 'imm': uncompressed_i_type_imm12(word, signed=True)},
-    }
+        0b001_0011: {
+            0b000: {'cmd': 'ADDI', 'imm': uncompressed_i_type_imm12(word, signed=True)},
+            0b001: {'cmd': 'SLLI', 'shamt': uncompressed_i_type_shamt(word)},
+            0b101: {'cmd': ('SRLI' if 0 == uncompressed_funct7(word) else 'SRAI'), 'shamt': uncompressed_i_type_shamt(word)},
+            0b111: {'cmd': 'ANDI', 'imm': uncompressed_i_type_imm12(word, signed=True)},
+        },
+        0b001_1011: {
+            0b000: {'cmd': 'ADDIW', 'imm': uncompressed_i_type_imm12(word, signed=True)},
+            0b001: {'cmd': 'SLLIW', 'shamt': uncompressed_i_type_shamt(word)},
+            0b101: {'cmd': ('SRLIW' if 0 == uncompressed_funct7(word) else 'SRAIW'), 'shamt': uncompressed_i_type_shamt(word)},
+        }
+    }.get(uncompressed_opcode(word), {})
     if not uncompressed_funct3(word) in _cmds.keys():
         return uncompressed_unimplemented_instruction(word)
     _retval = {
@@ -870,6 +882,7 @@ def decode_uncompressed(word):
         0b110_1111: jal,
         0b010_0011: store,
         0b001_0011: i_type,
+        0b001_1011: i_type,
         0b110_0011: b_type,
         0b011_0011: r_type,
     }.get(uncompressed_opcode(word), uncompressed_unimplemented_instruction)(word)
