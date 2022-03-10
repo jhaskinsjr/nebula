@@ -412,26 +412,6 @@ def i_type(word):
         },
     }
     return _retval
-def b_type(word):
-    _cmds = {
-        0b000: 'BEQ',
-        0b001: 'BNE',
-        0b100: 'BLT',
-        0b101: 'BGE',
-        0b110: 'BLTU',
-        0b111: 'BGEU',
-    }
-    if not uncompressed_funct3(word) in _cmds.keys(): uncompressed_illegal_instruction(word)
-    _cmd = _cmds.get(uncompressed_funct3(word))
-    return {
-        'cmd': _cmd,
-        'rs1': uncompressed_rs1(word),
-        'rs2': uncompressed_rs2(word),
-        'imm': uncomprssed_b_type_imm13(word, signed=(False if _cmd.endswith('U') else True)),
-        'taken': None,
-        'word': word,
-        'size': 4,
-    }
 def r_type(word):
     # 0000000 rs2 rs1 000 rd 0110011 ADD
     # 0100000 rs2 rs1 000 rd 0110011 SUB
@@ -460,6 +440,37 @@ def r_type(word):
         'rs1': uncompressed_rs1(word),
         'rs2': uncompressed_rs2(word),
         'rd': uncompressed_rd(word),
+        'word': word,
+        'size': 4,
+    }
+def b_type(word):
+    _cmds = {
+        0b000: 'BEQ',
+        0b001: 'BNE',
+        0b100: 'BLT',
+        0b101: 'BGE',
+        0b110: 'BLTU',
+        0b111: 'BGEU',
+    }
+    if not uncompressed_funct3(word) in _cmds.keys(): uncompressed_illegal_instruction(word)
+    _cmd = _cmds.get(uncompressed_funct3(word))
+    return {
+        'cmd': _cmd,
+        'rs1': uncompressed_rs1(word),
+        'rs2': uncompressed_rs2(word),
+        'imm': uncomprssed_b_type_imm13(word, signed=(False if _cmd.endswith('U') else True)),
+        'taken': None,
+        'word': word,
+        'size': 4,
+    }
+def system(word):
+    _cmds = {
+        0b0000_0000_0000: 'ECALL',
+    }
+    if not uncompressed_i_type_imm12(word) in _cmds.keys(): uncompressed_illegal_instruction(word)
+    _cmd = _cmds.get(uncompressed_i_type_imm12(word))
+    return {
+        'cmd': _cmd,
         'word': word,
         'size': 4,
     }
@@ -883,8 +894,9 @@ def decode_uncompressed(word):
         0b010_0011: store,
         0b001_0011: i_type,
         0b001_1011: i_type,
-        0b110_0011: b_type,
         0b011_0011: r_type,
+        0b110_0011: b_type,
+        0b111_0011: system,
     }.get(uncompressed_opcode(word), uncompressed_unimplemented_instruction)(word)
 
 def uncompressed_opcode(word):

@@ -5,6 +5,7 @@ import struct
 
 import service
 import riscv.execute
+import riscv.syscall.linux
 
 def do_unimplemented(service, state, insn):
 #    print('Unimplemented: {}'.format(state.get('pending_execute')))
@@ -497,6 +498,121 @@ def do_shift(service, state, insn):
     do_commit(service, state, state.get('pending_execute'))
     state.update({'operands': {}})
     state.update({'pending_execute': None})
+def do_ecall(service, state, insn):
+    # The syscall calling protocol was learned from
+    # https://git.kernel.org/pub/scm/docs/man-pages/man-pages.git/tree/man2/syscall.2?h=man-pages-5.04#n332
+    # specficially:
+    #
+    #   riscv	ecall	a7	a0	a1
+    #
+    # meaning that the syscall number is in register x17 (i.e., a7) and
+    # parameters to the syscall are in registers x10 (i.e., a0) through
+    # x15 (i.e., a5), respectively
+    _a7 = 17
+    _a0 = 10
+    _a1 = 11
+    _a2 = 12
+    _a3 = 13
+    _a4 = 14
+    _a5 = 15
+    if not 'syscall_num' in state.get('operands'):
+        state.get('operands').update({'syscall_num': '%{}'.format(_a7)})
+        service.tx({'event': {
+            'arrival': 1 + state.get('cycle'),
+            'register': {
+                'cmd': 'get',
+                'name': _a7,
+            }
+        }})
+    if not isinstance(state.get('operands').get('syscall_num'), int):
+        return
+    if not 'syscall_a0' in state.get('operands'):
+        state.get('operands').update({'syscall_a0': '%{}'.format(_a0)})
+        service.tx({'event': {
+            'arrival': 1 + state.get('cycle'),
+            'register': {
+                'cmd': 'get',
+                'name': _a0,
+            }
+        }})
+    if not isinstance(state.get('operands').get('syscall_a0'), int):
+        return
+    if not 'syscall_a1' in state.get('operands'):
+        state.get('operands').update({'syscall_a1': '%{}'.format(_a1)})
+        service.tx({'event': {
+            'arrival': 1 + state.get('cycle'),
+            'register': {
+                'cmd': 'get',
+                'name': _a1,
+            }
+        }})
+    if not isinstance(state.get('operands').get('syscall_a1'), int):
+        return
+    if not 'syscall_a2' in state.get('operands'):
+        state.get('operands').update({'syscall_a2': '%{}'.format(_a2)})
+        service.tx({'event': {
+            'arrival': 1 + state.get('cycle'),
+            'register': {
+                'cmd': 'get',
+                'name': _a2,
+            }
+        }})
+    if not isinstance(state.get('operands').get('syscall_a2'), int):
+        return
+    if not 'syscall_a3' in state.get('operands'):
+        state.get('operands').update({'syscall_a3': '%{}'.format(_a3)})
+        service.tx({'event': {
+            'arrival': 1 + state.get('cycle'),
+            'register': {
+                'cmd': 'get',
+                'name': _a3,
+            }
+        }})
+    if not isinstance(state.get('operands').get('syscall_a3'), int):
+        return
+    if not 'syscall_a4' in state.get('operands'):
+        state.get('operands').update({'syscall_a4': '%{}'.format(_a4)})
+        service.tx({'event': {
+            'arrival': 1 + state.get('cycle'),
+            'register': {
+                'cmd': 'get',
+                'name': _a4,
+            }
+        }})
+    if not isinstance(state.get('operands').get('syscall_a4'), int):
+        return
+    if not 'syscall_a5' in state.get('operands'):
+        state.get('operands').update({'syscall_a5': '%{}'.format(_a5)})
+        service.tx({'event': {
+            'arrival': 1 + state.get('cycle'),
+            'register': {
+                'cmd': 'get',
+                'name': _a5,
+            }
+        }})
+    if not isinstance(state.get('operands').get('syscall_a5'), int):
+        return
+    _syscall_num = state.get('operands').get('syscall_num')
+    _syscall_a0 = state.get('operands').get('syscall_a0')
+    _syscall_a1 = state.get('operands').get('syscall_a1')
+    _syscall_a2 = state.get('operands').get('syscall_a2')
+    _syscall_a3 = state.get('operands').get('syscall_a3')
+    _syscall_a4 = state.get('operands').get('syscall_a4')
+    _syscall_a5 = state.get('operands').get('syscall_a5')
+    _result = riscv.syscall.linux.do_syscall(_syscall_num, _syscall_a0, _syscall_a1, _syscall_a2, _syscall_a3, _syscall_a4, _syscall_a5)
+    service.tx({'event': {
+        'arrival': 1 + state.get('cycle'),
+        'register': {
+            'cmd': 'set',
+            'name': _a0,
+            'data': _result,
+        }
+    }})
+    do_complete(service, state, state.get('pending_execute'))
+    do_confirm(service, state, state.get('pending_execute'))
+    do_commit(service, state, state.get('pending_execute'))
+    state.update({'operands': {}})
+    state.update({'pending_execute': None})
 
 def do_execute(service, state):
     for insn in state.get('pending_execute'):
@@ -538,6 +654,7 @@ def do_execute(service, state):
             'BGE': do_branch,
             'BLTU': do_branch,
             'BGEU': do_branch,
+            'ECALL': do_ecall,
         }.get(insn.get('cmd'), do_unimplemented)(service, state, insn)
 def do_complete(service, state, insns): # finished the work of the instruction, but will not necessarily be committed
     service.tx({'event': {
@@ -569,6 +686,20 @@ def do_tick(service, state, results, events):
             state.get('operands').update({'rs1': rs.get('data')})
         elif '%{}'.format(rs.get('name')) == state.get('operands').get('rs2'):
             state.get('operands').update({'rs2': rs.get('data')})
+        elif '%{}'.format(rs.get('name')) == state.get('operands').get('syscall_num'):
+            state.get('operands').update({'syscall_num': rs.get('data')})
+        elif '%{}'.format(rs.get('name')) == state.get('operands').get('syscall_a0'):
+            state.get('operands').update({'syscall_a0': rs.get('data')})
+        elif '%{}'.format(rs.get('name')) == state.get('operands').get('syscall_a1'):
+            state.get('operands').update({'syscall_a1': rs.get('data')})
+        elif '%{}'.format(rs.get('name')) == state.get('operands').get('syscall_a2'):
+            state.get('operands').update({'syscall_a2': rs.get('data')})
+        elif '%{}'.format(rs.get('name')) == state.get('operands').get('syscall_a3'):
+            state.get('operands').update({'syscall_a3': rs.get('data')})
+        elif '%{}'.format(rs.get('name')) == state.get('operands').get('syscall_a4'):
+            state.get('operands').update({'syscall_a4': rs.get('data')})
+        elif '%{}'.format(rs.get('name')) == state.get('operands').get('syscall_a5'):
+            state.get('operands').update({'syscall_a5': rs.get('data')})
     for rs in filter(lambda x: x, map(lambda y: y.get('mem'), results)):
         _mem = rs
         if _mem.get('addr') == state.get('operands').get('mem'):
