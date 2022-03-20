@@ -31,8 +31,8 @@ def poke(state, addr, size, data):
     # of N little-endian-formatted bytes -> list(X.to_bytes(N, 'little'))
     _fd = state.get('fd')
     os.lseek(_fd, addr, os.SEEK_SET)
-#    os.write(_fd, bytes(data))
-    os.write(_fd, data.to_bytes(size, 'little'))
+    os.write(_fd, bytes(data))
+#    os.write(_fd, data.to_bytes(size, 'little'))
 def peek(state, addr, size):
     # return : list of unsigned char, e.g., to make an 8-byte quadword from
     # a list, X, of N bytes -> int.from_bytes(X, 'little')

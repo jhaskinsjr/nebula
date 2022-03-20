@@ -17,12 +17,13 @@ def do_unimplemented(service, state, insn):
     state.update({'pending_execute': None})
 
 def do_lui(service, state, insn):
+    _result = riscv.execute.lui(insn.get('imm'))
     service.tx({'event': {
         'arrival': 1 + state.get('cycle'),
         'register': {
             'cmd': 'set',
             'name': insn.get('rd'),
-            'data': insn.get('imm'),
+            'data': _result,
         }
     }})
     do_complete(service, state, state.get('pending_execute'))
@@ -78,7 +79,7 @@ def do_jalr(service, state, insn):
                 'name': insn.get('rs1'),
             }
         }})
-    if not isinstance(state.get('operands').get('rs1'), int):
+    if not isinstance(state.get('operands').get('rs1'), list):
         return
     _next_pc, _ret_pc = riscv.execute.jalr(state.get('%pc'), insn.get('imm'), state.get('operands').get('rs1'), insn.get('size'))
     service.tx({'event': {
@@ -112,7 +113,7 @@ def do_branch(service, state, insn):
                 'name': insn.get('rs1'),
             }
         }})
-    if not isinstance(state.get('operands').get('rs1'), int):
+    if not isinstance(state.get('operands').get('rs1'), list):
         return
     if not 'rs2' in state.get('operands'):
         state.get('operands').update({'rs2': '%{}'.format(insn.get('rs2'))})
@@ -123,9 +124,9 @@ def do_branch(service, state, insn):
                 'name': insn.get('rs2'),
             }
         }})
-    if not isinstance(state.get('operands').get('rs2'), int):
+    if not isinstance(state.get('operands').get('rs2'), list):
         return
-    _next_pc = {
+    _next_pc, _taken = {
         'BEQ': riscv.execute.beq,
         'BNE': riscv.execute.bne,
         'BLT': riscv.execute.blt,
@@ -133,7 +134,7 @@ def do_branch(service, state, insn):
         'BLTU': riscv.execute.bltu,
         'BGEU': riscv.execute.bgeu,
     }.get(insn.get('cmd'))(state.get('%pc'), state.get('operands').get('rs1'), state.get('operands').get('rs2'), insn.get('imm'), insn.get('size'))
-    insn.update({'taken': _next_pc != state.get('%pc') + insn.get('size')})
+    insn.update({'taken': _taken})
     service.tx({'event': {
         'arrival': 1 + state.get('cycle'),
         'register': {
@@ -147,7 +148,7 @@ def do_branch(service, state, insn):
     do_commit(service, state, state.get('pending_execute'))
     state.update({'operands': {}})
     state.update({'pending_execute': None})
-def do_addi(service, state, insn):
+def do_itype(service, state, insn):
     if not 'rs1' in state.get('operands'):
         state.get('operands').update({'rs1': '%{}'.format(insn.get('rs1'))})
         service.tx({'event': {
@@ -157,9 +158,13 @@ def do_addi(service, state, insn):
                 'name': insn.get('rs1'),
             }
         }})
-    if not isinstance(state.get('operands').get('rs1'), int):
+    if not isinstance(state.get('operands').get('rs1'), list):
         return
-    _result = riscv.execute.addi(state.get('operands').get('rs1'), insn.get('imm'))
+    _result = {
+        'ADDI': riscv.execute.addi(state.get('operands').get('rs1'), insn.get('imm')),
+        'ADDIW': riscv.execute.addiw(state.get('operands').get('rs1'), insn.get('imm')),
+        'ANDI': riscv.execute.andi(state.get('operands').get('rs1'), insn.get('imm')),
+    }.get(insn.get('cmd'))
     service.tx({'event': {
         'arrival': 1 + state.get('cycle'),
         'register': {
@@ -173,7 +178,7 @@ def do_addi(service, state, insn):
     do_commit(service, state, state.get('pending_execute'))
     state.update({'operands': {}})
     state.update({'pending_execute': None})
-def do_add(service, state, insn):
+def do_rtype(service, state, insn):
     if not 'rs1' in state.get('operands'):
         state.get('operands').update({'rs1': '%{}'.format(insn.get('rs1'))})
         service.tx({'event': {
@@ -183,6 +188,8 @@ def do_add(service, state, insn):
                 'name': insn.get('rs1'),
             }
         }})
+    if not isinstance(state.get('operands').get('rs1'), list):
+        return
     if not 'rs2' in state.get('operands'):
         state.get('operands').update({'rs2': '%{}'.format(insn.get('rs2'))})
         service.tx({'event': {
@@ -192,140 +199,14 @@ def do_add(service, state, insn):
                 'name': insn.get('rs2'),
             }
         }})
-    if not isinstance(state.get('operands').get('rs1'), int) or not isinstance(state.get('operands').get('rs2'), int):
+    if not isinstance(state.get('operands').get('rs2'), list):
         return
-    _result = riscv.execute.add(state.get('operands').get('rs1'), state.get('operands').get('rs2'))
-    service.tx({'event': {
-        'arrival': 1 + state.get('cycle'),
-        'register': {
-            'cmd': 'set',
-            'name': insn.get('rd'),
-            'data': _result,
-        }
-    }})
-    do_complete(service, state, state.get('pending_execute'))
-    do_confirm(service, state, state.get('pending_execute'))
-    do_commit(service, state, state.get('pending_execute'))
-    state.update({'operands': {}})
-    state.update({'pending_execute': None})
-def do_sub(service, state, insn):
-    if not 'rs1' in state.get('operands'):
-        state.get('operands').update({'rs1': '%{}'.format(insn.get('rs1'))})
-        service.tx({'event': {
-            'arrival': 1 + state.get('cycle'),
-            'register': {
-                'cmd': 'get',
-                'name': insn.get('rs1'),
-            }
-        }})
-    if not 'rs2' in state.get('operands'):
-        state.get('operands').update({'rs2': '%{}'.format(insn.get('rs2'))})
-        service.tx({'event': {
-            'arrival': 1 + state.get('cycle'),
-            'register': {
-                'cmd': 'get',
-                'name': insn.get('rs2'),
-            }
-        }})
-    if not isinstance(state.get('operands').get('rs1'), int) or not isinstance(state.get('operands').get('rs2'), int):
-        return
-    _result = riscv.execute.sub(state.get('operands').get('rs1'), state.get('operands').get('rs2'))
-    service.tx({'event': {
-        'arrival': 1 + state.get('cycle'),
-        'register': {
-            'cmd': 'set',
-            'name': insn.get('rd'),
-            'data': _result,
-        }
-    }})
-    do_complete(service, state, state.get('pending_execute'))
-    do_confirm(service, state, state.get('pending_execute'))
-    do_commit(service, state, state.get('pending_execute'))
-    state.update({'operands': {}})
-    state.update({'pending_execute': None})
-def do_addw(service, state, insn):
-    if not 'rs1' in state.get('operands'):
-        state.get('operands').update({'rs1': '%{}'.format(insn.get('rs1'))})
-        service.tx({'event': {
-            'arrival': 1 + state.get('cycle'),
-            'register': {
-                'cmd': 'get',
-                'name': insn.get('rs1'),
-            }
-        }})
-    if not 'rs2' in state.get('operands'):
-        state.get('operands').update({'rs2': '%{}'.format(insn.get('rs2'))})
-        service.tx({'event': {
-            'arrival': 1 + state.get('cycle'),
-            'register': {
-                'cmd': 'get',
-                'name': insn.get('rs2'),
-            }
-        }})
-    if not isinstance(state.get('operands').get('rs1'), int) or not isinstance(state.get('operands').get('rs2'), int):
-        return
-    _result = riscv.execute.addw(state.get('operands').get('rs1'), state.get('operands').get('rs2'))
-    service.tx({'event': {
-        'arrival': 1 + state.get('cycle'),
-        'register': {
-            'cmd': 'set',
-            'name': insn.get('rd'),
-            'data': _result,
-        }
-    }})
-    do_complete(service, state, state.get('pending_execute'))
-    do_confirm(service, state, state.get('pending_execute'))
-    do_commit(service, state, state.get('pending_execute'))
-    state.update({'operands': {}})
-    state.update({'pending_execute': None})
-def do_subw(service, state, insn):
-    if not 'rs1' in state.get('operands'):
-        state.get('operands').update({'rs1': '%{}'.format(insn.get('rs1'))})
-        service.tx({'event': {
-            'arrival': 1 + state.get('cycle'),
-            'register': {
-                'cmd': 'get',
-                'name': insn.get('rs1'),
-            }
-        }})
-    if not 'rs2' in state.get('operands'):
-        state.get('operands').update({'rs2': '%{}'.format(insn.get('rs2'))})
-        service.tx({'event': {
-            'arrival': 1 + state.get('cycle'),
-            'register': {
-                'cmd': 'get',
-                'name': insn.get('rs2'),
-            }
-        }})
-    if not isinstance(state.get('operands').get('rs1'), int) or not isinstance(state.get('operands').get('rs2'), int):
-        return
-    _result = riscv.execute.subw(state.get('operands').get('rs1'), state.get('operands').get('rs2'))
-    service.tx({'event': {
-        'arrival': 1 + state.get('cycle'),
-        'register': {
-            'cmd': 'set',
-            'name': insn.get('rd'),
-            'data': _result,
-        }
-    }})
-    do_complete(service, state, state.get('pending_execute'))
-    do_confirm(service, state, state.get('pending_execute'))
-    do_commit(service, state, state.get('pending_execute'))
-    state.update({'operands': {}})
-    state.update({'pending_execute': None})
-def do_addiw(service, state, insn):
-    if not 'rs1' in state.get('operands'):
-        state.get('operands').update({'rs1': '%{}'.format(insn.get('rs1'))})
-        service.tx({'event': {
-            'arrival': 1 + state.get('cycle'),
-            'register': {
-                'cmd': 'get',
-                'name': insn.get('rs1'),
-            }
-        }})
-    if not isinstance(state.get('operands').get('rs1'), int):
-        return
-    _result = riscv.execute.addiw(state.get('operands').get('rs1'), insn.get('imm'))
+    _result = {
+        'ADD': riscv.execute.add(state.get('operands').get('rs1'), state.get('operands').get('rs2')),
+        'SUB': riscv.execute.sub(state.get('operands').get('rs1'), state.get('operands').get('rs2')),
+        'ADDW': riscv.execute.addw(state.get('operands').get('rs1'), state.get('operands').get('rs2')),
+        'SUBW': riscv.execute.subw(state.get('operands').get('rs1'), state.get('operands').get('rs2')),
+    }.get(insn.get('cmd'))
     service.tx({'event': {
         'arrival': 1 + state.get('cycle'),
         'register': {
@@ -349,10 +230,10 @@ def do_load(service, state, insn):
                 'name': insn.get('rs1'),
             }
         }})
-    if not isinstance(state.get('operands').get('rs1'), int):
+    if not isinstance(state.get('operands').get('rs1'), list):
         return
     if not 'mem' in state.get('operands'):
-        state.get('operands').update({'mem': insn.get('imm') + state.get('operands').get('rs1')})
+        state.get('operands').update({'mem': insn.get('imm') + int.from_bytes(state.get('operands').get('rs1'), 'little')})
         service.tx({'event': {
             'arrival': 1 + state.get('cycle'),
             'mem': {
@@ -363,51 +244,23 @@ def do_load(service, state, insn):
         }})
     if not isinstance(state.get('operands').get('mem'), list):
         return
-    _data = int.from_bytes(state.get('operands').get('mem'), 'little')
-    if insn.get('cmd') == 'LW':
-        _msb = (_data >> 31) & 0b1
-        _data = functools.reduce(lambda a, b: a | b, map(lambda x: _msb << x, range(32, 64)), _data)
-        _data = int.from_bytes(struct.Struct('<Q').pack(_data), 'little', signed=True)
-    elif insn.get('cmd') == 'LH':
-        _msb = (_data >> 15) & 0b1
-        _data = functools.reduce(lambda a, b: a | b, map(lambda x: _msb << x, range(16, 64)), _data)
-        _data = int.from_bytes(struct.Struct('<Q').pack(_data), 'little', signed=True)
-    elif insn.get('cmd') == 'LB':
-        _msb = (_data >> 7) & 0b1
-        _data = functools.reduce(lambda a, b: a | b, map(lambda x: _msb << x, range(8, 64)), _data)
-        _data = int.from_bytes(struct.Struct('<Q').pack(_data), 'little', signed=True)
+    _data = state.get('operands').get('mem')
+    print('do_load(): _data : {} ({})'.format(_data, len(_data)))
+    _data = { # HACK: This is 100% little-endian-specific
+        'LD': _data,
+        'LW': _data + [(0xff if ((_data[3] >> 7) & 0b1) else 0)] * 4,
+        'LH': _data + [(0xff if ((_data[1] >> 7) & 0b1) else 0)] * 6,
+        'LB': _data + [(0xff if ((_data[0] >> 7) & 0b1) else 0)] * 7,
+        'LWU': _data + [0] * 4,
+        'LHU': _data + [0] * 6,
+        'LBU': _data + [0] * 7,
+    }.get(insn.get('cmd'))
     service.tx({'event': {
         'arrival': 1 + state.get('cycle'),
         'register': {
             'cmd': 'set',
             'name': insn.get('rd'),
             'data': _data,
-        }
-    }})
-    do_complete(service, state, state.get('pending_execute'))
-    do_confirm(service, state, state.get('pending_execute'))
-    do_commit(service, state, state.get('pending_execute'))
-    state.update({'operands': {}})
-    state.update({'pending_execute': None})
-def do_andi(service, state, insn):
-    if not 'rs1' in state.get('operands'):
-        state.get('operands').update({'rs1': '%{}'.format(insn.get('rs1'))})
-        service.tx({'event': {
-            'arrival': 1 + state.get('cycle'),
-            'register': {
-                'cmd': 'get',
-                'name': insn.get('rs1'),
-            }
-        }})
-    if not isinstance(state.get('operands').get('rs1'), int):
-        return
-    _result = riscv.execute.andi(state.get('operands').get('rs1'), insn.get('imm'))
-    service.tx({'event': {
-        'arrival': 1 + state.get('cycle'),
-        'register': {
-            'cmd': 'set',
-            'name': insn.get('rd'),
-            'data': _result,
         }
     }})
     do_complete(service, state, state.get('pending_execute'))
@@ -425,7 +278,7 @@ def do_store(service, state, insn):
                 'name': insn.get('rs1'),
             }
         }})
-    if not isinstance(state.get('operands').get('rs1'), int):
+    if not isinstance(state.get('operands').get('rs1'), list):
         return
     if not 'rs2' in state.get('operands'):
         state.get('operands').update({'rs2': '%{}'.format(insn.get('rs2'))})
@@ -436,20 +289,27 @@ def do_store(service, state, insn):
                 'name': insn.get('rs2'),
             }
         }})
-    if not isinstance(state.get('operands').get('rs2'), int):
+    if not isinstance(state.get('operands').get('rs2'), list):
         return
     _size = insn.get('nbytes')
-    _data = state.get('operands').get('rs2') & {
-        8: 0xffffffffffffffff,
-        4: 0xffffffff,
-        2: 0xffff,
-        1: 0xff,
-    }.get(_size)
+    _data = state.get('operands').get('rs2')
+    _data = {
+        'SD': _data,
+        'SW': _data[:4],
+        'SH': _data[:2],
+        'SB': _data[:1],
+    }.get(insn.get('cmd'))
+#    _data = state.get('operands').get('rs2') & {
+#        8: 0xffffffffffffffff,
+#        4: 0xffffffff,
+#        2: 0xffff,
+#        1: 0xff,
+#    }.get(_size)
     service.tx({'event': {
         'arrival': 1 + state.get('cycle'),
         'mem': {
             'cmd': 'poke',
-            'addr': insn.get('imm') + state.get('operands').get('rs1'),
+            'addr': insn.get('imm') + int.from_bytes(state.get('operands').get('rs1'), 'little'),
             'size': _size,
             'data': _data
         }
@@ -473,7 +333,7 @@ def do_shift(service, state, insn):
                 'name': insn.get('rs1'),
             }
         }})
-    if not isinstance(state.get('operands').get('rs1'), int):
+    if not isinstance(state.get('operands').get('rs1'), list):
         return
     _rs1 = state.get('operands').get('rs1')
     _shamt = insn.get('shamt')
@@ -524,7 +384,7 @@ def do_ecall(service, state, insn):
                 'name': _a7,
             }
         }})
-    if not isinstance(state.get('operands').get('syscall_num'), int):
+    if not isinstance(state.get('operands').get('syscall_num'), list):
         return
     if not 'syscall_a0' in state.get('operands'):
         state.get('operands').update({'syscall_a0': '%{}'.format(_a0)})
@@ -535,7 +395,7 @@ def do_ecall(service, state, insn):
                 'name': _a0,
             }
         }})
-    if not isinstance(state.get('operands').get('syscall_a0'), int):
+    if not isinstance(state.get('operands').get('syscall_a0'), list):
         return
     if not 'syscall_a1' in state.get('operands'):
         state.get('operands').update({'syscall_a1': '%{}'.format(_a1)})
@@ -546,7 +406,7 @@ def do_ecall(service, state, insn):
                 'name': _a1,
             }
         }})
-    if not isinstance(state.get('operands').get('syscall_a1'), int):
+    if not isinstance(state.get('operands').get('syscall_a1'), list):
         return
     if not 'syscall_a2' in state.get('operands'):
         state.get('operands').update({'syscall_a2': '%{}'.format(_a2)})
@@ -557,7 +417,7 @@ def do_ecall(service, state, insn):
                 'name': _a2,
             }
         }})
-    if not isinstance(state.get('operands').get('syscall_a2'), int):
+    if not isinstance(state.get('operands').get('syscall_a2'), list):
         return
     if not 'syscall_a3' in state.get('operands'):
         state.get('operands').update({'syscall_a3': '%{}'.format(_a3)})
@@ -568,7 +428,7 @@ def do_ecall(service, state, insn):
                 'name': _a3,
             }
         }})
-    if not isinstance(state.get('operands').get('syscall_a3'), int):
+    if not isinstance(state.get('operands').get('syscall_a3'), list):
         return
     if not 'syscall_a4' in state.get('operands'):
         state.get('operands').update({'syscall_a4': '%{}'.format(_a4)})
@@ -579,7 +439,7 @@ def do_ecall(service, state, insn):
                 'name': _a4,
             }
         }})
-    if not isinstance(state.get('operands').get('syscall_a4'), int):
+    if not isinstance(state.get('operands').get('syscall_a4'), list):
         return
     if not 'syscall_a5' in state.get('operands'):
         state.get('operands').update({'syscall_a5': '%{}'.format(_a5)})
@@ -590,7 +450,7 @@ def do_ecall(service, state, insn):
                 'name': _a5,
             }
         }})
-    if not isinstance(state.get('operands').get('syscall_a5'), int):
+    if not isinstance(state.get('operands').get('syscall_a5'), list):
         return
     _syscall_num = state.get('operands').get('syscall_num')
     _syscall_a0 = state.get('operands').get('syscall_a0')
@@ -625,12 +485,20 @@ def do_execute(service, state):
             'AUIPC': do_auipc,
             'JAL': do_jal,
             'JALR': do_jalr,
-            'ADDI': do_addi,
-            'ADD': do_add,
-            'SUB': do_sub,
-            'ADDW': do_addw,
-            'SUBW': do_subw,
-            'ADDIW': do_addiw,
+            'ADDI': do_itype,
+            'ADDIW': do_itype,
+            'ANDI': do_itype,
+#            'ADDI': do_addi,
+#            'ADDIW': do_addiw,
+#            'ANDI': do_andi,
+            'ADD': do_rtype,
+            'SUB': do_rtype,
+            'ADDW': do_rtype,
+            'SUBW': do_rtype,
+#            'ADD': do_add,
+#            'SUB': do_sub,
+#            'ADDW': do_addw,
+#            'SUBW': do_subw,
             'LD': do_load,
             'LW': do_load,
             'LH': do_load,
@@ -638,9 +506,10 @@ def do_execute(service, state):
             'LWU': do_load,
             'LHU': do_load,
             'LBU': do_load,
-            'ANDI': do_andi,
             'SD': do_store,
             'SW': do_store,
+            'SH': do_store,
+            'SB': do_store,
             'NOP': do_nop,
             'SLLI': do_shift,
             'SRLI': do_shift,

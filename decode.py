@@ -2,10 +2,13 @@ import sys
 import argparse
 
 import service
+import riscv.constants
 import riscv.decode
 
 def do_tick(service, state, results, events):
     for pc in map(lambda w: w.get('data'), filter(lambda x: x and '%pc' == x.get('name'), map(lambda y: y.get('register'), results))):
+        service.tx({'info': 'pc            : {}'.format(pc)})
+        service.tx({'info': 'state.get(pc) : {}'.format(state.get('%pc'))})
         if pc != state.get('%pc'):
             state.get('buffer').clear()
         state.update({'%pc': pc})
@@ -16,7 +19,7 @@ def do_tick(service, state, results, events):
         _decoded = riscv.decode.do_decode(state.get('buffer'), 1) # HACK: hard-coded max-instructions-to-decode of 1
 #        service.tx({'info': '_decoded : {}'.format(_decoded)})
         _bytes_decoded = sum(map(lambda x: x.get('size'), _decoded))
-        state.update({'%pc': _bytes_decoded + state.get('%pc')})
+        state.update({'%pc': riscv.constants.integer_to_list_of_bytes(_bytes_decoded + int.from_bytes(state.get('%pc'), 'little'), 64, 'little')})
         for _ in range(_bytes_decoded): state.get('buffer').pop(0)
         service.tx({'result': {
             'arrival': 1 + state.get('cycle'),

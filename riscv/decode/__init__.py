@@ -103,7 +103,7 @@ def c_ldsp(word):
     # see: https://riscv.org/wp-content/uploads/2019/06/riscv-spec.pdf (p.111)
     _b080706 = (word >> 2) & 0b111
     _b0403   = (word >> 5) & 0b11
-    _b05     = (word >> 13) & 0b1
+    _b05     = (word >> 12) & 0b1
     _imm = (_b080706 << 6) | (_b05 << 5) | (_b0403 << 3)
     return {
         'cmd': 'LD',

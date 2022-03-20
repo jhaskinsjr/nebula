@@ -2,6 +2,7 @@ import sys
 import argparse
 
 import service
+import riscv.constants
 
 JUMPS = ['JALR', 'JAL'] # needs to be incorporated into riscv module
 BRANCHES = ['BEQ', 'BNE', 'BLT', 'BGE', 'BLTU', 'BGEU'] # needs to ben incorporated into riscv module
@@ -13,12 +14,12 @@ def do_tick(service, state, results, events):
             'arrival': 1 + state.get('cycle'),
             'mem': {
                 'cmd': 'peek',
-                'addr': state.get('%jp'),
+                'addr': int.from_bytes(state.get('%jp'), 'little'),
                 'size': 4,
             },
         }})
-        state.update({'pending_fetch': state.get('%jp')})
-        state.update({'%jp': 4 + state.get('%jp')})
+        state.update({'pending_fetch': int.from_bytes(state.get('%jp'), 'little')})
+        state.update({'%jp': riscv.constants.integer_to_list_of_bytes(4 + int.from_bytes(state.get('%jp'), 'little'), 64, 'little')})
         state.update({'%pc': pc})
         state.update({'pending_pc': False})
     for mem in filter(lambda x: x, map(lambda y: y.get('mem'), results)):
@@ -56,7 +57,8 @@ def do_tick(service, state, results, events):
 #        service.tx({'info': '%jp : {}'.format(state.get('%jp'))})
 #        service.tx({'info': '%pc : {}'.format(state.get('%pc'))})
         if not _jumps and not _taken_branches:
-            _pc = sum(map(lambda x: x.get('size'), completed.get('insns'))) + state.get('%pc')
+            _pc = sum(map(lambda x: x.get('size'), completed.get('insns'))) + int.from_bytes(state.get('%pc'), 'little')
+            _pc = riscv.constants.integer_to_list_of_bytes(_pc, 64, 'little')
             service.tx({'event': {
                 'arrival': 1 + state.get('cycle'),
                 'register': {

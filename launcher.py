@@ -9,6 +9,8 @@ import itertools
 
 import elftools.elf.elffile
 
+import riscv.constants
+
 def tx(conns, msg):
     _message = {
         str: lambda : json.dumps({'text': msg}),
@@ -110,7 +112,7 @@ def register(connections, cmd, name, data=None):
             'cmd': cmd,
             'name': _name,
         },
-        **({'data': (integer(data) if isinstance(data, str) else data)} if data else {}),
+        **({'data': (riscv.constants.integer_to_list_of_bytes(integer(data), 64, 'little') if isinstance(data, str) else data)} if data else {}),
     }})
 def mainmem(connections, cmd, addr, size, data=None):
     tx(connections, {'mainmem': {**{
@@ -156,6 +158,8 @@ def loadbin(connections, mainmem_rawfile, sp, pc, binary, *args):
     # elements, "cat", "foo" and "bar". 
     #
     # https://www.gnu.org/software/libc/manual/html_node/Program-Arguments.html
+    #
+    # see also: https://refspecs.linuxbase.org/LSB_3.1.1/LSB-Core-generic/LSB-Core-generic/baselib---libc-start-main-.html
     _argc = 1 + len(args)   # add 1 since binary name is argv[0]
     _args = list(map(lambda a: '{}\0'.format(a), args))
     _fp  = sp

@@ -14,7 +14,7 @@
 def do_syscall(syscall_num, a0, a1, a2, a3, a4, a5):
     return {
         214: do_brk,
-    }.get(syscall_num)(a0, a1, a2, a3, a4, a5)
+    }.get(int.from_bytes(syscall_num, 'little'))(a0, a1, a2, a3, a4, a5)
 
 def do_brk(a0, a1, a2, a3, a4, a5):
     return a5

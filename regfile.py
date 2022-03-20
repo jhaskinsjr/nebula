@@ -3,6 +3,7 @@ import sys
 import argparse
 
 import service
+import riscv.constants
 
 def do_tick(service, state, results, events):
     for ev in filter(lambda x: x, map(lambda y: y.get('register'), events)):
@@ -11,6 +12,7 @@ def do_tick(service, state, results, events):
         _data = ev.get('data')
         if 'set' == _cmd:
             assert _name in state.get('registers').keys()
+            assert isinstance(_data, list)
             if 0 != _name:
                 state.update({'registers': setregister(state.get('registers'), _name, _data)})
         elif 'get' == _cmd:
@@ -28,10 +30,11 @@ def do_tick(service, state, results, events):
             os.lseek(fd, _data, os.SEEK_SET)
             for k in ['%pc'] + sorted(filter(lambda x: not '%pc' == x, state.get('registers').keys()), key=str):
                 v = getregister(state.get('registers'), k)
-                try:
-                    os.write(fd, v.to_bytes(8, 'little', signed=True))
-                except:
-                    os.write(fd, v.to_bytes(8, 'little'))
+                os.write(fd, bytes(v))
+#                try:
+#                    os.write(fd, v.to_bytes(8, 'little', signed=True))
+#                except:
+#                    os.write(fd, v.to_bytes(8, 'little'))
                 os.lseek(fd, 8, os.SEEK_CUR)
                 service.tx({'info': 'snapshot: {} : {}'.format(k, v)})
             os.fsync(fd)
@@ -40,10 +43,11 @@ def do_tick(service, state, results, events):
             fd = os.open(_name, os.O_RDWR)
             os.lseek(fd, _data, os.SEEK_SET)
             for k in ['%pc'] + sorted(filter(lambda x: not '%pc' == x, state.get('registers').keys()), key=str):
-                try:
-                    v = int.from_bytes(os.read(fd, 8), 'little', signed=True)
-                except:
-                    v = int.from_bytes(os.read(fd, 8), 'little')
+                v = list(os.read(fd, 8))
+#                try:
+#                    v = int.from_bytes(os.read(fd, 8), 'little', signed=True)
+#                except:
+#                    v = int.from_bytes(os.read(fd, 8), 'little')
                 os.lseek(fd, 8, os.SEEK_CUR)
                 state.update({'registers': setregister(state.get('registers'), k, v)})
                 service.tx({'info': 'restore: {} : {}'.format(k, v)})
@@ -76,8 +80,8 @@ if '__main__' == __name__:
         'running': False,
         'ack': True,
         'registers': {
-            **{'%pc': 0},
-            **{x: 0 for x in range(32)},
+            **{'%pc': riscv.constants.integer_to_list_of_bytes(0, 64, 'little')},
+            **{x: riscv.constants.integer_to_list_of_bytes(0, 64, 'little') for x in range(32)},
         }
     }
     while state.get('active'):
