@@ -244,16 +244,17 @@ def do_load(service, state, insn):
         }})
     if not isinstance(state.get('operands').get('mem'), list):
         return
-    _data = state.get('operands').get('mem')
-    print('do_load(): _data : {} ({})'.format(_data, len(_data)))
+    _fetched  = state.get('operands').get('mem')
+    _fetched += [-1] * (8 - len(_fetched))
+    print('do_load(): _fetched : {} ({})'.format(_fetched, len(_fetched)))
     _data = { # HACK: This is 100% little-endian-specific
-        'LD': _data,
-        'LW': _data + [(0xff if ((_data[3] >> 7) & 0b1) else 0)] * 4,
-        'LH': _data + [(0xff if ((_data[1] >> 7) & 0b1) else 0)] * 6,
-        'LB': _data + [(0xff if ((_data[0] >> 7) & 0b1) else 0)] * 7,
-        'LWU': _data + [0] * 4,
-        'LHU': _data + [0] * 6,
-        'LBU': _data + [0] * 7,
+        'LD': _fetched,
+        'LW': _fetched[:4] + [(0xff if ((_fetched[3] >> 7) & 0b1) else 0)] * 4,
+        'LH': _fetched[:2] + [(0xff if ((_fetched[1] >> 7) & 0b1) else 0)] * 6,
+        'LB': _fetched[:1] + [(0xff if ((_fetched[0] >> 7) & 0b1) else 0)] * 7,
+        'LWU': _fetched[:4] + [0] * 4,
+        'LHU': _fetched[:2] + [0] * 6,
+        'LBU': _fetched[:1] + [0] * 7,
     }.get(insn.get('cmd'))
     service.tx({'event': {
         'arrival': 1 + state.get('cycle'),
