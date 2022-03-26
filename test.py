@@ -389,9 +389,10 @@ class Harness:
         )
         _stdout = _result.stdout.decode('utf-8').split('\n')
 #        print('\n'.join(_stdout))
-        _x31 = next(iter(filter(lambda x: re.search('register 31 : ', x), _stdout))).split()[-1]
+        _x31 = next(iter(next(iter(filter(lambda x: re.search('register 31 : ', x), _stdout))).split(':')[1:]))
+        print('_x31 : {}'.format(_x31))
         try:
-            _x31_int = int(_x31)
+            _x31_int = int.from_bytes(eval(_x31), 'little')
         except:
             _x31_int = None
         try:
