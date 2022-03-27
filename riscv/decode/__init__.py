@@ -571,6 +571,7 @@ def compressed_quadrant_00(word):
         0b010: compressed_quadrant_00_opcode_010,
         0b011: compressed_quadrant_00_opcode_011,
         0b110: compressed_quadrant_00_opcode_110,
+        0b111: compressed_quadrant_00_opcode_111,
     }.get(compressed_opcode(word), compressed_unimplemented_instruction)(word)
 def compressed_quadrant_00_opcode_000(word):
     # 00 nzuimm[5:4|9:6|2|3] rd' 00 ; C.ADDI4SPN (RES, nzuimm=0)
