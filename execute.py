@@ -202,14 +202,22 @@ def do_rtype(service, state, insn):
     if not isinstance(state.get('operands').get('rs2'), list):
         return
     _result = {
-        'ADD': riscv.execute.add(state.get('operands').get('rs1'), state.get('operands').get('rs2')),
-        'SUB': riscv.execute.sub(state.get('operands').get('rs1'), state.get('operands').get('rs2')),
-        'XOR': riscv.execute.xor(state.get('operands').get('rs1'), state.get('operands').get('rs2')),
-        'OR': riscv.execute.do_or(state.get('operands').get('rs1'), state.get('operands').get('rs2')),
-        'AND': riscv.execute.do_and(state.get('operands').get('rs1'), state.get('operands').get('rs2')),
-        'ADDW': riscv.execute.addw(state.get('operands').get('rs1'), state.get('operands').get('rs2')),
-        'SUBW': riscv.execute.subw(state.get('operands').get('rs1'), state.get('operands').get('rs2')),
-    }.get(insn.get('cmd'))
+        'ADD': riscv.execute.add,
+        'SUB': riscv.execute.sub,
+        'XOR': riscv.execute.xor,
+        'OR': riscv.execute.do_or,
+        'AND': riscv.execute.do_and,
+        'ADDW': riscv.execute.addw,
+        'SUBW': riscv.execute.subw,
+        'MUL': riscv.execute.mul,
+        'MULH': riscv.execute.mulh,
+        'MULHSU': riscv.execute.mulhsu,
+        'MULHU': riscv.execute.mulhu,
+        'DIV': riscv.execute.div,
+        'DIVU': riscv.execute.divu,
+        'REM': riscv.execute.rem,
+        'REMU': riscv.execute.remu,
+    }.get(insn.get('cmd'))(state.get('operands').get('rs1'), state.get('operands').get('rs2'))
     service.tx({'event': {
         'arrival': 1 + state.get('cycle'),
         'register': {
@@ -511,6 +519,14 @@ def do_execute(service, state):
             'AND': do_rtype,
             'ADDW': do_rtype,
             'SUBW': do_rtype,
+            'MUL': do_rtype,
+            'MULH': do_rtype,
+            'MULHSU': do_rtype,
+            'MULHU': do_rtype,
+            'DIV': do_rtype,
+            'DIVU': do_rtype,
+            'REM': do_rtype,
+            'REMU': do_rtype,
 #            'ADD': do_add,
 #            'SUB': do_sub,
 #            'ADDW': do_addw,

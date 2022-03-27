@@ -1,4 +1,5 @@
 import functools
+from socket import CAN_BCM_TX_CP_CAN_ID
 from sre_constants import CATEGORY_LOC_WORD
 import struct
 
@@ -373,6 +374,18 @@ def c_srai(word, **kwargs):
         'word': word,
         'size': 2,
     }
+def c_andi(word, **kwargs):
+    # C.ANDI is a CB-format instruction that computes the bitwise AND
+    # of the value in register rd' and the sign-extended 6-bit immediate,
+    # then writes the result to rd'. C.ANDI expands to andi rd', rd', imm[5:0].
+    return {
+        'cmd': 'ANDI',
+        'rs1': compressed_quadrant_01_rs1_prime_or_rd_prime(word),
+        'rd': compressed_quadrant_01_rs1_prime_or_rd_prime(word),
+        'imm': kwargs.get('imm'),
+        'word': word,
+        'size': 2,
+    }
 
 def lui(word):
     # LUI (load upper immediate) is used to build 32-bit constants and
@@ -469,6 +482,22 @@ def r_type(word):
     _cmds = {
         (0b000_0000, 0b000): 'ADD',
         (0b010_0000, 0b000): 'SUB',
+        (0b000_0000, 0b001): 'SLL',
+        (0b000_0000, 0b100): 'XOR',
+        (0b000_0000, 0b101): 'SRL',
+        (0b010_0000, 0b101): 'SRA',
+        (0b000_0000, 0b110): 'OR',
+        (0b000_0000, 0b111): 'AND',
+        (0b000_0000, 0b000): 'ADDW',
+        (0b010_0000, 0b000): 'SUBW',
+        (0b000_0001, 0b000): 'MUL',
+        (0b000_0001, 0b001): 'MULH',
+        (0b000_0001, 0b010): 'MULHSU',
+        (0b000_0001, 0b011): 'MULHU',
+        (0b000_0001, 0b100): 'DIV',
+        (0b000_0001, 0b101): 'DIVU',
+        (0b000_0001, 0b110): 'REM',
+        (0b000_0001, 0b111): 'REMU',
     }
     _cmd = _cmds.get((uncompressed_funct7(word), uncompressed_funct3(word)), 'Undefined')
     return {
@@ -730,6 +759,9 @@ def compressed_quadrant_01_opcode_100(word):
     elif 0b01 == _b1110:
         _impl = c_srai
         _imm = (_b12 << 5) | (word >> 2) & 0b1_1111
+    elif 0b10 == _b1110:
+        _impl = c_andi
+        _imm = int.from_bytes([(_b12 << 7) | (_b12 << 6) | (_b12 << 5) | (word >> 2) & 0b1_1111], 'little', signed=True)
     elif 0b11 == _b1110:
         if 0b0 == _b12:
             _impl = {

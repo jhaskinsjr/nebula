@@ -85,6 +85,54 @@ def subw(rs1, rs2):
         64,
         'little',
     )
+def mul(rs1, rs2):
+    return riscv.constants.integer_to_list_of_bytes(
+        (int.from_bytes(rs1, 'little', signed=True) * int.from_bytes(rs2, 'little', signed=True)) & ((2 ** 64) - 1),
+        64,
+        'little',
+    )
+def mulh(rs1, rs2):
+    return riscv.constants.integer_to_list_of_bytes(
+        ((int.from_bytes(rs1, 'little', signed=True) * int.from_bytes(rs2, 'little', signed=True)) >> 64) & ((2 ** 64) - 1),
+        64,
+        'little',
+    )
+def mulhsu(rs1, rs2):
+    return riscv.constants.integer_to_list_of_bytes(
+        ((int.from_bytes(rs1, 'little', signed=True) * int.from_bytes(rs2, 'little')) >> 64) & ((2 ** 64) - 1),
+        64,
+        'little',
+    )
+def mulhu(rs1, rs2):
+    return riscv.constants.integer_to_list_of_bytes(
+        ((int.from_bytes(rs1, 'little') * int.from_bytes(rs2, 'little')) >> 64) & ((2 ** 64) - 1),
+        64,
+        'little',
+    )
+def div(rs1, rs2):
+    return riscv.constants.integer_to_list_of_bytes(
+        (int.from_bytes(rs1, 'little', signed=True) // int.from_bytes(rs2, 'little', signed=True)) & ((2 ** 64) - 1),
+        64,
+        'little',
+    )
+def divu(rs1, rs2):
+    return riscv.constants.integer_to_list_of_bytes(
+        (int.from_bytes(rs1, 'little') // int.from_bytes(rs2, 'little')) & ((2 ** 64) - 1),
+        64,
+        'little',
+    )
+def rem(rs1, rs2):
+    return riscv.constants.integer_to_list_of_bytes(
+        (int.from_bytes(rs1, 'little', signed=True) % int.from_bytes(rs2, 'little', signed=True)) & ((2 ** 64) - 1),
+        64,
+        'little',
+    )
+def remu(rs1, rs2):
+    return riscv.constants.integer_to_list_of_bytes(
+        (int.from_bytes(rs1, 'little') % int.from_bytes(rs2, 'little')) & ((2 ** 64) - 1),
+        64,
+        'little',
+    )
 #def add(rs1, rs2): return rs1 + rs2
 #def sub(rs1, rs2): return rs1 - rs2
 #def addw(rs1, rs2): return (add(rs1, rs2) << 32) >> 32
