@@ -257,6 +257,42 @@ def c_sub(word):
         'word': word,
         'size': 2,
     }
+def c_xor(word):
+    # C.XOR computes the bitwise XOR of the values in registers rd'
+    # and rs2', then writes the result to register rd'. C.XOR expands
+    # into xor rd', rd', rs2'.
+    return {
+        'cmd': 'XOR',
+        'rs1': compressed_quadrant_01_rs1_prime_or_rd_prime(word),
+        'rs2': compressed_quadrant_01_rs2_prime(word),
+        'rd': compressed_quadrant_01_rs1_prime_or_rd_prime(word),
+        'word': word,
+        'size': 2,
+    }
+def c_or(word):
+    # C.OR computes the bitwise OR of the values in registers rd'
+    # and rs2', then writes the result to register rd'. C.OR expands
+    # into or rd', rd', rs2'.
+    return {
+        'cmd': 'OR',
+        'rs1': compressed_quadrant_01_rs1_prime_or_rd_prime(word),
+        'rs2': compressed_quadrant_01_rs2_prime(word),
+        'rd': compressed_quadrant_01_rs1_prime_or_rd_prime(word),
+        'word': word,
+        'size': 2,
+    }
+def c_and(word):
+    # C.AND computes the bitwise AND of the values in registers rd'
+    # and rs2', then writes the result to register rd'. C.AND expands
+    # into and rd', rd', rs2'.
+    return {
+        'cmd': 'AND',
+        'rs1': compressed_quadrant_01_rs1_prime_or_rd_prime(word),
+        'rs2': compressed_quadrant_01_rs2_prime(word),
+        'rd': compressed_quadrant_01_rs1_prime_or_rd_prime(word),
+        'word': word,
+        'size': 2,
+    }
 def c_subw(word):
     # C.SUBW is an RV64C/RV128C-only instruction that subtracts the value
     # in register rs2' from the value in register rd', then sign-extends
@@ -691,6 +727,9 @@ def compressed_quadrant_01_opcode_100(word):
         if 0b0 == _b12:
             _impl = {
                 0b00: c_sub,
+                0b01: c_xor,
+                0b10: c_or,
+                0b11: c_and,
             }.get(_b0605)
         else:
             _impl = {

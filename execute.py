@@ -204,6 +204,9 @@ def do_rtype(service, state, insn):
     _result = {
         'ADD': riscv.execute.add(state.get('operands').get('rs1'), state.get('operands').get('rs2')),
         'SUB': riscv.execute.sub(state.get('operands').get('rs1'), state.get('operands').get('rs2')),
+        'XOR': riscv.execute.xor(state.get('operands').get('rs1'), state.get('operands').get('rs2')),
+        'OR': riscv.execute.do_or(state.get('operands').get('rs1'), state.get('operands').get('rs2')),
+        'AND': riscv.execute.do_and(state.get('operands').get('rs1'), state.get('operands').get('rs2')),
         'ADDW': riscv.execute.addw(state.get('operands').get('rs1'), state.get('operands').get('rs2')),
         'SUBW': riscv.execute.subw(state.get('operands').get('rs1'), state.get('operands').get('rs2')),
     }.get(insn.get('cmd'))
@@ -246,7 +249,7 @@ def do_load(service, state, insn):
         return
     _fetched  = state.get('operands').get('mem')
     _fetched += [-1] * (8 - len(_fetched))
-    print('do_load(): _fetched : {} ({})'.format(_fetched, len(_fetched)))
+#    print('do_load(): _fetched : {} ({})'.format(_fetched, len(_fetched)))
     _data = { # HACK: This is 100% little-endian-specific
         'LD': _fetched,
         'LW': _fetched[:4] + [(0xff if ((_fetched[3] >> 7) & 0b1) else 0)] * 4,
@@ -494,6 +497,9 @@ def do_execute(service, state):
 #            'ANDI': do_andi,
             'ADD': do_rtype,
             'SUB': do_rtype,
+            'XOR': do_rtype,
+            'OR': do_rtype,
+            'AND': do_rtype,
             'ADDW': do_rtype,
             'SUBW': do_rtype,
 #            'ADD': do_add,

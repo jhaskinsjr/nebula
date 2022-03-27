@@ -55,6 +55,24 @@ def sub(rs1, rs2):
         64,
         'little',
     )
+def xor(rs1, rs2):
+    return list(map(
+        lambda a, b: a ^ b,
+        rs1,
+        rs2,
+    ))
+def do_or(rs1, rs2):
+    return list(map(
+        lambda a, b: a | b,
+        rs1,
+        rs2,
+    ))
+def do_and(rs1, rs2):
+    return list(map(
+        lambda a, b: a & b,
+        rs1,
+        rs2,
+    ))
 def addw(rs1, rs2):
     return riscv.constants.integer_to_list_of_bytes(
         ((int.from_bytes(rs1, 'little', signed=True) + int.from_bytes(rs2, 'little', signed=True)) << 32) >> 32,
