@@ -327,6 +327,8 @@ def do_nop(service, state, insn):
     do_complete(service, state, state.get('pending_execute'))
     do_confirm(service, state, state.get('pending_execute'))
     do_commit(service, state, state.get('pending_execute'))
+    state.update({'operands': {}})
+    state.update({'pending_execute': None})
 def do_shift(service, state, insn):
     if not 'rs1' in state.get('operands'):
         state.get('operands').update({'rs1': '%{}'.format(insn.get('rs1'))})
@@ -477,6 +479,13 @@ def do_ecall(service, state, insn):
     do_commit(service, state, state.get('pending_execute'))
     state.update({'operands': {}})
     state.update({'pending_execute': None})
+def do_fence(service, state, insn):
+    # HACK: in a complex pipeline, this needs to be more than a NOP
+    do_complete(service, state, state.get('pending_execute'))
+    do_confirm(service, state, state.get('pending_execute'))
+    do_commit(service, state, state.get('pending_execute'))
+    state.update({'operands': {}})
+    state.update({'pending_execute': None})
 
 def do_execute(service, state):
     for insn in state.get('pending_execute'):
@@ -531,6 +540,7 @@ def do_execute(service, state):
             'BLTU': do_branch,
             'BGEU': do_branch,
             'ECALL': do_ecall,
+            'FENCE': do_fence,
         }.get(insn.get('cmd'), do_unimplemented)(service, state, insn)
 def do_complete(service, state, insns): # finished the work of the instruction, but will not necessarily be committed
     service.tx({'event': {

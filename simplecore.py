@@ -49,6 +49,7 @@ def do_tick(service, state, results, events):
         _pending = {'insns': [{x: y for x, y in filter(lambda z: 'taken' not in z, a.items())} for a in state.get('pending_execute')]}
 #        service.tx({'info': 'completed  : {}'.format(completed)})
 #        service.tx({'info': '_completed : {}'.format(_completed)})
+#        service.tx({'info': 'state.get(pending_execute) : {}'.format(state.get('pending_execute'))})
 #        service.tx({'info': '_pending   : {}'.format(_pending)})
         assert _completed.get('insns') == _pending.get('insns'), '{} != {}'.format(completed.get('insns'), state.get('pending_execute'))
         _insns = completed.get('insns')

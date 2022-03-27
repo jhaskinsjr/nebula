@@ -547,6 +547,12 @@ def store(word):
         'word': word,
         'size': 4,
     }
+def fence(word):
+    return {
+        'cmd': 'FENCE',
+        'word': word,
+        'size': 4,
+    }
 
 
 
@@ -928,6 +934,7 @@ def uncompressed_illegal_instruction(word, **kwargs):
 def decode_uncompressed(word):
     return {
         0b000_0011: load,
+        0b000_1111: fence,
         0b011_0111: lui,
         0b001_0111: auipc,
         0b110_1111: jal,
