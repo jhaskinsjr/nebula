@@ -1,3 +1,5 @@
+import os
+
 # The syscall numbers were learned from
 # https://github.com/westerndigitalcorporation/RISC-V-Linux/blob/master/riscv-pk/pk/syscall.h
 #
@@ -13,8 +15,19 @@
 
 def do_syscall(syscall_num, a0, a1, a2, a3, a4, a5):
     return {
+        160: do_uname,
         214: do_brk,
     }.get(int.from_bytes(syscall_num, 'little'))(a0, a1, a2, a3, a4, a5)
 
+def do_uname(a0, a1, a2, a3, a4, a5):
+    # TODO: actually fill in a uname struct, pointed to by a0
+    print('do_uname(): a0       : {}'.format(a0))
+    print('do_uname(): a1       : {}'.format(a1))
+    print('do_uname(): a2       : {}'.format(a2))
+    print('do_uname(): a3       : {}'.format(a3))
+    print('do_uname(): a4       : {}'.format(a4))
+    print('do_uname(): a5       : {}'.format(a5))
+    print('do_uname(): os.uname : {}'.format(os.uname()))
+    return a0
 def do_brk(a0, a1, a2, a3, a4, a5):
     return a5
