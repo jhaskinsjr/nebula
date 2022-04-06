@@ -567,14 +567,26 @@ def load(word):
         },
     }
 def store(word):
+    # imm[11:5] rs2 rs1 000 imm[4:0] 0100011 SB
+    # imm[11:5] rs2 rs1 001 imm[4:0] 0100011 SH
+    # imm[11:5] rs2 rs1 010 imm[4:0] 0100011 SW
+    # imm[11:5] rs2 rs1 011 imm[4:0] 0100011 SD
+    # see: https://riscv.org/wp-content/uploads/2019/12/riscv-spec-20191213.pdf (p. 130, 131)
+    _variety = {
+        0b000: {'cmd': 'SB', 'nbytes': 1},
+        0b001: {'cmd': 'SH', 'nbytes': 2},
+        0b010: {'cmd': 'SW', 'nbytes': 4},
+        0b011: {'cmd': 'SD', 'nbytes': 8},
+    }.get(uncompressed_funct3(word))
     return {
-        'cmd': 'SD',
-        'imm': uncompressed_store_imm12(word, signed=True), 
-        'rs1': uncompressed_rs1(word),
-        'rs2': uncompressed_rs2(word),
-        'nbytes': 8,
-        'word': word,
-        'size': 4,
+        **_variety,
+        **{
+            'imm': uncompressed_store_imm12(word, signed=True), 
+            'rs1': uncompressed_rs1(word),
+            'rs2': uncompressed_rs2(word),
+            'word': word,
+            'size': 4,
+        },
     }
 def fence(word):
     return {
