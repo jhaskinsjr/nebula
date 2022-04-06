@@ -420,6 +420,23 @@ def jal(word):
         'word': word,
         'size': 4,
     }
+def jalr(word):
+    # The indirect jump instruction JALR (jump and link register) uses
+    # the I-type encoding. The target address is obtained by adding the
+    # sign-extended 12-bit I-immediate to the register rs1, then setting
+    # the least-significant bit of the result to zero. The address of
+    # the instruction following the jump (pc+4) is written to register
+    # rd. Register x0 can be used as the destination if the result is
+    # not required.
+    # see: https://riscv.org/wp-content/uploads/2019/12/riscv-spec-20191213.pdf (p. 21)
+    return {
+        'cmd': 'JALR',
+        'imm': uncompressed_i_type_imm12(word, signed=True),
+        'rs1': uncompressed_rs1(word),
+        'rd': uncompressed_rd(word),
+        'word': word,
+        'size': 4,
+    }
 def i_type(word):
     # imm[11:0]     rs1 000 rd 0010011 ADDI
     # imm[11:0]     rs1 010 rd 0010011 SLTI
@@ -982,6 +999,7 @@ def decode_uncompressed(word):
         0b011_0111: lui,
         0b001_0111: auipc,
         0b110_1111: jal,
+        0b110_0111: jalr,
         0b010_0011: store,
         0b001_0011: i_type,
         0b001_1011: i_type,
