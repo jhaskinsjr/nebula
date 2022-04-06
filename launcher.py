@@ -122,7 +122,7 @@ def mainmem(connections, cmd, addr, size, data=None):
         },
         **({'data': integer(data)} if data else {}),
     }})
-def loadbin(connections, mainmem_rawfile, sp, pc, binary, *args):
+def loadbin(connections, mainmem_rawfile, sp, pc, start_symbol, binary, *args):
     global state
     state.update({'mainmem_rawfile': mainmem_rawfile})
     fd = os.open(mainmem_rawfile, os.O_RDWR | os.O_CREAT)
@@ -142,9 +142,9 @@ def loadbin(connections, mainmem_rawfile, sp, pc, binary, *args):
             _addr |= 0xffff
             _addr ^= 0xffff
         _symbol_tables = [s for s in elffile.iter_sections() if isinstance(s, elftools.elf.elffile.SymbolTableSection)]
-        _start = sum([list(filter(lambda s: '_start' == s.name, tab.iter_symbols())) for tab in _symbol_tables], [])
-        assert 0 < len(_start), 'No _start symbol!'
-        assert 2 > len(_start), 'More than one _start symbol?!?!?!?'
+        _start = sum([list(filter(lambda s: start_symbol == s.name, tab.iter_symbols())) for tab in _symbol_tables], [])
+        assert 0 < len(_start), 'No {} symbol!'.format(start_symbol)
+        assert 2 > len(_start), 'More than one {} symbol?!?!?!?'.format(start_symbol)
         _start = next(iter(_start))
         _start_pc += _start.entry.st_value - elffile.get_section_by_name('.text').header.sh_addr
     # The value of the argc argument is the number of command line
@@ -332,7 +332,7 @@ if __name__ == '__main__':
                 {
                     'register': lambda x, y, z=None: register(state.get('connections'), x, y, z),
                     'mainmem': lambda w, x, y, z=None: mainmem(state.get('connections'), w, x, y, z),
-                    'loadbin': lambda w, x, y, z, *args: loadbin(state.get('connections'), w, integer(x), integer(y), z, *args),
+                    'loadbin': lambda v, w, x, y, z, *args: loadbin(state.get('connections'), v, integer(w), integer(x), y, z, *args),
                     'restore': lambda x, y: state.update({'cycle': restore(x, y)}),
                     'cycle': lambda: print(state.get('cycle')),
                     'state': lambda: print(state),
