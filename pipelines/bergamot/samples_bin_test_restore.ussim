@@ -1,4 +1,10 @@
 # Sample μService-SIMulator script
+service implementation/simplecore.py:localhost
+service implementation/regfile.py:localhost
+service implementation/mainmem.py:localhost
+service implementation/decode.py:localhost
+service implementation/execute.py:localhost
+spawn
 cycle
 restore /tmp/mainmem.raw /tmp/mainmem.raw.snapshot
 run
