@@ -33,26 +33,32 @@ https://www.ibm.com/support/pages/configuring-ssh-login-without-password
 
 Once passwordless SSH has been set up, to quickly run, execute:
 
+cd pipelines/bergamot
 python3 launcher.py --services \
-    ${PWD}/simplecore.py:localhost \
-    ${PWD}/regfile.py:localhost \
-    ${PWD}/mainmem.py:localhost \
-    ${PWD}/decode.py:localhost \
-    ${PWD}/execute.py:localhost \
+    ${PWD}/implementation/simplecore.py:localhost \
+    ${PWD}/implementation/regfile.py:localhost \
+    ${PWD}/implementation/mainmem.py:localhost \
+    ${PWD}/implementation/decode.py:localhost \
+    ${PWD}/implementation/execute.py:localhost \
     --max_cycles 32000 \
     --snapshots 1000 \
     --break_on_undefined \
-    -- 10000 test-02.ussim
+    -- 10000 samples_bin_test_from_main.ussim
 
-This executes the launcher module (launcher.py), which in turn spawns the
-CPU core service (simplecore.py), the register file service (regfile.py),
-the main memory service (mainmem.py), the instruction decode service
-(decode.py), and the instruction execute service (execute.py), all on
-localhost. The launcher module will then begin accepting TCP connections
-on the localhost's port 10000 and execute the script test-02.ussim,
-simulating for a maximum of 32,000 simulated cycles, taking snapshots (of
-the main memory and register file) every 1,000 simulated cycles, but will
-cease execution if it encounters an instruction that is not (yet) defined.
+First, the "cd" command changes into the subdirectory with the first-ever,
+very simple, very primitive μService-SIMulator pipeline implementation,
+codename: Bergamot (see: https://en.wikipedia.org/wiki/Bergamot_orange).
+The "python3" command then executes the launcher module (launcher.py), which
+in turn spawns the CPU core service (implementation/simplecore.py), the
+register file service (imlpementation/regfile.py), the main memory service
+(implementation/mainmem.py), the instruction decode service
+(implementation/decode.py), and the instruction execute service
+(implementation/execute.py), all on localhost. The launcher module will then
+begin accepting TCP connections on the localhost's port 10000 and execute
+the script sample_bin_test_from_main.ussim, simulating for a maximum of
+32,000 simulated cycles, taking snapshots (of the main memory and register
+file) every 1,000 simulated cycles, but will cease execution if it
+encounters an instruction that is not (yet) defined.
 
 --
 SIMULATOR SCRIPTS
@@ -62,11 +68,13 @@ Consider the script test-02.ussim:
 
     # Sample μService-SIMulator script
     cycle
-    loadbin /tmp/mainmem.raw 0x80000000 0x40000000 samples/bin/test 2 3 5 7 11 13 
+    loadbin /tmp/mainmem.raw 0x80000000 0x40000000 main ../../samples/bin/test 2 3 5 7 11 13 
                                                             # using /tmp/mainmem.raw as the main memory file,
                                                             # set %sp to 0x80000000 and %pc to 0x40000000, then
                                                             # load samples/bin/test, with command
-                                                            # line parameters "2 3 5 7 11 13
+                                                            # line parameters 2 3 5 7 11 13, and execute
+                                                            # beginnign from the "main" symbol in the
+                                                            # ../../samples/bin/test binary's .text section
     register set 10 0x0                                     # moved by _start into x15 to become rtld_fini;
                                                             # see: https://refspecs.linuxbase.org/LSB_3.1
     run
@@ -77,16 +85,18 @@ Consider the script test-02.ussim:
 The script is comprised of commands
 
     cycle                           print the cycle count to stdout
-    loadbin A B C D X               load the binary D with arguments X into main memory file B;
-                                    set initial SP to C; set initial PC to D
+    loadbin A B C D E X             load the binary E with arguments X into main memory file A;
+                                    locate stack at address B; locate code at address C; and
+                                    begin execution from .text section label D 
     restore A B                     restore previously captured state in B to main memory file A
     register set A B                set register A to value B
     run                             begin execution
     state                           print launcher's state (i.e., variables, etc) to stdout
     shutdown                        send shutdown signal to services, exit launcher
 
-The script test-03.ussim is very similar to test-02.ussim, but, rather than
-a loadbin command, instead features a restore command:
+The script sample_bin_test_restore.ussim is very similar to
+sample_bin_test_from_main.ussim, but, rather than a loadbin command,
+instead features a restore command:
 
     ...
     restore /tmp/mainmem.raw /tmp/mainmem.raw.snapshot
@@ -98,7 +108,7 @@ inside the main memory snapshot.
 --
 SAMPLE binary
 
-The sample binary (bin/test) was created using the RISC-V cross compiler
+The sample binary (samples/bin/test) was created using the RISC-V cross compiler
 at https://github.com/riscv-collab/riscv-gnu-toolchain. The source for the
 binary is a do-nothing program; to wit:
 
