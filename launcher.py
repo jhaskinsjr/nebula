@@ -270,14 +270,6 @@ def run(cycle, max_cycles, max_instructions, break_on_undefined, snapshot_freque
             state.get('lock').release()
     return cycle
 def add_service(services, debug, port, s):
-#    _services = [
-#        threading.Thread(
-#            target=subprocess.run,
-#            args=(['ssh', h, 'python3 {} {} {}'.format(c, ('-D' if args.debug else ''), '{}:{}'.format(socket.gethostname(), args.port))],),
-#            daemon=True,
-#        ) for c, h in map(lambda x: x.split(':'), args.services)
-#    ]
-#    [th.start() for th in _services]
     c, h = s.split(':')
     services.append(
         threading.Thread(
@@ -286,7 +278,6 @@ def add_service(services, debug, port, s):
             daemon=True,
         )
     )
-#    services[-1].start()
 def spawn(services):
     threading.Thread(target=acceptor, daemon=True).start()
     [th.start() for th in services]
@@ -320,16 +311,6 @@ if __name__ == '__main__':
         'instructions_committed': 0,
         'undefined': None,
     }
-#    threading.Thread(target=acceptor, daemon=True).start()
-#    _services = [
-#        threading.Thread(
-#            target=subprocess.run,
-#            args=(['ssh', h, 'python3 {} {} {}'.format(c, ('-D' if args.debug else ''), '{}:{}'.format(socket.gethostname(), args.port))],),
-#            daemon=True,
-#        ) for c, h in map(lambda x: x.split(':'), args.services)
-#    ]
-#    [th.start() for th in _services]
-#    while len(_services) > len(state.get('connections')): time.sleep(1)
     _services = []
     with open(args.script) as fp:
         for raw in map(lambda x: x.strip(), fp.readlines()):
