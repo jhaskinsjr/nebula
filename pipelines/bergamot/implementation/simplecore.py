@@ -4,8 +4,6 @@ import argparse
 import service
 import riscv.constants
 
-JUMPS = ['JALR', 'JAL'] # needs to be incorporated into riscv module
-BRANCHES = ['BEQ', 'BNE', 'BLT', 'BGE', 'BLTU', 'BGEU'] # needs to ben incorporated into riscv module
 
 def do_tick(service, state, results, events):
     for pc in map(lambda w: w.get('data'), filter(lambda x: x and '%pc' == x.get('name'), map(lambda y: y.get('register'), results))):
@@ -53,8 +51,8 @@ def do_tick(service, state, results, events):
 #        service.tx({'info': '_pending   : {}'.format(_pending)})
         assert _completed.get('insns') == _pending.get('insns'), '{} != {}'.format(completed.get('insns'), state.get('pending_execute'))
         _insns = completed.get('insns')
-        _jumps = any(map(lambda a: a.get('cmd') in JUMPS, _insns))
-        _taken_branches = any(map(lambda a: a.get('cmd') in BRANCHES and a.get('taken'), _insns))
+        _jumps = any(map(lambda a: a.get('cmd') in riscv.constants.JUMPS, _insns))
+        _taken_branches = any(map(lambda a: a.get('cmd') in riscv.constants.BRANCHES and a.get('taken'), _insns))
 #        service.tx({'info': '%jp : {}'.format(state.get('%jp'))})
 #        service.tx({'info': '%pc : {}'.format(state.get('%pc'))})
         if not _jumps and not _taken_branches:

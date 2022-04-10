@@ -1,3 +1,6 @@
+JUMPS = ['JALR', 'JAL']
+BRANCHES = ['BEQ', 'BNE', 'BLT', 'BGE', 'BLTU', 'BGEU']
+
 def register_mask(wbits):
     return {
         64: (2 ** 64) - 1,
