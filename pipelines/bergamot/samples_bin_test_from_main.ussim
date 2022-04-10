@@ -1,4 +1,10 @@
 # Sample μService-SIMulator script
+service implementation/simplecore.py:localhost
+service implementation/regfile.py:localhost
+service implementation/mainmem.py:localhost
+service implementation/decode.py:localhost
+service implementation/execute.py:localhost
+spawn
 cycle
 loadbin /tmp/mainmem.raw 0x80000000 0x40000000 main ../../samples/bin/test 2 3 5 7 11 13 
                                                         # using /tmp/mainmem.raw as the main memory file,

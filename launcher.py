@@ -269,6 +269,28 @@ def run(cycle, max_cycles, max_instructions, break_on_undefined, snapshot_freque
             _ack = len(state.get('ack')) == len(state.get('connections'))
             state.get('lock').release()
     return cycle
+def add_service(services, debug, port, s):
+#    _services = [
+#        threading.Thread(
+#            target=subprocess.run,
+#            args=(['ssh', h, 'python3 {} {} {}'.format(c, ('-D' if args.debug else ''), '{}:{}'.format(socket.gethostname(), args.port))],),
+#            daemon=True,
+#        ) for c, h in map(lambda x: x.split(':'), args.services)
+#    ]
+#    [th.start() for th in _services]
+    c, h = s.split(':')
+    services.append(
+        threading.Thread(
+            target=subprocess.run,
+            args=(['ssh', h, 'python3 {} {} {}'.format(os.path.join(os.getcwd(), c), ('-D' if debug else ''), '{}:{}'.format(socket.gethostname(), port))],),
+            daemon=True,
+        )
+    )
+#    services[-1].start()
+def spawn(services):
+    threading.Thread(target=acceptor, daemon=True).start()
+    [th.start() for th in services]
+    while len(services) > len(state.get('connections')): time.sleep(1)
 
 if __name__ == '__main__':
     parser = argparse.ArgumentParser(description='μService-SIMulator')
@@ -298,16 +320,17 @@ if __name__ == '__main__':
         'instructions_committed': 0,
         'undefined': None,
     }
-    threading.Thread(target=acceptor, daemon=True).start()
-    _services = [
-        threading.Thread(
-            target=subprocess.run,
-            args=(['ssh', h, 'python3 {} {} {}'.format(c, ('-D' if args.debug else ''), '{}:{}'.format(socket.gethostname(), args.port))],),
-            daemon=True,
-        ) for c, h in map(lambda x: x.split(':'), args.services)
-    ]
-    [th.start() for th in _services]
-    while len(_services) > len(state.get('connections')): time.sleep(1)
+#    threading.Thread(target=acceptor, daemon=True).start()
+#    _services = [
+#        threading.Thread(
+#            target=subprocess.run,
+#            args=(['ssh', h, 'python3 {} {} {}'.format(c, ('-D' if args.debug else ''), '{}:{}'.format(socket.gethostname(), args.port))],),
+#            daemon=True,
+#        ) for c, h in map(lambda x: x.split(':'), args.services)
+#    ]
+#    [th.start() for th in _services]
+#    while len(_services) > len(state.get('connections')): time.sleep(1)
+    _services = []
     with open(args.script) as fp:
         for raw in map(lambda x: x.strip(), fp.readlines()):
             raw = (raw[:raw.index('#')] if '#' in raw else raw)
@@ -330,6 +353,8 @@ if __name__ == '__main__':
                 state.update({'running': False})
             else:
                 {
+                    'spawn': lambda: spawn(_services),
+                    'service': lambda x: add_service(_services, args.debug, args.port, x),
                     'register': lambda x, y, z=None: register(state.get('connections'), x, y, z),
                     'mainmem': lambda w, x, y, z=None: mainmem(state.get('connections'), w, x, y, z),
                     'loadbin': lambda v, w, x, y, z, *args: loadbin(state.get('connections'), v, integer(w), integer(x), y, z, *args),
