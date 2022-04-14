@@ -112,7 +112,7 @@ def register(connections, cmd, name, data=None):
             'cmd': cmd,
             'name': _name,
         },
-        **({'data': (riscv.constants.integer_to_list_of_bytes(integer(data), 64, 'little') if isinstance(data, str) else data)} if data else {}),
+        **({'data': (riscv.constants.integer_to_list_of_bytes(integer(data), 64, 'little') if isinstance(data, str) else riscv.constants.integer_to_list_of_bytes(data, 64, 'little'))} if data else {}),
     }})
 def mainmem(connections, cmd, addr, size, data=None):
     tx(connections, {'mainmem': {**{
@@ -180,6 +180,8 @@ def loadbin(connections, mainmem_rawfile, sp, pc, start_symbol, binary, *args):
     os.write(fd, bytes(''.join(_args), 'ascii'))    # argv data
     os.close(fd)
     register(connections, 'set', 2, hex(sp))
+    register(connections, 'set', 10, hex(_argc))
+    register(connections, 'set', 11, hex(sp))
     register(connections, 'set', '%pc', hex(_start_pc))
 def config(args, field, val):
     _output = 'args.{} : {}'.format(field, args.__getattribute__(field))

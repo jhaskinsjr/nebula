@@ -13,8 +13,6 @@ loadbin /tmp/mainmem.raw 0x80000000 0x40000000 main ../../samples/bin/test 2 3 5
                                                         # line parameters 2 3 5 7 11 13, and execute
                                                         # beginning from the "main" symbol in the
                                                         # ../../samples/bin/test binary's .text section
-register set 10 0x0                                     # moved by _start into x15 to become rtld_fini;
-                                                        # see: https://refspecs.linuxbase.org/LSB_3.1
 run
 cycle
 state
