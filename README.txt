@@ -34,7 +34,7 @@ https://www.ibm.com/support/pages/configuring-ssh-login-without-password
 Once passwordless SSH has been set up, to quickly run, execute:
 
 cd pipelines/bergamot
-python3 launcher.py \
+python3 ../../launcher.py \
     --max_cycles 32000 \
     --snapshots 1000 \
     --break_on_undefined \

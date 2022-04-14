@@ -1,6 +1,4 @@
 import functools
-from socket import CAN_BCM_TX_CP_CAN_ID
-from sre_constants import CATEGORY_LOC_WORD
 import struct
 
 def compressed_unimplemented_instruction(word, **kwargs):
