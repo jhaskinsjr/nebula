@@ -227,6 +227,20 @@ def c_addi(word, **kwargs):
         'word': word,
         'size': 2,
     }
+def c_addiw(word, **kwargs):
+    # C.ADDIW is an RV64C/RV128C-only instruction that performs the same
+    # computation but produces a 32-bit result, then sign-extends result to 64
+    # bits. C.ADDIW expands into addiw rd, rd, imm[5:0]. The immediate can be
+    # zero for C.ADDIW, where this corresponds to sext.w rd. C.ADDIW is only
+    # valid when rd̸=x0; the code points with rd=x0 are reserved.
+    return {
+        'cmd': 'ADDIW',
+        'imm': kwargs.get('imm'),
+        'rs1': compressed_rs1_or_rd(word),
+        'rd': compressed_rs1_or_rd(word),
+        'word': word,
+        'size': 2,
+    }
 def c_nop(word):
     return {
         'cmd': 'NOP',
@@ -702,6 +716,7 @@ def compressed_quadrant_00_rs2_prime_or_rd_prime(word):
 def compressed_quadrant_01(word):
     return {
         0b000: compressed_quadrant_01_opcode_000,
+        0b001: compressed_quadrant_01_opcode_001,
         0b010: compressed_quadrant_01_opcode_010,
         0b011: compressed_quadrant_01_opcode_011,
         0b100: compressed_quadrant_01_opcode_100,
@@ -721,6 +736,19 @@ def compressed_quadrant_01_opcode_000(word):
         _impl = c_addi
     else:
         _impl = c_nop
+    return _impl(word, imm=_imm)
+def compressed_quadrant_01_opcode_001(word):
+    # 001 imm[5] rs1/rd̸ =0 imm[4:0] 01 C.ADDIW (RV64/128; RES, rd=0)
+    _impl = compressed_unimplemented_instruction
+    if 0 != compressed_rs1_or_rd(word):
+        _impl = c_addiw
+        _b05         = (word >> 12) & 0b1
+        _b0403020100 = (word >> 2) & 0b1_1111
+        _imm = (_b05 << 5) | (_b0403020100)
+        _imm = functools.reduce(lambda a, b: a | b, map(lambda x: _b05 << x, range(6, 16)), _imm)
+        _imm = int.from_bytes(struct.Struct('<H').pack(_imm), 'little', signed=True)
+    else:
+        _imm = None
     return _impl(word, imm=_imm)
 def compressed_quadrant_01_opcode_010(word):
     # 010 imm[5] rd̸=0 imm[4:0] 01 C.LI (HINT, rd=0)
