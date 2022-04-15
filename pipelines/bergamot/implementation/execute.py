@@ -162,6 +162,8 @@ def do_itype(service, state, insn):
         return
     _result = {
         'ADDI': riscv.execute.addi(state.get('operands').get('rs1'), insn.get('imm')),
+        'SLTI': riscv.execute.slti(state.get('operands').get('rs1'), insn.get('imm')),
+        'SLTIU': riscv.execute.sltiu(state.get('operands').get('rs1'), insn.get('imm')),
         'ADDIW': riscv.execute.addiw(state.get('operands').get('rs1'), insn.get('imm')),
         'ANDI': riscv.execute.andi(state.get('operands').get('rs1'), insn.get('imm')),
     }.get(insn.get('cmd'))
@@ -509,6 +511,8 @@ def do_execute(service, state):
             'ADDI': do_itype,
             'ADDIW': do_itype,
             'ANDI': do_itype,
+            'SLTI': do_itype,
+            'SLTIU': do_itype,
 #            'ADDI': do_addi,
 #            'ADDIW': do_addiw,
 #            'ANDI': do_andi,

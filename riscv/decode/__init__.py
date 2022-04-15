@@ -470,6 +470,8 @@ def i_type(word):
     _cmds = {
         0b001_0011: {
             0b000: {'cmd': 'ADDI', 'imm': uncompressed_i_type_imm12(word, signed=True)},
+            0b010: {'cmd': 'SLTI', 'imm': uncompressed_i_type_imm12(word, signed=True)},
+            0b011: {'cmd': 'SLTIU', 'imm': uncompressed_i_type_imm12(word)},
             0b001: {'cmd': 'SLLI', 'shamt': uncompressed_i_type_shamt(word)},
             0b101: {'cmd': ('SRLI' if 0 == uncompressed_funct7(word) else 'SRAI'), 'shamt': uncompressed_i_type_shamt(word)},
             0b111: {'cmd': 'ANDI', 'imm': uncompressed_i_type_imm12(word, signed=True)},

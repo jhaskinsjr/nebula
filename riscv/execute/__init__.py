@@ -21,6 +21,18 @@ def addi(rs1, imm):
         64,
         'little'
     )
+def slti(rs1, imm):
+    return (
+        riscv.constants.integer_to_list_of_bytes(1, 64, 'little')
+        if int.from_bytes(rs1, 'little', signed=True) < imm else
+        riscv.constants.integer_to_list_of_bytes(0, 64, 'little')
+    )
+def sltiu(rs1, imm):
+    return (
+        riscv.constants.integer_to_list_of_bytes(1, 64, 'little')
+        if int.from_bytes(rs1, 'little') < imm else
+        riscv.constants.integer_to_list_of_bytes(0, 64, 'little')
+    )
 def addiw(rs1, imm):
     return riscv.constants.integer_to_list_of_bytes(
         ((imm + int.from_bytes(rs1, 'little', signed=True)) << 32) >> 32,
