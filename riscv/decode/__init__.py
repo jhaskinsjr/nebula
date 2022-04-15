@@ -556,7 +556,7 @@ def b_type(word):
         'cmd': _cmd,
         'rs1': uncompressed_rs1(word),
         'rs2': uncompressed_rs2(word),
-        'imm': uncomprssed_b_type_imm13(word, signed=(False if _cmd.endswith('U') else True)),
+        'imm': uncomprssed_b_type_imm13(word, signed=True),
         'taken': None,
         'word': word,
         'size': 4,
