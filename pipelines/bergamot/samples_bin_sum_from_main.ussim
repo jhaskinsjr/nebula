@@ -6,7 +6,7 @@ service implementation/decode.py:localhost
 service implementation/execute.py:localhost
 spawn
 cycle
-loadbin /tmp/mainmem.raw 0x80000000 0x40000000 main ../../samples/bin/sum 1 1 2 3 5 0 1 2 3 4
+loadbin /tmp/mainmem.raw 0x80000000 0x40000000 main ../../samples/bin/sum 1 1 2 3 5 0 1 2 3 4 5 2
                                                         # using /tmp/mainmem.raw as the main memory file,
                                                         # set %sp to 0x80000000 and %pc to 0x40000000, then
                                                         # load samples/bin/test, with command
