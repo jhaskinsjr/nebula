@@ -127,8 +127,7 @@ class Harness:
         _const_0 = int.from_bytes(struct.Struct('<I').pack(_const_0 << 12), 'little', signed=True)
         _const_1 = int.from_bytes(struct.Struct('<I').pack(_const_1 << 12), 'little', signed=True)
         _correct_answer = ((_const_0 + _const_1) << 32) >> 32
-#        _correct_answer = 1
-#        _correct_answer = int.from_bytes(struct.Struct('<I').pack(_correct_answer), 'little', signed=True)
+        _correct_answer = _correct_answer.to_bytes(8, 'little', signed=True)
         return _correct_answer, _assembly
     def c_subw(self):
         _const_0 = random.randint(0, 2**20 - 1)
@@ -142,8 +141,7 @@ class Harness:
         _const_0 = int.from_bytes(struct.Struct('<I').pack(_const_0 << 12), 'little', signed=True)
         _const_1 = int.from_bytes(struct.Struct('<I').pack(_const_1 << 12), 'little', signed=True)
         _correct_answer = ((_const_0 - _const_1) << 32) >> 32
-#        _correct_answer = 1
-#        _correct_answer = int.from_bytes(struct.Struct('<I').pack(_correct_answer), 'little', signed=True)
+        _correct_answer = _correct_answer.to_bytes(8, 'little', signed=True)
         return _correct_answer, _assembly
     def c_addi16sp(self):
         _const = random.choice([
@@ -447,9 +445,9 @@ if __name__ == '__main__':
 #    _harness.generate(args, 'c.sub')
 #    _harness.generate(args, 'c.xor')
 #    _harness.generate(args, 'c.or')
-    _harness.generate(args, 'c.and')
+#    _harness.generate(args, 'c.and')
 #    _harness.generate(args, 'c.addw')
-#    _harness.generate(args, 'c.subw')
+    _harness.generate(args, 'c.subw')
 #    _harness.generate(args, 'c.addi16sp')
 #    _harness.generate(args, 'c.addi4spn')
 #    _harness.generate(args, 'c.mv')
