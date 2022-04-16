@@ -7,6 +7,9 @@ import riscv.constants
 
 def do_tick(service, state, results, events):
     for pc in map(lambda w: w.get('data'), filter(lambda x: x and '%pc' == x.get('name'), map(lambda y: y.get('register'), results))):
+        if 0 == int.from_bytes(pc, 'little'):
+            service.tx({'info': 'Jump to @0x00000000... graceful shutdown'})
+            service.tx({'shutdown': None})
         if not state.get('%jp'): state.update({'%jp': pc})
         service.tx({'event': {
             'arrival': 1 + state.get('cycle'),
