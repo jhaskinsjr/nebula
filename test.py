@@ -13,6 +13,8 @@ class Harness:
             'c.add': self.c_add,
             'c.sub': self.c_sub,
             'c.xor': self.c_xor,
+            'c.or': self.c_or,
+            'c.and': self.c_and,
             'c.addw': self.c_addw,
             'c.subw': self.c_subw,
             'c.addi16sp': self.c_addi16sp,
@@ -72,14 +74,10 @@ class Harness:
         _const_1 = int.from_bytes(struct.Struct('<I').pack(_const_1 << 12), 'little', signed=True)
         _correct_answer = _const_0 - _const_1
         _correct_answer = _correct_answer.to_bytes(8, 'little', signed=True)
-#        _correct_answer = 1
-#        _correct_answer = int.from_bytes(struct.Struct('<I').pack(_correct_answer), 'little', signed=True)
         return _correct_answer, _assembly
     def c_xor(self):
         _const_0 = random.randint(0, 2**20 - 1)
         _const_1 = random.randint(0, 2**20 - 1)
-#        _const_0 = 2**20 - 1
-#        _const_1 = 8
         _assembly  = ['lui x15, {}'.format(_const_0)]
         _assembly += ['lui x14, {}'.format(_const_1)]
         _assembly += ['c.xor x15, x14']
@@ -87,8 +85,7 @@ class Harness:
         _const_0 = int.from_bytes(struct.Struct('<I').pack(_const_0 << 12), 'little', signed=True)
         _const_1 = int.from_bytes(struct.Struct('<I').pack(_const_1 << 12), 'little', signed=True)
         _correct_answer = _const_0 ^ _const_1
-#        _correct_answer = 1
-#        _correct_answer = int.from_bytes(struct.Struct('<I').pack(_correct_answer), 'little', signed=True)
+        _correct_answer = _correct_answer.to_bytes(8, 'little', signed=True)
         return _correct_answer, _assembly
     def c_or(self):
         _const_0 = random.randint(0, 2**20 - 1)
@@ -102,8 +99,7 @@ class Harness:
         _const_0 = int.from_bytes(struct.Struct('<I').pack(_const_0 << 12), 'little', signed=True)
         _const_1 = int.from_bytes(struct.Struct('<I').pack(_const_1 << 12), 'little', signed=True)
         _correct_answer = _const_0 | _const_1
-#        _correct_answer = 1
-#        _correct_answer = int.from_bytes(struct.Struct('<I').pack(_correct_answer), 'little', signed=True)
+        _correct_answer = _correct_answer.to_bytes(8, 'little', signed=True)
         return _correct_answer, _assembly
     def c_and(self):
         _const_0 = random.randint(0, 2**20 - 1)
@@ -117,8 +113,7 @@ class Harness:
         _const_0 = int.from_bytes(struct.Struct('<I').pack(_const_0 << 12), 'little', signed=True)
         _const_1 = int.from_bytes(struct.Struct('<I').pack(_const_1 << 12), 'little', signed=True)
         _correct_answer = _const_0 & _const_1
-#        _correct_answer = 1
-#        _correct_answer = int.from_bytes(struct.Struct('<I').pack(_correct_answer), 'little', signed=True)
+        _correct_answer = _correct_answer.to_bytes(8, 'little', signed=True)
         return _correct_answer, _assembly
     def c_addw(self):
         _const_0 = random.randint(0, 2**20 - 1)
@@ -449,10 +444,10 @@ if __name__ == '__main__':
 #    [_harness.generate(args, n) for n in _harness.tests.keys()]
 #    _harness.generate(args, 'c.lui')
 #    _harness.generate(args, 'c.add')
-    _harness.generate(args, 'c.sub')
+#    _harness.generate(args, 'c.sub')
 #    _harness.generate(args, 'c.xor')
 #    _harness.generate(args, 'c.or')
-#    _harness.generate(args, 'c.and')
+    _harness.generate(args, 'c.and')
 #    _harness.generate(args, 'c.addw')
 #    _harness.generate(args, 'c.subw')
 #    _harness.generate(args, 'c.addi16sp')
