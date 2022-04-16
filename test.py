@@ -416,25 +416,20 @@ class Harness:
             os.path.join(args.dir, 'src', '{}.s'.format(test))
         ).split())
         _script  = ['# μService-SIMulator test harness script']
-        _script += ['loadbin /tmp/mainmem.raw 0x{:08x} 0x{:08x} {}'.format(self._sp, self._start_pc, os.path.join(args.dir, 'obj', '{}.o'.format(test)))]
+        _script += ['loadbin /tmp/mainmem.raw 0x{:08x} 0x{:08x} _start {}'.format(self._sp, self._start_pc, os.path.join(args.dir, 'obj', '{}.o'.format(test)))]
+        _script += ['service pipelines/bergamot/implementation/{}:localhost'.format(s) for s in ('simplecore.py', 'regfile.py', 'mainmem.py', 'decode.py', 'execute.py')]
+        _script += ['spawn']
         _script += ['register set 2 0x{:x}'.format(self._sp)]
         _script += ['config max_instructions {}'.format(_n_instruction)]
         _script += ['run']
         _script += ['shutdown']
         with open(os.path.join(args.dir, 'test.ussim'), 'w+') as fp: fp.write('\n'.join(_script))
-        _services = ' '.join(map(lambda n: '{}:localhost'.format(os.path.join(os.getcwd(), n)), [
-            'simplecore.py',
-            'regfile.py',
-            'mainmem.py',
-            'decode.py',
-            'execute.py'
-        ]))
         _result = subprocess.run(
-            'python3 launcher.py --services {} -- 10000 {}'.format(_services, os.path.join(args.dir, 'test.ussim')).split(),
+            'python3 launcher.py -- 10000 {}'.format(os.path.join(args.dir, 'test.ussim')).split(),
             capture_output=True,
         )
         _stdout = _result.stdout.decode('utf-8').split('\n')
-#        print('\n'.join(_stdout))
+        print('\n'.join(_stdout))
         _x31 = next(iter(next(iter(filter(lambda x: re.search('register 31 : ', x), _stdout))).split(':')[1:]))
         print('_x31 : {}'.format(_x31))
         try:
@@ -476,7 +471,7 @@ if __name__ == '__main__':
     _harness = Harness()
 #    [_harness.generate(args, n) for n in _harness.tests.keys()]
 #    _harness.generate(args, 'c.lui')
-#    _harness.generate(args, 'c.add')
+    _harness.generate(args, 'c.add')
 #    _harness.generate(args, 'c.sub')
 #    _harness.generate(args, 'c.xor')
 #    _harness.generate(args, 'c.or')
@@ -496,7 +491,7 @@ if __name__ == '__main__':
 #    _harness.generate(args, 'srli')
 #    _harness.generate(args, 'srliw')
 #    _harness.generate(args, 'srai')
-    _harness.generate(args, 'sraiw')
+#    _harness.generate(args, 'sraiw')
 #    _harness.generate(args, 'andi')
 #    _harness.generate(args, 'addi')
 #    _harness.generate(args, 'addiw')
