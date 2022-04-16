@@ -160,28 +160,27 @@ def loadbin(connections, mainmem_rawfile, sp, pc, start_symbol, binary, *args):
     # https://www.gnu.org/software/libc/manual/html_node/Program-Arguments.html
     #
     # see also: https://refspecs.linuxbase.org/LSB_3.1.1/LSB-Core-generic/LSB-Core-generic/baselib---libc-start-main-.html
-    _argc = 1 + len(args)   # add 1 since binary name is argv[0]
+    _argc = len(args)      # binary name is argv[0]
     _args = list(map(lambda a: '{}\0'.format(a), args))
     _fp  = sp
-    _fp += 8           # 8 bytes for argc
-    _fp += 8 * _argc   # 8 bytes for each argv * plus 1 NULL pointer
-    _addr = list(itertools.accumulate([_fp] + list(map(lambda a: len(a), _args))))
+    _fp += 8               # 8 bytes for argc
+    _fp += 8 * (1 + _argc) # 8 bytes for each argv * plus 1 NULL pointer
+    _addr = list(itertools.accumulate([8 + _fp] + list(map(lambda a: len(a), _args))))
     print('loadbin(): argc : {}'.format(_argc))
     print('loadbin(): len(_args) : {}'.format(sum(map(lambda a: len(a), _args))))
     for x, y in zip(_addr, _args):
         print('loadbin(): @{:08x} : {} ({})'.format(x, y, len(y)))
     os.lseek(fd, sp, os.SEEK_SET)
     os.write(fd, _argc.to_bytes(8, 'little'))       # argc
-    os.lseek(fd, 8, os.SEEK_CUR)
     for a in _addr:                                 # argv pointers
         os.write(fd, a.to_bytes(8, 'little'))
-        os.lseek(fd, 8, os.SEEK_CUR)
+#    print('loadbin(): fp.tell() : @{:08x}'.format(os.fdopen(fd).tell()))
     os.lseek(fd, 8, os.SEEK_CUR)                    # NULL pointer
     os.write(fd, bytes(''.join(_args), 'ascii'))    # argv data
     os.close(fd)
     register(connections, 'set', 2, hex(sp))
     register(connections, 'set', 10, hex(_argc))
-    register(connections, 'set', 11, hex(sp))
+    register(connections, 'set', 11, hex(8 + sp))
     register(connections, 'set', '%pc', hex(_start_pc))
 def config(args, field, val):
     _output = 'args.{} : {}'.format(field, args.__getattribute__(field))
@@ -340,7 +339,7 @@ if __name__ == '__main__':
                     'service': lambda x: add_service(_services, args.debug, args.port, x),
                     'register': lambda x, y, z=None: register(state.get('connections'), x, y, z),
                     'mainmem': lambda w, x, y, z=None: mainmem(state.get('connections'), w, x, y, z),
-                    'loadbin': lambda v, w, x, y, z, *args: loadbin(state.get('connections'), v, integer(w), integer(x), y, z, *args),
+                    'loadbin': lambda v, w, x, y, z, *args: loadbin(state.get('connections'), v, integer(w), integer(x), y, z, *((z,) + args)),
                     'restore': lambda x, y: state.update({'cycle': restore(x, y)}),
                     'cycle': lambda: print(state.get('cycle')),
                     'state': lambda: print(state),
