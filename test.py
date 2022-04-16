@@ -60,9 +60,10 @@ class Harness:
         _assembly += ['lui x14, {}'.format(_const_1)]
         _assembly += ['c.add x15, x14']
         _assembly += ['c.mv x31, x15']
-        _const_0 = int.from_bytes(struct.Struct('<I').pack(_const_0 << 12), 'little', signed=True)
-        _const_1 = int.from_bytes(struct.Struct('<I').pack(_const_1 << 12), 'little', signed=True)
-        _correct_answer = _const_0 + _const_1
+#        _const_0 = int.from_bytes(struct.Struct('<I').pack(_const_0 << 12), 'little', signed=True)
+#        _const_1 = int.from_bytes(struct.Struct('<I').pack(_const_1 << 12), 'little', signed=True)
+#        _correct_answer = _const_0 + _const_1
+        _correct_answer = ((_const_0 << 12) + (_const_1 << 12)).to_bytes(8, 'little')
 #        _correct_answer = 1
 #        _correct_answer = int.from_bytes(struct.Struct('<I').pack(_correct_answer), 'little', signed=True)
         return _correct_answer, _assembly
@@ -416,10 +417,9 @@ class Harness:
             os.path.join(args.dir, 'src', '{}.s'.format(test))
         ).split())
         _script  = ['# μService-SIMulator test harness script']
-        _script += ['loadbin /tmp/mainmem.raw 0x{:08x} 0x{:08x} _start {}'.format(self._sp, self._start_pc, os.path.join(args.dir, 'obj', '{}.o'.format(test)))]
         _script += ['service pipelines/bergamot/implementation/{}:localhost'.format(s) for s in ('simplecore.py', 'regfile.py', 'mainmem.py', 'decode.py', 'execute.py')]
         _script += ['spawn']
-        _script += ['register set 2 0x{:x}'.format(self._sp)]
+        _script += ['loadbin /tmp/mainmem.raw 0x{:08x} 0x{:08x} _start {}'.format(self._sp, self._start_pc, os.path.join(args.dir, 'obj', '{}.o'.format(test)))]
         _script += ['config max_instructions {}'.format(_n_instruction)]
         _script += ['run']
         _script += ['shutdown']
@@ -429,33 +429,17 @@ class Harness:
             capture_output=True,
         )
         _stdout = _result.stdout.decode('utf-8').split('\n')
-        print('\n'.join(_stdout))
+#        print('\n'.join(_stdout))
         _x31 = next(iter(next(iter(filter(lambda x: re.search('register 31 : ', x), _stdout))).split(':')[1:]))
-        print('_x31 : {}'.format(_x31))
-        try:
-            _x31_int = int.from_bytes(eval(_x31), 'little')
-        except:
-            _x31_int = None
-        try:
-            print('do_test(..., {}): {} ?= {} ({:016x} ?= {:016x}) -> {}'.format(
-                test,
-                _correct_answer,
-                _x31_int,
-                int.from_bytes(_correct_answer.to_bytes(8, 'little', signed=True), 'little'),
-                int.from_bytes(_x31_int.to_bytes(8, 'little', signed=True), 'little'),
-                _x31_int == _correct_answer
-            ))
-        except:
-            print('do_test(..., {}): {} ?= {} ({:016x} ?= {:016x}) -> {}'.format(
-                test,
-                _correct_answer,
-                _x31_int,
-                int.from_bytes(_correct_answer.to_bytes(8, 'little'), 'little'),
-                int.from_bytes(_x31_int.to_bytes(8, 'little'), 'little'),
-                _x31_int == _correct_answer
-            ))
-        if _x31_int != _correct_answer: print('\n'.join(_stdout))
-
+        _x31 = eval(_x31)
+        _correct_answer = list(_correct_answer)
+        print('do_test(..., {}): {} ?= {} -> {}'.format(
+            test,
+            _correct_answer,
+            _x31,
+            _correct_answer ==_x31
+        ))
+        if _x31 != _correct_answer: print('\n'.join(_stdout))
 
 
 if __name__ == '__main__':
