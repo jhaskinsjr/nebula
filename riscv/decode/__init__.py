@@ -403,7 +403,7 @@ def lui(word):
     # LUI (load upper immediate) is used to build 32-bit constants and
     # uses the U-type format. LUI places the U-immediate value in the top
     # 20 bits of the destination register rd, filling in the lowest 12
-    # bits with zeros.
+    # bits with zeros. ... The 32-bit result is sign-extended to 64 bits.
     return {
         'cmd': 'LUI',
         'imm': uncompressed_imm32(word, signed=True),
