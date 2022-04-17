@@ -39,6 +39,8 @@ class Harness:
             'and': self.test_and,
             'or': self.test_or,
             'xor': self.test_xor,
+            'slti': self.slti,
+            'sltiu': self.sltiu,
             'lui': self.lui,
             'auipc': self.auipc,
         }
@@ -447,6 +449,24 @@ class Harness:
         ), 'little', signed=True)
         _correct_answer = list(_correct_answer.to_bytes(8, 'little', signed=True))
         return _correct_answer, _assembly
+    def slti(self):
+        _const_0 = random.randint(0, 2**20 - 1)
+        _const_1 = random.choice([random.randint(0, 2**5 - 1), random.randint(-2**5, -1)])
+        _assembly  = ['lui x15, {}'.format(_const_0)]
+        _assembly += ['slti x31, x15, {}'.format(_const_1)]
+        _const_0 = int.from_bytes(struct.Struct('<I').pack(_const_0 << 12), 'little', signed=True)
+        _correct_answer = (1 if _const_0 < _const_1 else 0)
+        _correct_answer = list(_correct_answer.to_bytes(8, 'little', signed=True))
+        return _correct_answer, _assembly
+    def sltiu(self):
+        _const_0 = random.randint(0, 2**20 - 1)
+        _const_1 = random.randint(0, 2**11 - 1)
+        _assembly  = ['lui x15, {}'.format(_const_0)]
+        _assembly += ['sltiu x31, x15, {}'.format(_const_1)]
+        _const_0 = int.from_bytes(struct.Struct('<I').pack(_const_0 << 12), 'little')
+        _correct_answer = (1 if _const_0 < _const_1 else 0)
+        _correct_answer = list(_correct_answer.to_bytes(8, 'little', signed=True))
+        return _correct_answer, _assembly
     def lui(self):
         _const = random.randint(0, 2**20 - 1)
 #        _const = 2**3
@@ -545,8 +565,10 @@ if __name__ == '__main__':
 #    _harness.generate(args, 'addiw')
 #    _harness.generate(args, 'add')
 #    _harness.generate(args, 'sub')
-    _harness.generate(args, 'and')
-    _harness.generate(args, 'or')
-    _harness.generate(args, 'xor')
+#    _harness.generate(args, 'and')
+#    _harness.generate(args, 'or')
+#    _harness.generate(args, 'xor')
+    _harness.generate(args, 'slti')
+    _harness.generate(args, 'sltiu')
 #    _harness.generate(args, 'lui')
 #    _harness.generate(args, 'auipc')
