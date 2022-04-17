@@ -151,7 +151,7 @@ def remu(rs1, rs2):
 #def subw(rs1, rs2): return (sub(rs1, rs2) << 32) >> 32
 def slli(rs1, shamt):
     return riscv.constants.integer_to_list_of_bytes(
-        int.from_bytes(rs1, 'little') << shamt,
+        (int.from_bytes(rs1, 'little') << shamt) & ((2**64) - 1),
         64,
         'little',
     )
@@ -169,19 +169,19 @@ def srai(rs1, shamt):
     )
 def slliw(rs1, shamt):
     return riscv.constants.integer_to_list_of_bytes(
-        int.from_bytes(((int.from_bytes(rs1, 'little') << shamt) & ((2 ** 32) - 1)).to_bytes(4, 'little'), 'little', signed=True),
+        (int.from_bytes(rs1, 'little') << shamt) & ((2**32) - 1),
         64,
         'little',
     )
 def srliw(rs1, shamt):
     return riscv.constants.integer_to_list_of_bytes(
-        int.from_bytes(((int.from_bytes(rs1, 'little') >> shamt) & ((2 ** 32) - 1)).to_bytes(4, 'little'), 'little', signed=True),
+        (int.from_bytes(rs1, 'little') >> shamt) & ((2**32) - 1),
         64,
         'little',
     )
 def sraiw(rs1, shamt):
     return riscv.constants.integer_to_list_of_bytes(
-        int.from_bytes(((int.from_bytes(rs1, 'little', signed=True) >> shamt) & ((2 ** 32) - 1)).to_bytes(4, 'little'), 'little', signed=True),
+        (int.from_bytes(rs1, 'little', signed=True) >> shamt) & ((2**32) - 1),
         64,
         'little',
     )
