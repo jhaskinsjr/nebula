@@ -399,6 +399,7 @@ class Harness:
         _assembly = ['lui x31, {}'.format(_const)]
         _correct_answer = _const << 12
         _correct_answer = int.from_bytes(struct.Struct('<I').pack(_correct_answer), 'little', signed=True)
+        _correct_answer = list(_correct_answer.to_bytes(8, 'little', signed=True))
         return _correct_answer, _assembly
     def auipc(self):
         _const = random.randint(0, 2**20 - 1)
@@ -413,6 +414,7 @@ class Harness:
 #        print('_correct_answer : {}'.format(_correct_answer))
 #        print('self._start_pc : {}'.format(self._start_pc))
         _correct_answer += self._start_pc
+        _correct_answer = list(_correct_answer.to_bytes(8, 'little', signed=True))
 #        print('_correct_answer : {}'.format(_correct_answer))
         return _correct_answer, _assembly
     def generate(self, args, test):
@@ -484,10 +486,10 @@ if __name__ == '__main__':
 #    _harness.generate(args, 'srliw')
 #    _harness.generate(args, 'srai')
 #    _harness.generate(args, 'sraiw')
-    _harness.generate(args, 'andi')
-    _harness.generate(args, 'addi')
-    _harness.generate(args, 'addiw')
-    _harness.generate(args, 'add')
-    _harness.generate(args, 'sub')
-#    _harness.generate(args, 'lui')
-#    _harness.generate(args, 'auipc')
+#    _harness.generate(args, 'andi')
+#    _harness.generate(args, 'addi')
+#    _harness.generate(args, 'addiw')
+#    _harness.generate(args, 'add')
+#    _harness.generate(args, 'sub')
+    _harness.generate(args, 'lui')
+    _harness.generate(args, 'auipc')
