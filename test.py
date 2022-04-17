@@ -36,6 +36,9 @@ class Harness:
             'addiw': self.addiw,
             'add': self.add,
             'sub': self.sub,
+            'and': self.test_and,
+            'or': self.test_or,
+            'xor': self.test_xor,
             'lui': self.lui,
             'auipc': self.auipc,
         }
@@ -393,6 +396,57 @@ class Harness:
         _correct_answer = _const_0 - _const_1
         _correct_answer = list(_correct_answer.to_bytes(8, 'little', signed=True))
         return _correct_answer, _assembly
+    def test_and(self):
+        _const_0 = random.randint(0, 2**20 - 1)
+        _assembly  = ['lui x29, {}'.format(_const_0)]
+        _const_0 <<= 12
+        _const_0 = int.from_bytes(struct.Struct('<I').pack(_const_0), 'little', signed=True)
+        _const_1 = random.randint(0, 2**20 - 1)
+        _assembly += ['lui x30, {}'.format(_const_1)]
+        _const_1 <<= 12
+        _const_1 = int.from_bytes(struct.Struct('<I').pack(_const_1), 'little', signed=True)
+        _assembly += ['and x31, x29, x30']
+        _correct_answer = int.from_bytes(map(
+            lambda a, b: a & b,
+            _const_0.to_bytes(8, 'little', signed=True),
+            _const_1.to_bytes(8, 'little', signed=True),
+        ), 'little', signed=True)
+        _correct_answer = list(_correct_answer.to_bytes(8, 'little', signed=True))
+        return _correct_answer, _assembly
+    def test_or(self):
+        _const_0 = random.randint(0, 2**20 - 1)
+        _assembly  = ['lui x29, {}'.format(_const_0)]
+        _const_0 <<= 12
+        _const_0 = int.from_bytes(struct.Struct('<I').pack(_const_0), 'little', signed=True)
+        _const_1 = random.randint(0, 2**20 - 1)
+        _assembly += ['lui x30, {}'.format(_const_1)]
+        _const_1 <<= 12
+        _const_1 = int.from_bytes(struct.Struct('<I').pack(_const_1), 'little', signed=True)
+        _assembly += ['or x31, x29, x30']
+        _correct_answer = int.from_bytes(map(
+            lambda a, b: a | b,
+            _const_0.to_bytes(8, 'little', signed=True),
+            _const_1.to_bytes(8, 'little', signed=True),
+        ), 'little', signed=True)
+        _correct_answer = list(_correct_answer.to_bytes(8, 'little', signed=True))
+        return _correct_answer, _assembly
+    def test_xor(self):
+        _const_0 = random.randint(0, 2**20 - 1)
+        _assembly  = ['lui x29, {}'.format(_const_0)]
+        _const_0 <<= 12
+        _const_0 = int.from_bytes(struct.Struct('<I').pack(_const_0), 'little', signed=True)
+        _const_1 = random.randint(0, 2**20 - 1)
+        _assembly += ['lui x30, {}'.format(_const_1)]
+        _const_1 <<= 12
+        _const_1 = int.from_bytes(struct.Struct('<I').pack(_const_1), 'little', signed=True)
+        _assembly += ['xor x31, x29, x30']
+        _correct_answer = int.from_bytes(map(
+            lambda a, b: a ^ b,
+            _const_0.to_bytes(8, 'little', signed=True),
+            _const_1.to_bytes(8, 'little', signed=True),
+        ), 'little', signed=True)
+        _correct_answer = list(_correct_answer.to_bytes(8, 'little', signed=True))
+        return _correct_answer, _assembly
     def lui(self):
         _const = random.randint(0, 2**20 - 1)
 #        _const = 2**3
@@ -491,5 +545,8 @@ if __name__ == '__main__':
 #    _harness.generate(args, 'addiw')
 #    _harness.generate(args, 'add')
 #    _harness.generate(args, 'sub')
-    _harness.generate(args, 'lui')
-    _harness.generate(args, 'auipc')
+    _harness.generate(args, 'and')
+    _harness.generate(args, 'or')
+    _harness.generate(args, 'xor')
+#    _harness.generate(args, 'lui')
+#    _harness.generate(args, 'auipc')
