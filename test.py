@@ -345,11 +345,17 @@ class Harness:
             _const_0.to_bytes(8, 'little', signed=True),
             _const_2.to_bytes(8, 'little', signed=True),
         ), 'little', signed=True)
+        _correct_answer = list(_correct_answer.to_bytes(8, 'little', signed=True))
         return _correct_answer, _assembly
     def addi(self):
-        _const = random.randint(-2**11, 2**11 - 1)
-        _assembly = ['addi x31, x0, {}'.format(_const)]
-        _correct_answer = _const
+        _const_0 = random.randint(0, 2**20 - 1)
+        _const_1 = random.choice([random.randint(0, 2**5 - 1), random.randint(-2**5, -1)])
+        _assembly  = ['lui x15, {}'.format(_const_0)]
+        _assembly += ['addi x15, x15, {}'.format(_const_1)]
+        _assembly += ['c.mv x31, x15']
+        _const_0 = int.from_bytes(struct.Struct('<I').pack(_const_0 << 12), 'little', signed=True)
+        _correct_answer = _const_0 + _const_1
+        _correct_answer = list(_correct_answer.to_bytes(8, 'little', signed=True))
         return _correct_answer, _assembly
     def addiw(self):
         _const_0 = random.randint(0, 2**20 - 1)
@@ -359,6 +365,7 @@ class Harness:
         _assembly += ['c.mv x31, x15']
         _const_0 = int.from_bytes(struct.Struct('<I').pack(_const_0 << 12), 'little', signed=True)
         _correct_answer = ((_const_0 + _const_1) << 32) >> 32
+        _correct_answer = list(_correct_answer.to_bytes(8, 'little', signed=True))
         return _correct_answer, _assembly
     def add(self):
         _const_0 = random.randint(0, 2**20 - 1)
@@ -371,6 +378,7 @@ class Harness:
         _const_1 = int.from_bytes(struct.Struct('<I').pack(_const_1), 'little', signed=True)
         _assembly += ['add x31, x29, x30']
         _correct_answer = _const_0 + _const_1
+        _correct_answer = list(_correct_answer.to_bytes(8, 'little', signed=True))
         return _correct_answer, _assembly
     def sub(self):
         _const_0 = random.randint(0, 2**20 - 1)
@@ -383,6 +391,7 @@ class Harness:
         _const_1 = int.from_bytes(struct.Struct('<I').pack(_const_1), 'little', signed=True)
         _assembly += ['sub x31, x29, x30']
         _correct_answer = _const_0 - _const_1
+        _correct_answer = list(_correct_answer.to_bytes(8, 'little', signed=True))
         return _correct_answer, _assembly
     def lui(self):
         _const = random.randint(0, 2**20 - 1)
@@ -469,16 +478,16 @@ if __name__ == '__main__':
 #    _harness.generate(args, 'c.slli')
 #    _harness.generate(args, 'c.srli')
 #    _harness.generate(args, 'c.srai')
-    _harness.generate(args, 'slli')
-    _harness.generate(args, 'slliw')
-    _harness.generate(args, 'srli')
-    _harness.generate(args, 'srliw')
-    _harness.generate(args, 'srai')
-    _harness.generate(args, 'sraiw')
-#    _harness.generate(args, 'andi')
-#    _harness.generate(args, 'addi')
-#    _harness.generate(args, 'addiw')
-#    _harness.generate(args, 'add')
-#    _harness.generate(args, 'sub')
+#    _harness.generate(args, 'slli')
+#    _harness.generate(args, 'slliw')
+#    _harness.generate(args, 'srli')
+#    _harness.generate(args, 'srliw')
+#    _harness.generate(args, 'srai')
+#    _harness.generate(args, 'sraiw')
+    _harness.generate(args, 'andi')
+    _harness.generate(args, 'addi')
+    _harness.generate(args, 'addiw')
+    _harness.generate(args, 'add')
+    _harness.generate(args, 'sub')
 #    _harness.generate(args, 'lui')
 #    _harness.generate(args, 'auipc')
