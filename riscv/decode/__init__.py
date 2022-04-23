@@ -404,9 +404,14 @@ def lui(word):
     # uses the U-type format. LUI places the U-immediate value in the top
     # 20 bits of the destination register rd, filling in the lowest 12
     # bits with zeros. ... The 32-bit result is sign-extended to 64 bits.
+    _imm = uncompressed_imm32(word)
+    _imm <<= 12
+    _b31 = (_imm >> 31) & 0b1
+    _imm = functools.reduce(lambda a, b: a | b, map(lambda x: _b31 << x, range(32, 64)), _imm)
+    _imm = int.from_bytes(struct.Struct('<Q').pack(_imm), 'little', signed=True)
     return {
         'cmd': 'LUI',
-        'imm': uncompressed_imm32(word, signed=True),
+        'imm': _imm,
         'rd': uncompressed_rd(word),
         'word': word,
         'size': 4,
@@ -417,9 +422,14 @@ def auipc(word):
     # from the 20-bit U-immediate, filling in the lowest 12 bits with
     # zeros, adds this offset to the address of the AUIPC instruction,
     # then places the result in register rd.
+    _imm = uncompressed_imm32(word)
+    _imm <<= 12
+    _b31 = (_imm >> 31) & 0b1
+    _imm = functools.reduce(lambda a, b: a | b, map(lambda x: _b31 << x, range(32, 64)), _imm)
+    _imm = int.from_bytes(struct.Struct('<Q').pack(_imm), 'little', signed=True)
     return {
         'cmd': 'AUIPC',
-        'imm': uncompressed_imm32(word, signed=True),
+        'imm': _imm,
         'rd': uncompressed_rd(word),
         'word': word,
         'size': 4,
@@ -469,7 +479,7 @@ def i_type(word):
         0b001_0011: {
             0b000: {'cmd': 'ADDI', 'imm': uncompressed_i_type_imm12(word, signed=True)},
             0b010: {'cmd': 'SLTI', 'imm': uncompressed_i_type_imm12(word, signed=True)},
-            0b011: {'cmd': 'SLTIU', 'imm': uncompressed_i_type_imm12(word)},
+            0b011: {'cmd': 'SLTIU', 'imm': int.from_bytes((uncompressed_i_type_imm12(word, signed=True) & ((2**64) - 1)).to_bytes(8, 'little'), 'little')},
             0b001: {'cmd': 'SLLI', 'shamt': uncompressed_i_type_shamt(word)},
             0b101: {'cmd': ('SRLI' if 0 == uncompressed_funct7(word) else 'SRAI'), 'shamt': uncompressed_i_type_shamt(word)},
             0b111: {'cmd': 'ANDI', 'imm': uncompressed_i_type_imm12(word, signed=True)},
@@ -784,11 +794,12 @@ def compressed_quadrant_01_opcode_011(word):
         _b17         = (word >> 12) & 0b1
         _b1615141312 = (word >> 2) & 0b1_1111
         _imm = (_b17 << 17) | (_b1615141312 << 12)
-        _imm = functools.reduce(lambda a, b: a | b, map(lambda x: _b17 << x, range(18, 32)), _imm)
-        _imm = int.from_bytes(struct.Struct('<I').pack(_imm), 'little', signed=True)
         if 0 == _imm:
             _impl = compressed_illegal_instruction
         else:
+            _imm <<= 12
+            _imm = functools.reduce(lambda a, b: a | b, map(lambda x: _b17 << x, range(18 + 12, 32)), _imm)
+            _imm = int.from_bytes(struct.Struct('<I').pack(_imm), 'little', signed=True)
             _impl = c_lui
     return _impl(word, imm=_imm)
 def compressed_quadrant_01_opcode_100(word):
@@ -1050,7 +1061,7 @@ def uncompressed_rd(word):
     return (word >> 7) & 0b1_1111
 
 def uncompressed_i_type_imm12(word, **kwargs):
-    # imm[11:0]
+    # imm[11:0] rs1 funct3 rd opcode I-type
     # https://riscv.org/wp-content/uploads/2019/06/riscv-spec.pdf (p. 130)
     _tmp = (word >> 20) & 0b1111_1111_1111
     _b11 = (_tmp & 0b1000_0000_0000) >> 11
@@ -1060,11 +1071,6 @@ def uncompressed_i_type_imm12(word, **kwargs):
 def uncompressed_imm21(word, **kwargs):
     # imm[20|10:1|11|19:12] rrrrr ooooooo
     # https://riscv.org/wp-content/uploads/2019/06/riscv-spec.pdf (p. 130)
-#    _tmp = (word >> 12) & 0b1111_1111_1111_1111_1111
-#    _b1918171615141312     = (_tmp & 0b1111_1111) >> 0
-#    _b11                   = (_tmp & 0b1_0000_0000) >> 8
-#    _b10090807060504030201 = (_tmp & 0b111_1111_1110_0000_0000) >> 9
-#    _b20                   = (_tmp & 0b1000_0000_0000_0000_0000) >> 19
     _b1918171615141312     = (word >> 12) & 0b1111_1111
     _b11                   = (word >> 20) & 0b1
     _b10090807060504030201 = (word >> 21) & 0b11_1111_1111
@@ -1078,11 +1084,10 @@ def uncompressed_imm21(word, **kwargs):
 def uncompressed_imm32(word, **kwargs):
     # imm[31:12] rrrrr ooooooo
     # https://riscv.org/wp-content/uploads/2019/06/riscv-spec.pdf (p. 130)
-    _retval = word & 0b1111_1111_1111_1111_1111_0000_0000_0000
-#    _retval = (word >> 12) & 0b1111_1111_1111_1111_1111
-#    return _retval
-#    return int.from_bytes(struct.Struct('<I').pack(_retval << 12), 'little', **kwargs)
-    return int.from_bytes(struct.Struct('<I').pack(_retval), 'little', **kwargs)
+#    _retval = word & 0b1111_1111_1111_1111_1111_0000_0000_0000
+#    return int.from_bytes(struct.Struct('<I').pack(_retval), 'little', **kwargs)
+#    return int.from_bytes(_retval.to_bytes(4, 'little'), 'little', **kwargs)
+    return (word >> 12) & 0b1111_1111_1111_1111_1111
 def uncompressed_funct7(word):
     # https://riscv.org/wp-content/uploads/2019/06/riscv-spec.pdf (p. 16)
     return (word >> 25) & 0b111_1111
@@ -1090,7 +1095,7 @@ def uncompressed_funct3(word):
     # https://riscv.org/wp-content/uploads/2019/06/riscv-spec.pdf (p. 16)
     return (word >> 12) & 0b111
 def uncompressed_i_type_shamt(word):
-    return (word >> 20) & 0b1_1111
+    return (word >> 20) & 0b11_1111
 def uncompressed_load_imm12(word, **kwargs):
     # imm[11:0] rs1 011 rd 0000011 LD
     _b11 = (word >> 31) & 0b1
