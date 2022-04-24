@@ -117,10 +117,10 @@ compiler at https://github.com/riscv-collab/riscv-gnu-toolchain. The source:
     int
     main(int argc, char ** argv)
     {
-	    int retval = 0;
-    	int x = 1;
-	    for (; x < argc; x+= 1) retval += atoi(argv[x]);
-	    return retval;
+        int retval = 0;
+        int x = 1;
+        for (; x < argc; x+= 1) retval += atoi(argv[x]);
+        return retval;
     }
 
     /* examples/src/basics.h */
@@ -130,14 +130,14 @@ compiler at https://github.com/riscv-collab/riscv-gnu-toolchain. The source:
     int
     atoi(const char * s)
     {
-	    int retval = 0;
-	    int x = 0;
-	    while (s[x] >= 48 && s[x] <= 57) {
-		    retval *= 10;
-		    retval += s[x] - 48;
-		    x += 1;
-    	}
-	    return retval;
+        int retval = 0;
+        int x = 0;
+        while (s[x] >= 48 && s[x] <= 57) {
+            retval *= 10;
+            retval += s[x] - 48;
+            x += 1;
+        }
+        return retval;
     }
 
 which is compiled accordingly
