@@ -38,24 +38,23 @@ python3 ../../launcher.py \
     --max_cycles 32000 \
     --snapshots 1000 \
     --break_on_undefined \
-    -- 10000 samples_bin_test_from_main.ussim
+    -- 10000 sum_from_main.ussim
 
 First, the "cd" command changes into the subdirectory with the first-ever,
 very simple, very primitive μService-SIMulator pipeline implementation,
 codename: Bergamot (see: https://en.wikipedia.org/wiki/Bergamot_orange).
 The "python3" command then executes the launcher module (launcher.py). The
 launcher module will then begin accepting TCP connections on the
-localhost's port 10000 and execute the script
-sample_bin_test_from_main.ussim, simulating for a maximum of 32,000
-simulated cycles, taking snapshots (of the main memory and register file)
-every 1,000 simulated cycles, but will cease execution if it encounters an
-instruction that is not (yet) defined.
+localhost's port 10000 and execute the script sum_from_main.ussim,
+simulating for a maximum of 32,000 simulated cycles, taking snapshots (of
+the main memory and register file) every 1,000 simulated cycles, but will
+cease execution if it encounters an instruction that is not (yet) defined.
 
 --
 SIMULATOR SCRIPTS
 
 The simulator executes according to instructions in an execute script.
-Consider the script test-02.ussim:
+Consider the script sum_from_main.ussim:
 
     # Sample μService-SIMulator script
     service implementation/simplecore.py:localhost
@@ -65,13 +64,13 @@ Consider the script test-02.ussim:
     service implementation/execute.py:localhost
     spawn
     cycle
-    loadbin /tmp/mainmem.raw 0x80000000 0x40000000 main ../../samples/bin/test 2 3 5 7 11 13 
+    loadbin /tmp/mainmem.raw 0x80000000 0x40000000 main ../../examples/bin/sum 2 3 5 7 11 13 
                                                             # using /tmp/mainmem.raw as the main memory file,
                                                             # set %sp to 0x80000000 and %pc to 0x40000000, then
-                                                            # load samples/bin/test, with command
+                                                            # load examples/bin/test, with command
                                                             # line parameters 2 3 5 7 11 13, and execute
                                                             # beginning from the "main" symbol in the
-                                                            # ../../samples/bin/test binary's .text section
+                                                            # ../../examples/bin/test binary's .text section
     register set 10 0x0                                     # moved by _start into x15 to become rtld_fini;
                                                             # see: https://refspecs.linuxbase.org/LSB_3.1
     run
@@ -107,27 +106,57 @@ inside the main memory snapshot.
 --
 SAMPLE binary
 
-The sample binary (samples/bin/test) was created using the RISC-V cross compiler
-at https://github.com/riscv-collab/riscv-gnu-toolchain. The source for the
-binary is a do-nothing program; to wit:
+The sample binary (examples/bin/sum) was created using the RISC-V cross
+compiler at https://github.com/riscv-collab/riscv-gnu-toolchain. The source:
 
-    /* samples/src/test.c */
+    /* examples/src/sum.c */
     #include <stdio.h>
 
-    int main(int, char **);
+    #include "basics.h"
 
     int
     main(int argc, char ** argv)
     {
-        return 0;
+	    int retval = 0;
+    	int x = 1;
+	    for (; x < argc; x+= 1) retval += atoi(argv[x]);
+	    return retval;
+    }
+
+    /* examples/src/basics.h */
+    int atoi(const char *);
+
+    /* examples/src/basics.c */
+    int
+    atoi(const char * s)
+    {
+	    int retval = 0;
+	    int x = 0;
+	    while (s[x] >= 48 && s[x] <= 57) {
+		    retval *= 10;
+		    retval += s[x] - 48;
+		    x += 1;
+    	}
+	    return retval;
     }
 
 which is compiled accordingly
 
-    riscv64-unknown-linux-gnu-gcc -o test -static -march=rv64g test.c
+    riscv64-unknown-linux-gnu-gcc -o sum -static -march=rv64g sum.c basics.c
 
-Note well that the binary is statically linked; this is key since the
-simulator at this stage makes NO effort to accommodate dynamic linking.
+A few things to note: (1) the binary is statically linked, since the
+simulator at this stage makes NO effort to accommodate dynamic linking;
+(2) the simulator does not use the stdlib's atoi() implementation
+since, even with static linking, there are runtime elements (e.g.,
+the RISC-V global-pointer register and thread-pointer register) that
+are not properly established when execution begins from main(), rather
+than _start() (which executes __libc_start_main()); (3) execution from
+_start() is a planned feature, but will require a great deal of
+additional work on syscall proxying; and (4) because syscall proxying
+is not yet complete, there is no printf(), thus, when execution
+completes, the sum of all the arguments passed is returned in register
+x10, which can be viewed in the simulator's output log (2 + 3 + 5 + 7
++ 11 + 13 = 41).
 
 --
 TESTS
