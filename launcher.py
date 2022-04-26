@@ -354,7 +354,6 @@ if __name__ == '__main__':
                     'service': lambda x: add_service(_services, args.debug, args.port, x),
                     'register': lambda x, y, z=None: register(state.get('connections'), x, y, z),
                     'mainmem': lambda w, x, y, z=None: mainmem(state.get('connections'), w, x, y, z),
-#                    'loadbin': lambda v, w, x, y, z, *args: loadbin(state.get('connections'), v, integer(w), integer(x), y, z, *((z,) + args)),
                     'restore': lambda x, y: state.update({'cycle': restore(x, y)}),
                     'cycle': lambda: print(state.get('cycle')),
                     'state': lambda: print(state),
