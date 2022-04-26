@@ -38,25 +38,30 @@ python3 ../../launcher.py \
     --max_cycles 32000 \
     --snapshots 1000 \
     --break_on_undefined \
-    -- 10000 sum_from_main.ussim
+    -- \
+    main.ussim \
+    ../../examples/bin/sum 2 3 5 7 11 13
 
 First, the "cd" command changes into the subdirectory with the first-ever,
 very simple, very primitive μService-SIMulator pipeline implementation,
 codename: Bergamot (see: https://en.wikipedia.org/wiki/Bergamot_orange).
 The "python3" command then executes the launcher module (launcher.py). The
-launcher module will then begin accepting TCP connections on the
-localhost's port 10000 and execute the script sum_from_main.ussim,
-simulating for a maximum of 32,000 simulated cycles, taking snapshots (of
-the main memory and register file) every 1,000 simulated cycles, but will
-cease execution if it encounters an instruction that is not (yet) defined.
+launcher module will then begin by executing the script main.ussim, and
+loading the binary "../../examples/bin/sum" together with its command-line
+parameters "2 3 5 7 11 13", into the simulator's main memory; and simulating
+for a maximum of 32,000 simulated cycles, taking snapshots (of the
+simulated main memory and register file) every 1,000 simulated cycles, but
+will cease execution if it encounters an instruction that is not (yet)
+defined.
 
 --
 SIMULATOR SCRIPTS
 
 The simulator executes according to instructions in an execute script.
-Consider the script sum_from_main.ussim:
+Consider the script main.ussim:
 
     # Sample μService-SIMulator script
+    port 10000
     service implementation/simplecore.py:localhost
     service implementation/regfile.py:localhost
     service implementation/mainmem.py:localhost
@@ -64,15 +69,13 @@ Consider the script sum_from_main.ussim:
     service implementation/execute.py:localhost
     spawn
     cycle
-    loadbin /tmp/mainmem.raw 0x80000000 0x40000000 main ../../examples/bin/sum 2 3 5 7 11 13 
-                                                            # using /tmp/mainmem.raw as the main memory file,
-                                                            # set %sp to 0x80000000 and %pc to 0x40000000, then
-                                                            # load examples/bin/test, with command
-                                                            # line parameters 2 3 5 7 11 13, and execute
-                                                            # beginning from the "main" symbol in the
-                                                            # ../../examples/bin/test binary's .text section
-    register set 10 0x0                                     # moved by _start into x15 to become rtld_fini;
-                                                            # see: https://refspecs.linuxbase.org/LSB_3.1
+    loadbin /tmp/mainmem.raw 0x80000000 0x40000000 main # using /tmp/mainmem.raw as the main memory file,
+                                                        # set x2 to 0x80000000 and %pc to 0x40000000, then
+                                                        # load binary (e.g., ../../examples/bin/sum), and,
+                                                        # optionally, command line parameters (e.g.,
+                                                        # 2 3 5 7 11 13), and execute beginning from the
+                                                        # "main" symbol in the binary's .text section
+
     run
     cycle
     state
@@ -81,9 +84,9 @@ Consider the script sum_from_main.ussim:
 The script is comprised of commands
 
     cycle                           print the cycle count to stdout
-    loadbin A B C D E X             load the binary E with arguments X into main memory file A;
-                                    locate stack at address B; locate code at address C; and
-                                    begin execution from .text section label D 
+    loadbin A B C D E X             set main memory file A; locate stack at address B; locate code
+                                    at address C; and begin execution from .text section label D 
+    port A                          set simulator to accept connections at port A
     restore A B                     restore previously captured state in B to main memory file A
     register set A B                set register A to value B
     run                             begin execution
@@ -92,9 +95,8 @@ The script is comprised of commands
     state                           print launcher's state (i.e., variables, etc) to stdout
     shutdown                        send shutdown signal to services, exit launcher
 
-The script sample_bin_test_restore.ussim is very similar to
-sample_bin_test_from_main.ussim, but, rather than a loadbin command,
-instead features a restore command:
+The script restore.ussim is very similar to main.ussim, but, rather than a
+loadbin command, instead features a restore command:
 
     ...
     restore /tmp/mainmem.raw /tmp/mainmem.raw.snapshot
