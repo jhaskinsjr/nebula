@@ -297,15 +297,11 @@ if __name__ == '__main__':
     parser.add_argument('--max_cycles', type=int, dest='max_cycles', default=None, help='maximum number of cycles to run for')
     parser.add_argument('--max_instructions', type=int, dest='max_instructions', default=None, help='maximum number of instructions to execute')
     parser.add_argument('--snapshots', type=int, dest='snapshots', default=0, help='number of cycles per snapshot')
-    parser.add_argument('port', type=int, help='port to connect to on host')
     parser.add_argument('script', type=str, help='script to be executed by μService-SIMulator')
+    parser.add_argument('cmdline', nargs='*', help='binary to be executed and parameters')
     args = parser.parse_args()
     assert os.path.exists(args.script), 'Cannot open script file, {}!'.format(args.script)
     if args.debug: print('args : {}'.format(args))
-    _s = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
-    _s.setsockopt(socket.SOL_SOCKET, socket.SO_REUSEADDR, 1)
-    _s.bind(('0.0.0.0', args.port))
-    _s.listen(5)
     state = {
         'lock': threading.Lock(),
         'connections': [],
@@ -338,13 +334,27 @@ if __name__ == '__main__':
                 state.update({'running': True})
                 state.update({'cycle': run(state.get('cycle'), args.max_cycles, args.max_instructions, args.break_on_undefined, args.snapshots)})
                 state.update({'running': False})
+            elif 'port' == cmd:
+                args.__dict__.update({'port': int(next(iter(params)))})
+                _s = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
+                _s.setsockopt(socket.SOL_SOCKET, socket.SO_REUSEADDR, 1)
+                _s.bind(('0.0.0.0', args.port))
+                _s.listen(5)
+            elif 'loadbin' == cmd:
+                _mainmem_rawfile = params[0]
+                _sp = integer(params[1])
+                _pc = integer(params[2])
+                _start_symbol = params[3]
+                _binary = args.cmdline[0]
+                _args = tuple(args.cmdline[1:])
+                loadbin(state.get('connections'), _mainmem_rawfile, _sp, _pc, _start_symbol, _binary, *((_binary,) + _args)),
             else:
                 {
                     'spawn': lambda: spawn(_services),
                     'service': lambda x: add_service(_services, args.debug, args.port, x),
                     'register': lambda x, y, z=None: register(state.get('connections'), x, y, z),
                     'mainmem': lambda w, x, y, z=None: mainmem(state.get('connections'), w, x, y, z),
-                    'loadbin': lambda v, w, x, y, z, *args: loadbin(state.get('connections'), v, integer(w), integer(x), y, z, *((z,) + args)),
+#                    'loadbin': lambda v, w, x, y, z, *args: loadbin(state.get('connections'), v, integer(w), integer(x), y, z, *((z,) + args)),
                     'restore': lambda x, y: state.update({'cycle': restore(x, y)}),
                     'cycle': lambda: print(state.get('cycle')),
                     'state': lambda: print(state),

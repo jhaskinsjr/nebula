@@ -1,4 +1,5 @@
 # Sample μService-SIMulator script
+port 10000
 service implementation/simplecore.py:localhost
 service implementation/regfile.py:localhost
 service implementation/mainmem.py:localhost
