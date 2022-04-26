@@ -502,15 +502,16 @@ class Harness:
             os.path.join(args.dir, 'src', '{}.s'.format(test))
         ).split())
         _script  = ['# μService-SIMulator test harness script']
+        _script += ['port 10000']
         _script += ['service pipelines/bergamot/implementation/{}:localhost'.format(s) for s in ('simplecore.py', 'regfile.py', 'mainmem.py', 'decode.py', 'execute.py')]
         _script += ['spawn']
-        _script += ['loadbin /tmp/mainmem.raw 0x{:08x} 0x{:08x} _start {}'.format(self._sp, self._start_pc, os.path.join(args.dir, 'obj', '{}.o'.format(test)))]
+        _script += ['loadbin /tmp/mainmem.raw 0x{:08x} 0x{:08x} _start'.format(self._sp, self._start_pc, os.path.join(args.dir, 'obj'))]
         _script += ['config max_instructions {}'.format(_n_instruction)]
         _script += ['run']
         _script += ['shutdown']
         with open(os.path.join(args.dir, 'test.ussim'), 'w+') as fp: fp.write('\n'.join(_script))
         _result = subprocess.run(
-            'python3 launcher.py -- 10000 {}'.format(os.path.join(args.dir, 'test.ussim')).split(),
+            'python3 launcher.py -- {} {}'.format(os.path.join(args.dir, 'test.ussim'), os.path.join(args.dir, 'obj', '{}.o'.format(test))).split(),
             capture_output=True,
         )
         _stdout = _result.stdout.decode('utf-8').split('\n')
