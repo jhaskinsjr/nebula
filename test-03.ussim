@@ -1,7 +1,0 @@
-# Sample μService-SIMulator script
-cycle
-restore /tmp/mainmem.raw /tmp/mainmem.raw.snapshot
-run
-cycle
-state
-shutdown
