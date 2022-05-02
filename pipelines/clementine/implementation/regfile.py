@@ -31,10 +31,6 @@ def do_tick(service, state, results, events):
             for k in ['%pc'] + sorted(filter(lambda x: not '%pc' == x, state.get('registers').keys()), key=str):
                 v = getregister(state.get('registers'), k)
                 os.write(fd, bytes(v))
-#                try:
-#                    os.write(fd, v.to_bytes(8, 'little', signed=True))
-#                except:
-#                    os.write(fd, v.to_bytes(8, 'little'))
                 os.lseek(fd, 8, os.SEEK_CUR)
                 service.tx({'info': 'snapshot: {} : {}'.format(k, v)})
             os.fsync(fd)
@@ -44,10 +40,6 @@ def do_tick(service, state, results, events):
             os.lseek(fd, _data, os.SEEK_SET)
             for k in ['%pc'] + sorted(filter(lambda x: not '%pc' == x, state.get('registers').keys()), key=str):
                 v = list(os.read(fd, 8))
-#                try:
-#                    v = int.from_bytes(os.read(fd, 8), 'little', signed=True)
-#                except:
-#                    v = int.from_bytes(os.read(fd, 8), 'little')
                 os.lseek(fd, 8, os.SEEK_CUR)
                 state.update({'registers': setregister(state.get('registers'), k, v)})
                 service.tx({'info': 'restore: {} : {}'.format(k, v)})
