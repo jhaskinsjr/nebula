@@ -259,7 +259,13 @@ def run(cycle, max_cycles, max_instructions, break_on_undefined, snapshot_freque
         if snapshot_at and cycle >= snapshot_at:
             snapshot(state.get('mainmem_rawfile'), '{}.snapshot'.format(state.get('mainmem_rawfile')), cycle)
             snapshot_at += snapshot_frequency
-        print('run(): @{:8} futures  : {}'.format(cycle, state.get('futures')))
+        print('run(): @{:8}'.format(cycle))
+        print('\tfutures :\n\t{}'.format(
+            '\t'.join(map(lambda a: '{:8}: {}\n'.format(
+                a,
+                state.get('futures').get(a)
+            ), sorted(state.get('futures').keys())))
+        ))
         cycle = (min(state.get('futures').keys()) if len(state.get('futures').keys()) else 1 + cycle)
         tx(state.get('connections'), {'tick': {
             **{'cycle': cycle},
