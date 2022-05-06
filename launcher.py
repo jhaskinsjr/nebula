@@ -65,6 +65,7 @@ def handler(conn, addr):
                 state.get('lock').release()
             elif 'result' == k:
                 _arr = v.pop('arrival')
+                assert _arr > state.get('cycle'), 'Attempting to schedule arrival in the past ({} vs. {})!'.format(_arr, state.get('cycle'))
                 _res = v
                 state.get('lock').acquire()
                 _res_evt = state.get('futures').get(_arr, {'results': [], 'events': []})
@@ -73,6 +74,7 @@ def handler(conn, addr):
                 state.get('lock').release()
             elif 'event' == k:
                 _arr = v.pop('arrival')
+                assert _arr > state.get('cycle'), 'Attempting to schedule arrival in the past ({} vs. {})!'.format(_arr, state.get('cycle'))
                 _evt = v
                 state.get('lock').acquire()
                 _res_evt = state.get('futures').get(_arr, {'results': [], 'events': []})
