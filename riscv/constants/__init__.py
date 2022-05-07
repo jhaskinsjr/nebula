@@ -1,5 +1,7 @@
 JUMPS = ['JALR', 'JAL']
 BRANCHES = ['BEQ', 'BNE', 'BLT', 'BGE', 'BLTU', 'BGEU']
+LOADS = ['LD', 'LW', 'LH', 'LB', 'LWU', 'LHU', 'LBU']
+STORES = ['SD', 'SW', 'SH', 'SB']
 
 def register_mask(wbits):
     return {
