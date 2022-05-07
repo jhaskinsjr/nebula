@@ -14,47 +14,51 @@ def do_tick(service, state, results, events):
         service.tx({'info': '_pc           : {}'.format(_pc)})
         service.tx({'info': 'state.get(pc) : {}'.format(state.get('%pc'))})
         if _pc != state.get('%pc'):
+            state.get('pending_fetch').clear()
             state.get('buffer').clear()
-        state.update({'%pc': _pc})
-    for _dec in map(lambda y: y.get('decode'), filter(lambda x: x.get('decode'), events)):
-        state.get('pending_fetch').append(_dec)
+            state.update({'%pc': _pc})
+            state.update({'last_flushed': state.get('cycle')})
     for _mem in map(lambda y: y.get('mem'), filter(lambda x: x.get('mem'), results)):
         _data = _mem.pop('data')
         if _mem not in state.get('pending_fetch'): continue
         state.get('pending_fetch').remove(_mem)
         state.get('buffer').extend(_data)
         service.tx({'info': 'buffer : {}'.format(list(map(lambda x: hex(x), state.get('buffer'))))})
-        _decoded = riscv.decode.do_decode(state.get('buffer'), state.get('max_instructions_to_decode')) 
-        service.tx({'info': '_decoded : {}'.format(_decoded)})
-        for _insn in _decoded:
-            if _insn.get('rs1'): service.tx({'event': {
-                'arrival': 1 + state.get('cycle'),
-                'register': {
-                    'cmd': 'get',
-                    'name': _insn.get('rs1'),
-                }
-            }})
-            if _insn.get('rs2'): service.tx({'event': {
-                'arrival': 1 + state.get('cycle'),
-                'register': {
-                    'cmd': 'get',
-                    'name': _insn.get('rs2'),
-                }
-            }})
-            service.tx({'event': {
-                'arrival': 2 + state.get('cycle'),
-                'alu': {
-                    'insn': {
-                        **_insn,
-                        **{'iid': state.get('iid')},
-                        **{'%pc': state.get('%pc')},
-                    },
+    for _dec in map(lambda y: y.get('decode'), filter(lambda x: x.get('decode'), events)):
+        if state.get('last_flushed') == state.get('cycle') and _dec.get('addr') != int.from_bytes(state.get('%pc'), 'little'): continue
+        state.get('pending_fetch').append(_dec)
+    _decoded = riscv.decode.do_decode(state.get('buffer'), state.get('max_instructions_to_decode')) 
+    service.tx({'info': '_decoded : {}'.format(_decoded)})
+    for _insn in _decoded:
+        # TODO: insert interlocking/stall here
+        if _insn.get('rs1'): service.tx({'event': {
+            'arrival': 1 + state.get('cycle'),
+            'register': {
+                'cmd': 'get',
+                'name': _insn.get('rs1'),
+            }
+        }})
+        if _insn.get('rs2'): service.tx({'event': {
+            'arrival': 1 + state.get('cycle'),
+            'register': {
+                'cmd': 'get',
+                'name': _insn.get('rs2'),
+            }
+        }})
+        service.tx({'event': {
+            'arrival': 2 + state.get('cycle'),
+            'alu': {
+                'insn': {
+                    **_insn,
+                    **{'iid': state.get('iid')},
+                    **{'%pc': state.get('%pc')},
                 },
-            }})
-            state.update({'iid': 1 + state.get('iid')})
-        _bytes_decoded = sum(map(lambda x: x.get('size'), _decoded))
-        state.update({'%pc': riscv.constants.integer_to_list_of_bytes(_bytes_decoded + int.from_bytes(state.get('%pc'), 'little'), 64, 'little')})
-        for _ in range(_bytes_decoded): state.get('buffer').pop(0)
+            },
+        }})
+        state.update({'iid': 1 + state.get('iid')})
+        state.update({'%pc': riscv.constants.integer_to_list_of_bytes(_insn.get('size') + int.from_bytes(state.get('%pc'), 'little'), 64, 'little')})
+    _bytes_decoded = sum(map(lambda x: x.get('size'), _decoded))
+    for _ in range(_bytes_decoded): state.get('buffer').pop(0)
     service.tx({'result': {
         'arrival': 1 + state.get('cycle'),
         'decode.buffer_available': remaining_buffer_availability(),
@@ -81,6 +85,7 @@ if '__main__' == __name__:
         'buffer': [],
         'buffer_capacity': 16, # HACK: it's dumb to hard code the buffer length, but can't be bothered with that now
         'pending_fetch': [],
+        'last_flushed': None,
         'iid': 0,
         'max_instructions_to_decode': 1, # HACK: hard-coded max-instructions-to-decode of 1
     }

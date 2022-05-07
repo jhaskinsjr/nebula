@@ -62,6 +62,7 @@ def do_jal(service, state, insn):
             'insn': {
                 **insn,
                 **{
+                    'taken': True,
                     'next_pc': _next_pc,
                     'ret_pc': _ret_pc,
                 },
@@ -79,6 +80,7 @@ def do_jalr(service, state, insn):
             'insn': {
                 **insn,
                 **{
+                    'taken': True,
                     'next_pc': _next_pc,
                     'ret_pc': _ret_pc,
                     'operands': {
@@ -108,8 +110,8 @@ def do_branch(service, state, insn):
             'insn': {
                 **insn,
                 **{
-                    'next_pc': _next_pc,
                     'taken': _taken,
+                    'next_pc': _next_pc,
                     'operands': {
                         'rs1': _rs1,
                         'rs2': _rs2,
@@ -447,19 +449,21 @@ def do_execute(service, state):
             'FENCE': do_fence,
         }.get(_insn.get('cmd'), do_unimplemented)(service, state, _insn)
 def do_complete(service, state, insn): # finished the work of the instruction, but will not necessarily be committed
-    service.tx({'event': {
-        'arrival': 1 + state.get('cycle'),
-        'complete': {
-            'insn': insn,
-        },
-    }})
+    pass
+#    service.tx({'event': {
+#        'arrival': 1 + state.get('cycle'),
+#        'complete': {
+#            'insn': insn,
+#        },
+#    }})
 def do_confirm(service, state, insn): # definitely will commit
-    service.tx({'event': {
-        'arrival': 1 + state.get('cycle'),
-        'confirm': {
-            'insn': insn,
-        },
-    }})
+    pass
+#    service.tx({'event': {
+#        'arrival': 1 + state.get('cycle'),
+#        'confirm': {
+#            'insn': insn,
+#        },
+#    }})
 
 def do_tick(service, state, results, events):
     for _reg in filter(lambda x: x, map(lambda y: y.get('register'), results)):

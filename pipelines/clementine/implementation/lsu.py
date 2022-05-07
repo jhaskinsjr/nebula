@@ -25,36 +25,19 @@ def do_unimplemented(service, state, insn):
     do_confirm(service, state, insn)
 
 def do_load(service, state, insn):
-    if not 'mem' in state.get('operands'):
-        service.tx({'event': {
-            'arrival': 1 + state.get('cycle'),
-            'mem': {
-                'cmd': 'peek',
-                'addr': insn.get('operands').get('addr'),
-                'size': insn.get('nbytes'),
-            }
-        }})
-    if not isinstance(state.get('operands').get('mem'), list):
-        return
-    _fetched  = state.get('operands').get('mem')
-    _fetched += [-1] * (8 - len(_fetched))
-    _result = { # HACK: This is 100% little-endian-specific
-        'LD': _fetched,
-        'LW': _fetched[:4] + [(0xff if ((_fetched[3] >> 7) & 0b1) else 0)] * 4,
-        'LH': _fetched[:2] + [(0xff if ((_fetched[1] >> 7) & 0b1) else 0)] * 6,
-        'LB': _fetched[:1] + [(0xff if ((_fetched[0] >> 7) & 0b1) else 0)] * 7,
-        'LWU': _fetched[:4] + [0] * 4,
-        'LHU': _fetched[:2] + [0] * 6,
-        'LBU': _fetched[:1] + [0] * 7,
-    }.get(insn.get('cmd'))
+    service.tx({'event': {
+        'arrival': 1 + state.get('cycle'),
+        'mem': {
+            'cmd': 'peek',
+            'addr': insn.get('operands').get('addr'),
+            'size': insn.get('nbytes'),
+        }
+    }})
     service.tx({'event': {
         'arrival': 1 + state.get('cycle'),
         'commit': {
             'insn': {
                 **insn,
-                **{
-                    'result': _result,
-                },
             },
         }
     }})
@@ -114,19 +97,21 @@ def do_execute(service, state):
             'SB': do_store,
         }.get(_insn.get('cmd'), do_unimplemented)(service, state, _insn)
 def do_complete(service, state, insn): # finished the work of the instruction, but will not necessarily be committed
-    service.tx({'event': {
-        'arrival': 1 + state.get('cycle'),
-        'complete': {
-            'insn': insn,
-        },
-    }})
+    pass
+#    service.tx({'event': {
+#        'arrival': 1 + state.get('cycle'),
+#        'complete': {
+#            'insn': insn,
+#        },
+#    }})
 def do_confirm(service, state, insn): # definitely will commit
-    service.tx({'event': {
-        'arrival': 1 + state.get('cycle'),
-        'confirm': {
-            'insn': insn,
-        },
-    }})
+    pass
+#    service.tx({'event': {
+#        'arrival': 1 + state.get('cycle'),
+#        'confirm': {
+#            'insn': insn,
+#        },
+#    }})
 
 def do_tick(service, state, results, events):
     for _insn in map(lambda y: y.get('lsu'), filter(lambda x: x.get('lsu'), events)):
