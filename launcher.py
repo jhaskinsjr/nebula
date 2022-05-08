@@ -57,7 +57,9 @@ def handler(conn, addr):
             elif 'name' == k:
                 threading.current_thread().name = v
             elif 'info' == k:
-                print('{}.handler(): info : {}'.format(threading.current_thread().name, v))
+                state.get('lock').acquire()
+                state.get('info').append('{}.handler(): info : {}'.format(threading.current_thread().name, v))
+                state.get('lock').release()
             elif 'ack' == k:
                 state.get('lock').acquire()
                 state.get('ack').append((threading.current_thread().name, msg))
@@ -262,6 +264,7 @@ def run(cycle, max_cycles, max_instructions, break_on_undefined, snapshot_freque
             snapshot(state.get('mainmem_rawfile'), '{}.snapshot'.format(state.get('mainmem_rawfile')), cycle)
             snapshot_at += snapshot_frequency
         print('run(): @{:8}'.format(cycle))
+        print('\tinfo :\n\t\t{}'.format('\n\t\t'.join(state.get('info'))))
         print('\tfutures :\n\t{}'.format(
             '\t'.join(map(lambda a: '{:8}: {}\n'.format(
                 a,
@@ -316,6 +319,7 @@ if __name__ == '__main__':
         'mainmem_rawfile': None,
         'ack': [],
         'futures': {},
+        'info': [],
         'running': False,
         'cycle': 0,
         'instructions_committed': 0,
