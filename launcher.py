@@ -265,8 +265,9 @@ def run(cycle, max_cycles, max_instructions, break_on_undefined, snapshot_freque
             snapshot_at += snapshot_frequency
         print('run(): @{:8}'.format(cycle))
         print('\tinfo :\n\t\t{}'.format('\n\t\t'.join(state.get('info'))))
-        print('\tfutures :\n\t{}'.format(
-            '\t'.join(map(lambda a: '{:8}: {}\n'.format(
+        state.get('info').clear()
+        print('\tfutures :\n\t\t{}'.format(
+            '\t\t'.join(map(lambda a: '{:8}: {}\n'.format(
                 a,
                 state.get('futures').get(a)
             ), sorted(state.get('futures').keys())))
