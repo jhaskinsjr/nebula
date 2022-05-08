@@ -311,7 +311,6 @@ def do_execute(service, state):
             'BGE': do_branch,
             'BLTU': do_branch,
             'BGEU': do_branch,
-            'ECALL': do_ecall,
             'FENCE': do_fence,
         }.get(_insn.get('cmd'), do_unimplemented)(service, state, _insn)
 
