@@ -7,6 +7,8 @@ import riscv.decode
 
 def remaining_buffer_availability():
     return state.get('buffer_capacity') - sum(map(lambda x: x.get('size'), state.get('pending_fetch')))
+def hazard(p, c):
+    return 'rd' in p.keys() and (('rs1' in c.keys() and p.get('rd') == c.get('rs1')) or ('rs2' in c.keys() and p.get('rd') == c.get('rs2')))
 def do_tick(service, state, results, events):
     for _reg in map(lambda y: y.get('register'), filter(lambda x: x.get('register'), results)):
         if '%pc' != _reg.get('name'): continue
@@ -16,6 +18,7 @@ def do_tick(service, state, results, events):
         if _pc != state.get('%pc'):
             state.get('pending_fetch').clear()
             state.get('buffer').clear()
+            state.get('decoded').clear()
             state.update({'%pc': _pc})
             state.update({'last_flushed': state.get('cycle')})
     for _mem in map(lambda y: y.get('mem'), filter(lambda x: x.get('mem'), results)):
@@ -24,13 +27,34 @@ def do_tick(service, state, results, events):
         state.get('pending_fetch').remove(_mem)
         state.get('buffer').extend(_data)
         service.tx({'info': 'buffer : {}'.format(list(map(lambda x: hex(x), state.get('buffer'))))})
+    for _flush in map(lambda y: y.get('flush'), filter(lambda x: x.get('flush'), results)):
+        service.tx({'info': '_flush : {}'.format(_flush)})
+        assert state.get('issued')[0].get('iid') == _flush.get('iid')
+        state.get('issued').pop(0)
+    for _retire in map(lambda y: y.get('retire'), filter(lambda x: x.get('retire'), results)):
+        service.tx({'info': '_retire : {}'.format(_retire)})
+        assert state.get('issued')[0].get('iid') == _retire.get('iid')
+        state.get('issued').pop(0)
     for _dec in map(lambda y: y.get('decode'), filter(lambda x: x.get('decode'), events)):
         if state.get('last_flushed') == state.get('cycle') and _dec.get('addr') != int.from_bytes(state.get('%pc'), 'little'): continue
         state.get('pending_fetch').append(_dec)
-    _decoded = riscv.decode.do_decode(state.get('buffer'), state.get('max_instructions_to_decode')) 
-    service.tx({'info': '_decoded : {}'.format(_decoded)})
-    for _insn in _decoded:
-        # TODO: insert interlocking/stall here
+    service.tx({'info': 'max - len(decoded)  : {}'.format(state.get('max_instructions_to_decode') - len(state.get('decoded')))})
+    for _insn in riscv.decode.do_decode(state.get('buffer'), state.get('max_instructions_to_decode') - len(state.get('decoded'))):
+        state.get('decoded').append({
+            **_insn,
+            **{'iid': state.get('iid')},
+            **{'%pc': state.get('%pc')},
+        })
+        state.update({'iid': 1 + state.get('iid')})
+        state.update({'%pc': riscv.constants.integer_to_list_of_bytes(_insn.get('size') + int.from_bytes(state.get('%pc'), 'little'), 64, 'little')})
+    service.tx({'result': {
+        'arrival': 1 + state.get('cycle'),
+        'decode.buffer_available': remaining_buffer_availability(),
+    }})
+    service.tx({'info': 'state.decoded       : {}'.format(state.get('decoded'))})
+    if not len(state.get('decoded')): return
+    for _insn in state.get('decoded'):
+        if any(map(lambda x: hazard(x, _insn), state.get('issued'))): break
         if _insn.get('rs1'): service.tx({'event': {
             'arrival': 1 + state.get('cycle'),
             'register': {
@@ -48,21 +72,19 @@ def do_tick(service, state, results, events):
         service.tx({'event': {
             'arrival': 2 + state.get('cycle'),
             'alu': {
-                'insn': {
-                    **_insn,
-                    **{'iid': state.get('iid')},
-                    **{'%pc': state.get('%pc')},
-                },
+                'insn': _insn,
             },
         }})
-        state.update({'iid': 1 + state.get('iid')})
-        state.update({'%pc': riscv.constants.integer_to_list_of_bytes(_insn.get('size') + int.from_bytes(state.get('%pc'), 'little'), 64, 'little')})
-    _bytes_decoded = sum(map(lambda x: x.get('size'), _decoded))
-    for _ in range(_bytes_decoded): state.get('buffer').pop(0)
-    service.tx({'result': {
-        'arrival': 1 + state.get('cycle'),
-        'decode.buffer_available': remaining_buffer_availability(),
-    }})
+        state.get('issued').append(_insn)
+        for _ in range(_insn.get('size')): state.get('buffer').pop(0)
+    service.tx({'info': 'state.decoded       : {}'.format(state.get('decoded'))})
+    service.tx({'info': 'state.issued        : {}'.format(state.get('issued'))})
+    assert len(state.get('decoded')), 'Huh?'
+    for _insn in state.get('issued'):
+        service.tx({'info': 'state.issued.insn   : {}'.format(_insn)})
+        service.tx({'info': 'state.decoded       : {} ({})'.format(state.get('decoded'), len(state.get('decoded')))})
+        service.tx({'info': '_insn in state.decoded : {}'.format(_insn in state.get('decoded'))})
+        if _insn in state.get('decoded'): state.get('decoded').remove(_insn)
 
 if '__main__' == __name__:
     parser = argparse.ArgumentParser(description='μService-SIMulator: Instruction Decode')
@@ -85,6 +107,8 @@ if '__main__' == __name__:
         'buffer': [],
         'buffer_capacity': 16, # HACK: it's dumb to hard code the buffer length, but can't be bothered with that now
         'pending_fetch': [],
+        'decoded': [],
+        'issued': [],
         'last_flushed': None,
         'iid': 0,
         'max_instructions_to_decode': 1, # HACK: hard-coded max-instructions-to-decode of 1

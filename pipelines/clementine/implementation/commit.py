@@ -17,6 +17,12 @@ def do_commit(service, state):
         _retire.append(_insn)
         if state.get('flush_until') and state.get('flush_until') != _insn.get('%pc'):
             service.tx({'info': 'flushing {}'.format(_insn)})
+            service.tx({'result': {
+                'arrival': 1 + state.get('cycle'),
+                'flush': {
+                    'iid': _insn.get('iid'),
+                },
+            }})
             continue
         state.update({'flush_until': None})
         service.tx({'info': 'retiring {}'.format(_insn)})
@@ -47,6 +53,12 @@ def do_commit(service, state):
                     'data': _insn.get('result'),
                 },
             }})
+        service.tx({'result': {
+            'arrival': 1 + state.get('cycle'),
+            'retire': {
+                'iid': _insn.get('iid'),
+            },
+        }})
     for _insn in _retire: state.get('pending_commit').remove(_insn)
 
 def do_tick(service, state, results, events):
