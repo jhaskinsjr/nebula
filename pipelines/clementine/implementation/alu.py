@@ -21,8 +21,6 @@ def do_unimplemented(service, state, insn):
             },
         }
     }})
-    do_complete(service, state, insn)
-    do_confirm(service, state, insn)
 
 def do_lui(service, state, insn):
     _result = riscv.execute.lui(insn.get('imm'))
@@ -37,8 +35,6 @@ def do_lui(service, state, insn):
             },
         }
     }})
-    do_complete(service, state, insn)
-    do_confirm(service, state, insn)
 def do_auipc(service, state, insn):
     _result = riscv.execute.auipc(insn.get('%pc'), insn.get('imm'))
     service.tx({'event': {
@@ -52,8 +48,6 @@ def do_auipc(service, state, insn):
             },
         }
     }})
-    do_complete(service, state, insn)
-    do_confirm(service, state, insn)
 def do_jal(service, state, insn):
     _next_pc, _ret_pc = riscv.execute.jal(insn.get('%pc'), insn.get('imm'), insn.get('size'))
     service.tx({'event': {
@@ -69,8 +63,6 @@ def do_jal(service, state, insn):
             },
         }
     }})
-    do_complete(service, state, insn)
-    do_confirm(service, state, insn)
 def do_jalr(service, state, insn):
     _rs1 = state.get('operands').get(insn.get('rs1'))
     _next_pc, _ret_pc = riscv.execute.jalr(insn.get('%pc'), insn.get('imm'), _rs1, insn.get('size'))
@@ -90,8 +82,6 @@ def do_jalr(service, state, insn):
             },
         }
     }})
-    do_complete(service, state, insn)
-    do_confirm(service, state, insn)
 def do_branch(service, state, insn):
     _rs1 = state.get('operands').get(insn.get('rs1'))
     _rs2 = state.get('operands').get(insn.get('rs2'))
@@ -120,8 +110,6 @@ def do_branch(service, state, insn):
             },
         }
     }})
-    do_complete(service, state, insn)
-    do_confirm(service, state, insn)
 def do_itype(service, state, insn):
     _rs1 = state.get('operands').get(insn.get('rs1'))
     _result = {
@@ -145,8 +133,6 @@ def do_itype(service, state, insn):
             },
         }
     }})
-    do_complete(service, state, insn)
-    do_confirm(service, state, insn)
 def do_rtype(service, state, insn):
     _rs1 = state.get('operands').get(insn.get('rs1'))
     _rs2 = state.get('operands').get(insn.get('rs2'))
@@ -182,8 +168,6 @@ def do_rtype(service, state, insn):
             },
         }
     }})
-    do_complete(service, state, insn)
-    do_confirm(service, state, insn)
 def do_load(service, state, insn):
     _rs1 = state.get('operands').get(insn.get('rs1'))
     service.tx({'event': {
@@ -230,8 +214,6 @@ def do_nop(service, state, insn):
             },
         }
     }})
-    do_complete(service, state, insn)
-    do_confirm(service, state, insn)
 def do_shift(service, state, insn):
     _rs1 = state.get('operands').get(insn.get('rs1'))
     _shamt = insn.get('shamt')
@@ -257,120 +239,6 @@ def do_shift(service, state, insn):
             },
         }
     }})
-    do_complete(service, state, insn)
-    do_confirm(service, state, insn)
-def do_ecall(service, state, insn):
-    # The syscall calling protocol was learned from
-    # https://git.kernel.org/pub/scm/docs/man-pages/man-pages.git/tree/man2/syscall.2?h=man-pages-5.04#n332
-    # specficially:
-    #
-    #   riscv	ecall	a7	a0	a1
-    #
-    # meaning that the syscall number is in register x17 (i.e., a7) and
-    # parameters to the syscall are in registers x10 (i.e., a0) through
-    # x15 (i.e., a5), respectively
-    _a7 = 17
-    _a0 = 10
-    _a1 = 11
-    _a2 = 12
-    _a3 = 13
-    _a4 = 14
-    _a5 = 15
-    if not 'syscall_num' in state.get('operands'):
-        state.get('operands').update({'syscall_num': '%{}'.format(_a7)})
-        service.tx({'event': {
-            'arrival': 1 + state.get('cycle'),
-            'register': {
-                'cmd': 'get',
-                'name': _a7,
-            }
-        }})
-    if not isinstance(state.get('operands').get('syscall_num'), list):
-        return
-    if not 'syscall_a0' in state.get('operands'):
-        state.get('operands').update({'syscall_a0': '%{}'.format(_a0)})
-        service.tx({'event': {
-            'arrival': 1 + state.get('cycle'),
-            'register': {
-                'cmd': 'get',
-                'name': _a0,
-            }
-        }})
-    if not isinstance(state.get('operands').get('syscall_a0'), list):
-        return
-    if not 'syscall_a1' in state.get('operands'):
-        state.get('operands').update({'syscall_a1': '%{}'.format(_a1)})
-        service.tx({'event': {
-            'arrival': 1 + state.get('cycle'),
-            'register': {
-                'cmd': 'get',
-                'name': _a1,
-            }
-        }})
-    if not isinstance(state.get('operands').get('syscall_a1'), list):
-        return
-    if not 'syscall_a2' in state.get('operands'):
-        state.get('operands').update({'syscall_a2': '%{}'.format(_a2)})
-        service.tx({'event': {
-            'arrival': 1 + state.get('cycle'),
-            'register': {
-                'cmd': 'get',
-                'name': _a2,
-            }
-        }})
-    if not isinstance(state.get('operands').get('syscall_a2'), list):
-        return
-    if not 'syscall_a3' in state.get('operands'):
-        state.get('operands').update({'syscall_a3': '%{}'.format(_a3)})
-        service.tx({'event': {
-            'arrival': 1 + state.get('cycle'),
-            'register': {
-                'cmd': 'get',
-                'name': _a3,
-            }
-        }})
-    if not isinstance(state.get('operands').get('syscall_a3'), list):
-        return
-    if not 'syscall_a4' in state.get('operands'):
-        state.get('operands').update({'syscall_a4': '%{}'.format(_a4)})
-        service.tx({'event': {
-            'arrival': 1 + state.get('cycle'),
-            'register': {
-                'cmd': 'get',
-                'name': _a4,
-            }
-        }})
-    if not isinstance(state.get('operands').get('syscall_a4'), list):
-        return
-    if not 'syscall_a5' in state.get('operands'):
-        state.get('operands').update({'syscall_a5': '%{}'.format(_a5)})
-        service.tx({'event': {
-            'arrival': 1 + state.get('cycle'),
-            'register': {
-                'cmd': 'get',
-                'name': _a5,
-            }
-        }})
-    if not isinstance(state.get('operands').get('syscall_a5'), list):
-        return
-    _syscall_num = state.get('operands').get('syscall_num')
-    _syscall_a0 = state.get('operands').get('syscall_a0')
-    _syscall_a1 = state.get('operands').get('syscall_a1')
-    _syscall_a2 = state.get('operands').get('syscall_a2')
-    _syscall_a3 = state.get('operands').get('syscall_a3')
-    _syscall_a4 = state.get('operands').get('syscall_a4')
-    _syscall_a5 = state.get('operands').get('syscall_a5')
-    _result = riscv.syscall.linux.do_syscall(_syscall_num, _syscall_a0, _syscall_a1, _syscall_a2, _syscall_a3, _syscall_a4, _syscall_a5)
-    service.tx({'event': {
-        'arrival': 1 + state.get('cycle'),
-        'register': {
-            'cmd': 'set',
-            'name': _a0,
-            'data': _result,
-        }
-    }})
-    do_complete(service, state, insn)
-    do_confirm(service, state, insn)
 def do_fence(service, state, insn):
     # HACK: in a complex pipeline, this needs to be more than a NOP
     service.tx({'event': {
@@ -384,8 +252,6 @@ def do_fence(service, state, insn):
             },
         }
     }})
-    do_complete(service, state, insn)
-    do_confirm(service, state, insn)
 
 def do_execute(service, state):
     if not len(state.get('pending_execute')): return
@@ -448,22 +314,6 @@ def do_execute(service, state):
             'ECALL': do_ecall,
             'FENCE': do_fence,
         }.get(_insn.get('cmd'), do_unimplemented)(service, state, _insn)
-def do_complete(service, state, insn): # finished the work of the instruction, but will not necessarily be committed
-    pass
-#    service.tx({'event': {
-#        'arrival': 1 + state.get('cycle'),
-#        'complete': {
-#            'insn': insn,
-#        },
-#    }})
-def do_confirm(service, state, insn): # definitely will commit
-    pass
-#    service.tx({'event': {
-#        'arrival': 1 + state.get('cycle'),
-#        'confirm': {
-#            'insn': insn,
-#        },
-#    }})
 
 def do_tick(service, state, results, events):
     for _reg in filter(lambda x: x, map(lambda y: y.get('register'), results)):

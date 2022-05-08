@@ -21,8 +21,6 @@ def do_unimplemented(service, state, insn):
             },
         }
     }})
-    do_complete(service, state, insn)
-    do_confirm(service, state, insn)
 
 def do_load(service, state, insn):
     service.tx({'event': {
@@ -41,8 +39,6 @@ def do_load(service, state, insn):
             },
         }
     }})
-    do_complete(service, state, insn)
-    do_confirm(service, state, insn)
 def do_store(service, state, insn):
     _data = insn.get('operands').get('data')
     _data = {
@@ -71,8 +67,6 @@ def do_store(service, state, insn):
             },
         }
     }})
-    do_complete(service, state, insn)
-    do_confirm(service, state, insn)
 
 def do_execute(service, state):
     if not len(state.get('pending_execute')): return
@@ -96,22 +90,6 @@ def do_execute(service, state):
             'SH': do_store,
             'SB': do_store,
         }.get(_insn.get('cmd'), do_unimplemented)(service, state, _insn)
-def do_complete(service, state, insn): # finished the work of the instruction, but will not necessarily be committed
-    pass
-#    service.tx({'event': {
-#        'arrival': 1 + state.get('cycle'),
-#        'complete': {
-#            'insn': insn,
-#        },
-#    }})
-def do_confirm(service, state, insn): # definitely will commit
-    pass
-#    service.tx({'event': {
-#        'arrival': 1 + state.get('cycle'),
-#        'confirm': {
-#            'insn': insn,
-#        },
-#    }})
 
 def do_tick(service, state, results, events):
     for _insn in map(lambda y: y.get('lsu'), filter(lambda x: x.get('lsu'), events)):

@@ -12,7 +12,6 @@ def do_tick(service, state, results, events):
         if 0 == int.from_bytes(_pc, 'little'):
             service.tx({'info': 'Jump to @0x00000000... graceful shutdown'})
             service.tx({'shutdown': None})
-        state.update({'%pc': _pc})
         state.update({'%jp': _pc})
     for _decode_buffer_available in map(lambda y: y.get('decode.buffer_available'), filter(lambda x: x.get('decode.buffer_available'), results)):
         state.update({'decode.buffer_available': _decode_buffer_available})
@@ -59,7 +58,6 @@ if '__main__' == __name__:
         'decode.buffer_available': 4,
         'fetch_size': 4, # HACK: hard-coded number of bytes to fetch
         '%jp': None, # This is the fetch pointer. Why %jp? Who knows?
-        '%pc': None,
         'ack': True,
     }
     while state.get('active'):
@@ -83,7 +81,6 @@ if '__main__' == __name__:
                 if not '%pc' == v.get('name'): continue
                 if not 'set' == v.get('cmd'): continue
                 _pc = v.get('data')
-                state.update({'%pc': _pc})
                 state.update({'%jp': _pc})
         if state.get('ack') and state.get('running'): _service.tx({'ack': {'cycle': state.get('cycle')}})
     if not args.quiet: print('Shutting down {}...'.format(sys.argv[0]))

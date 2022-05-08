@@ -113,7 +113,6 @@ if '__main__' == __name__:
         'active': True,
         'running': False,
         'ack': True,
-        '%pc': None,
         'flush_until': None,
         'pending_commit': [],
     }

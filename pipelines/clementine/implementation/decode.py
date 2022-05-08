@@ -79,12 +79,8 @@ def do_tick(service, state, results, events):
         for _ in range(_insn.get('size')): state.get('buffer').pop(0)
     service.tx({'info': 'state.decoded       : {}'.format(state.get('decoded'))})
     service.tx({'info': 'state.issued        : {}'.format(state.get('issued'))})
-    assert len(state.get('decoded')), 'Huh?'
-    for _insn in state.get('issued'):
-        service.tx({'info': 'state.issued.insn   : {}'.format(_insn)})
-        service.tx({'info': 'state.decoded       : {} ({})'.format(state.get('decoded'), len(state.get('decoded')))})
-        service.tx({'info': '_insn in state.decoded : {}'.format(_insn in state.get('decoded'))})
-        if _insn in state.get('decoded'): state.get('decoded').remove(_insn)
+    for _insn in filter(lambda x: x in state.get('decoded'), state.get('issued')):
+        state.get('decoded').remove(_insn)
 
 if '__main__' == __name__:
     parser = argparse.ArgumentParser(description='μService-SIMulator: Instruction Decode')
