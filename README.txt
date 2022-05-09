@@ -20,6 +20,53 @@ willingly, intentionally, fully aware of the performance ramifications.
 Notwithstanding this, I chose to trade away speed for flexibility.
 
 --
+SOFTWARE architecture
+
+As mentioned in the preceding section, ussim uses a collection of
+independent microservices, each with its own task (e.g., fetch instruction
+bytes, service register file operations), all communicating over a shared
+"party line," implemented over TCP.
+
+There are two main communication channels: "results" and "events." The
+former, as its name implies, is concerned with broadcasting output from the
+various microservices, whereas the latter is concerned with broadcasing
+requests for actions to be taken. To ask for the value stored in a register,
+an event is sent, e.g.,
+
+    service.tx({'event': {
+        'arrival': 1 + state.get('cycle'),
+        'register': {
+            'cmd': 'get',
+            'name': _insn.get('rs1'),
+        }
+    }})
+
+To report the result of an operation, a result is sent, e.g.,
+
+    service.tx({'result': {
+        'arrival': 1 + state.get('cycle'),
+        'flush': {
+            'iid': _insn.get('iid'),
+        },
+    }})
+
+One general-purpose rule of thumb is that incoming results should be handled
+BEFORE events, since results communicate information that may be useful in
+processing events.
+
+There are other channels as well; two highlights are the "info" channel, used
+to echo debug/informational output, e.g., 
+
+    service.tx({'info': '_insn : {}'.format(_insn)})
+
+and the "shutdown" channel used to cleanly cease all ussim processes and
+gracefully exit, e.g., 
+
+    service.tx({'shutdown': None})
+
+For a complete list, see the handler() function in launcher.py.
+
+--
 RUNNING
 
 If you have not already done so, you will need to install pyelftools; see:
@@ -53,6 +100,56 @@ for a maximum of 32,000 simulated cycles, taking snapshots (of the
 simulated main memory and register file) every 1,000 simulated cycles, but
 will cease execution if it encounters an instruction that is not (yet)
 defined.
+
+--
+PIPELINE DESIGNS
+
+At present, there are two pipeline implementations: Bergamot and Clementine.
+
+The RUNNING section above executes the examples/bin/sum program using the
+Bergamot implementation; to use the Clementine implementation instead, "cd"
+into the pipelines/clementine subdirectory (instead of pipelines/bergamot).
+
+The Bergamot implementation uses a very simple design wherein only one stage
+operates per cycle. The core (see: pipelines/bergamot/implementation/simplecore.py)
+orchestrates all operations...
+
+1. fetch PC from the register file (see: pipelines/bergamot/implementation/regfile.py)
+2. fetch instruction bytes from main memory (see: pipelines/bergamot/implementation/mainmem.py)
+3. decode instruction from raw bytes (see: pipelines/bergamot/implementation/decode.py)
+4. fetch source operands from register file
+5. execute instruction (see: pipelines/bergamot/implementation/execute.py)
+6. write back destination register
+7. update PC
+
+None of these operations overlap (meaning that this implementation, arguably,
+is not a pipeline). But this very simple design was instrumental in the early
+stages of development, as instruction implementations were being coded and
+debugged.
+
+The Clementine implementation uses a six-stage design that operates in a
+manner akin to the venerable MIPS R3000, with automatic read-after-write
+hazard and control-flow hazard detection and handling. Unlike Bergamot, there
+is no overarching control core. Rather, each stage operates more-or-less
+independently...
+
+1. fetch instruction bytes from main memory (see: pipelines/clementine/implementation/fetch.py)
+2. buffer and decode instruction bytes (see: pipelines/clementine/implementation/decode.py)
+3. register access (see: pipelines/clementine/implementation/regfile.py)
+4. execute arithmetic, logic, branch operation (see: pipelines/clementine/implementation/alu.py)
+5. execute load/store operation (see: pipelines/clementine/implementation/lsu.py)
+6. retire/flush instructions (see: pipelines/implementation/implementation/commit.py)
+
+Read-after-write hazard detection is done in the decode stage, which halts
+the consumer until the producer either retires or is flushed by the commit
+stage. Control-flow hazards are handled by the commit stage, which, when a
+jump (JAL, JALR) or a taken branch (BEQ, BNE, BGE, BLT, BGEU, BLTU)
+instruction retires; when this happens, the new PC is reported, which is
+sensed by the instruction fetch stage and the decode stage. The instruction
+fetcher responds by beginning to fetch instruction bytes from the new PC;
+the decoder responds by flushing all previously-decoded instructions.
+Finally, the commit stage will continue to flush all instructions following
+the jump/taken branch until it receives an instruction with the target PC.
 
 --
 SIMULATOR SCRIPTS
