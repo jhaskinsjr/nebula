@@ -1,7 +1,7 @@
-Welcome to μService-SIMulator!
+# Welcome to μService-SIMulator!
 
 The central premise of ussim is that an army of microservices shout out
-whatever they need, whatever information they which to communicate, whatever
+whatever they need, whatever information they wish to communicate, whatever
 matters to them into the wide-open "ether." All microservices are connected
 to the same ether, constantly listening thereto. If something shouted into
 the ether matters to one or more microservices, they are free to act upon it
@@ -19,19 +19,18 @@ There are no solutions, only tradeoffs. I have made this tradeoff knowingly,
 willingly, intentionally, fully aware of the performance ramifications.
 Notwithstanding this, I chose to trade away speed for flexibility.
 
---
-SOFTWARE architecture
+## Software Architecture
 
 As mentioned in the preceding section, ussim uses a collection of
-independent microservices, each with its own task (e.g., fetch instruction
+independent microservices, each with its own role (e.g., fetch instruction
 bytes, service register file operations), all communicating over a shared
 "party line," implemented over TCP.
 
-There are two main communication channels: "results" and "events." The
+There are two main communication channels: `result` and `event`. The
 former, as its name implies, is concerned with broadcasting output from the
 various microservices, whereas the latter is concerned with broadcasing
 requests for actions to be taken. To ask for the value stored in a register,
-an event is sent, e.g.,
+an `event` is sent, e.g.,
 
     service.tx({'event': {
         'arrival': 1 + state.get('cycle'),
@@ -41,7 +40,7 @@ an event is sent, e.g.,
         }
     }})
 
-To report the result of an operation, a result is sent, e.g.,
+To report the output of an operation, a `result` is sent, e.g.,
 
     service.tx({'result': {
         'arrival': 1 + state.get('cycle'),
@@ -50,24 +49,23 @@ To report the result of an operation, a result is sent, e.g.,
         },
     }})
 
-One general-purpose rule of thumb is that incoming results should be handled
-BEFORE events, since results communicate information that may be useful in
-processing events.
+One general-purpose rule of thumb is that incoming `result` messages should
+be handled _before_ `event` messages, since `result` messages communicate
+information that may be useful in processing `event` messages.
 
-There are other channels as well; two highlights are the "info" channel, used
-to echo debug/informational output, e.g., 
+There are other channels as well; two highlights are the `info` channel, used
+to echo debug or informational output, e.g., 
 
     service.tx({'info': '_insn : {}'.format(_insn)})
 
-and the "shutdown" channel used to cleanly cease all ussim processes and
+and the `shutdown` channel used to cleanly cease all ussim processes and
 gracefully exit, e.g., 
 
     service.tx({'shutdown': None})
 
 For a complete list, see the handler() function in launcher.py.
 
---
-RUNNING
+## Running
 
 If you have not already done so, you will need to install pyelftools; see:
 
@@ -80,19 +78,19 @@ https://www.ibm.com/support/pages/configuring-ssh-login-without-password
 
 Once passwordless SSH has been set up, to quickly run, execute:
 
-cd pipelines/bergamot
-python3 ../../launcher.py \
-    --max_cycles 32000 \
-    --snapshots 1000 \
-    --break_on_undefined \
-    -- \
-    main.ussim \
-    ../../examples/bin/sum 2 3 5 7 11 13
+    cd pipelines/bergamot
+    python3 ../../launcher.py \
+        --max_cycles 32000 \
+        --snapshots 1000 \
+        --break_on_undefined \
+        -- \
+        main.ussim \
+        ../../examples/bin/sum 2 3 5 7 11 13
 
-First, the "cd" command changes into the subdirectory with the first-ever,
-very simple, very primitive μService-SIMulator pipeline implementation,
-codename: Bergamot (see: https://en.wikipedia.org/wiki/Bergamot_orange).
-The "python3" command then executes the launcher module (launcher.py). The
+First, the "cd" command changes into the subdirectory with the
+very simple, very primitive μService-SIMulator pipeline implementation
+(codename: Bergamot). The "python3" command then executes the launcher
+module (launcher.py). The
 launcher module will then begin by executing the script main.ussim, and
 loading the binary "../../examples/bin/sum" together with its command-line
 parameters "2 3 5 7 11 13", into the simulator's main memory; and simulating
@@ -101,14 +99,17 @@ simulated main memory and register file) every 1,000 simulated cycles, but
 will cease execution if it encounters an instruction that is not (yet)
 defined.
 
---
-PIPELINE DESIGNS
+## Pipeline Designs
 
 At present, there are two pipeline implementations: Bergamot and Clementine.
 
-The RUNNING section above executes the examples/bin/sum program using the
+The Running section above executes the examples/bin/sum program using the
 Bergamot implementation; to use the Clementine implementation instead, "cd"
 into the pipelines/clementine subdirectory (instead of pipelines/bergamot).
+
+### Bergamot
+
+See: https://en.wikipedia.org/wiki/Bergamot_orange.
 
 The Bergamot implementation uses a very simple design wherein only one stage
 operates per cycle. The core (see: pipelines/bergamot/implementation/simplecore.py)
@@ -127,6 +128,10 @@ is not a pipeline). But this very simple design was instrumental in the early
 stages of development, as instruction implementations were being coded and
 debugged.
 
+### Clementine
+
+See: https://en.wikipedia.org/wiki/Clementine.
+
 The Clementine implementation uses a six-stage design that operates in a
 manner akin to the venerable MIPS R3000, with automatic read-after-write
 hazard and control-flow hazard detection and handling. Unlike Bergamot, there
@@ -141,18 +146,18 @@ independently...
 6. retire/flush instructions (see: pipelines/implementation/implementation/commit.py)
 
 Read-after-write hazard detection is done in the decode stage, which halts
-the consumer until the producer either retires or is flushed by the commit
-stage. Control-flow hazards are handled by the commit stage, which, when a
+the consumer instruction until the producer instruction either retires or is
+flushed by the commit
+stage. Control-flow hazards are handled by the commit stage when a
 jump (JAL, JALR) or a taken branch (BEQ, BNE, BGE, BLT, BGEU, BLTU)
 instruction retires; when this happens, the new PC is reported, which is
 sensed by the instruction fetch stage and the decode stage. The instruction
 fetcher responds by beginning to fetch instruction bytes from the new PC;
 the decoder responds by flushing all previously-decoded instructions.
-Finally, the commit stage will continue to flush all instructions following
+Finally, the commit stage will flush all instructions following
 the jump/taken branch until it receives an instruction with the target PC.
 
---
-SIMULATOR SCRIPTS
+## Simulator Scripts
 
 The simulator executes according to instructions in an execute script.
 Consider the script main.ussim:
@@ -202,8 +207,7 @@ loadbin command, instead features a restore command:
 The simulator places the state of the register file into an unused address
 inside the main memory snapshot.
 
---
-SAMPLE binary
+## Sample Binary
 
 The sample binary (examples/bin/sum) was created using the RISC-V cross
 compiler at https://github.com/riscv-collab/riscv-gnu-toolchain. The source:
@@ -239,7 +243,7 @@ compiler at https://github.com/riscv-collab/riscv-gnu-toolchain. The source:
         return retval;
     }
 
-which is compiled accordingly
+which is compiled accordingly:
 
     riscv64-unknown-linux-gnu-gcc -o sum -static -march=rv64g sum.c basics.c
 
@@ -254,11 +258,9 @@ _start() is a planned feature, but will require a great deal of
 additional work on syscall proxying; and (4) because syscall proxying
 is not yet complete, there is no printf(), thus, when execution
 completes, the sum of all the arguments passed is returned in register
-x10, which can be viewed in the simulator's output log (2 + 3 + 5 + 7
-+ 11 + 13 = 41).
+x10, which can be viewed in the simulator's output log.
 
---
-TESTS
+## Tests
 
 The simulator is capable of loading full, statically-linked ELF binaries,
 and also capable of loading ELF-formatted object files. This allows
@@ -274,6 +276,6 @@ which gets assembled into an object file accordingly
 
     riscv64-unknown-linux-gnu-as -o addi.o -march=rv64v addi.s
 
-This is NOT a complete binary, but the simulator will nevertheless load
+This is **not** a complete binary, but the simulator will nevertheless load
 it into memory, set the PC to the address of the _start label, and 
 begin execution.
