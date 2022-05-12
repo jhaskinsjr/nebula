@@ -1,11 +1,23 @@
 # Welcome to μService-SIMulator!
 
-The central premise of ussim is that an army of microservices shout out
-whatever they need, whatever information they wish to communicate, whatever
-matters to them into the wide-open "ether." All microservices are connected
-to the same ether, constantly listening thereto. If something shouted into
-the ether matters to one or more microservices, they are free to act upon it
-and, where appropriate, shout something in response back into the ether.
+The μService-SIMulator (ussim) is a framework for developing cyce-accurate
+64-bit RISC-V simulators. Most of the RV64I instruction set is
+implemented (both compressed and uncompressed versions of opcodes).
+Additionally, this software package comes with two sample simulators: the
+first implements a very simple single-stage pipeline (codename: Bergamot),
+and the second implements a slightly more sophisticated 6-stage pipeline
+with automatic data- and control-hazard detection and handling (codename:
+Clementine).
+
+## Software Architecture
+
+The central design feature of ussim is an army of microservices...
+independent processes running on the same machine or different machines...
+shouting out whatever they need, whatever information they wish to
+communicate, whatever matters to them into the network where all other
+microservices will receive it. If something shouted into the network
+matters to one or more microservices, those microservices are free to act
+upon it and, where appropriate, shout something back in response.
 
 THIS IS AN INTENTIONAL DESIGN CHOICE!
 
@@ -19,14 +31,8 @@ There are no solutions, only tradeoffs. I have made this tradeoff knowingly,
 willingly, intentionally, fully aware of the performance ramifications.
 Notwithstanding this, I chose to trade away speed for flexibility.
 
-## Software Architecture
-
-As mentioned in the preceding section, ussim uses a collection of
-independent microservices, each with its own role (e.g., fetch instruction
-bytes, service register file operations), all communicating over a shared
-"party line," implemented over TCP.
-
-There are two main communication channels: `result` and `event`. The
+There are two main communication channels that the microservices utilize:
+`result` and `event`. The
 former, as its name implies, is concerned with broadcasting output from the
 various microservices, whereas the latter is concerned with broadcasing
 requests for actions to be taken. To ask for the value stored in a register,
@@ -103,7 +109,8 @@ defined.
 
 At present, there are two pipeline implementations: Bergamot and Clementine.
 
-The Running section above executes the examples/bin/sum program using the
+The Running section above shows how to execute the examples/bin/sum program
+using the
 Bergamot implementation; to use the Clementine implementation instead, "cd"
 into the pipelines/clementine subdirectory (instead of pipelines/bergamot).
 
