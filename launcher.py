@@ -296,7 +296,8 @@ def add_service(services, debug, port, s):
             daemon=True,
         )
     )
-def spawn(services):
+def spawn(services, args):
+    for s in args.services: add_service(services, args.debug, args.port, s)
     threading.Thread(target=acceptor, daemon=True).start()
     [th.start() for th in services]
     while len(services) > len(state.get('connections')): time.sleep(1)
@@ -363,7 +364,7 @@ if __name__ == '__main__':
                 loadbin(state.get('connections'), _mainmem_rawfile, _sp, _pc, _start_symbol, _binary, *((_binary,) + _args)),
             else:
                 {
-                    'spawn': lambda: spawn(_services),
+                    'spawn': lambda: spawn(_services, args),
                     'service': lambda x: add_service(_services, args.debug, args.port, x),
                     'register': lambda x, y, z=None: register(state.get('connections'), x, y, z),
                     'mainmem': lambda w, x, y, z=None: mainmem(state.get('connections'), w, x, y, z),
