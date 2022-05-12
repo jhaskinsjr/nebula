@@ -3,13 +3,15 @@
 The μService-SIMulator (ussim) is a framework for developing cyce-accurate
 64-bit RISC-V simulators. Most of the RV64I instruction set is
 implemented (both compressed and uncompressed versions of opcodes).
-Additionally, this software package comes with two sample simulators: the
-first implements a very simple single-stage pipeline (codename: Bergamot),
-and the second implements a slightly more sophisticated 6-stage pipeline
-with automatic data- and control-hazard detection and handling (codename:
-Clementine).
+Additionally, this software package comes with two sample simulators:
+Bergamot and Clementine. Bergamot
+implements a very simple single-stage pipeline; Clementine
+implements a slightly more sophisticated 6-stage pipeline
+with automatic data- and control-hazard detection and handling.
 
 ## Software Architecture
+
+### Philosophy: Simplicity And Flexibility Through Independence
 
 The central design feature of ussim is an army of microservices...
 independent processes running on the same machine or different machines...
@@ -30,6 +32,40 @@ of the flexibility that software is supposed to facilitate.
 There are no solutions, only tradeoffs. I have made this tradeoff knowingly,
 willingly, intentionally, fully aware of the performance ramifications.
 Notwithstanding this, I chose to trade away speed for flexibility.
+
+The benefit of this design choice is the incredible simplicity of the
+software that implements the pipeline logic. Since each step in the process
+of executing an instruction (e.g., decode, register access, execute)
+is handled by its own process, all the code for each step is
+self-contained, making it easier to reason about.
+
+Bergamot is comprised of five Python files
+(see: pipelines/bergamot/implementation/), four of which contain fewer than
+150 lines of code. The lone standout is execute
+(see: pipelines/bergamot/implementation/execute.py) which, despite handling
+dozens of RISC-V
+instructions, still occupies fewer than 700 lines of code.
+Similarly, Clementine is comprised of seven Python files
+(see: pipelines/clementine/implementation/),
+all but one of which is less than 150 lines of code, with the ALU
+logic (see: pipelines/clementine/implementation/alu.py)
+still weighing in at under 400 lines of code.
+
+These bite-sized units allow chunks of functionality to be cleanly
+isolated from one another, making each easier to reason about, easier to
+understand, and, as necessary for implementing novel design concepts,
+easier to modify. Consider, for instance, that a change to a function
+in the register file logic will almost certainly not alter functionality
+implemented in the decoder logic; this reduced the amount of the system
+that a developer has to be familiar with in order to be productive.
+
+Furthermore, because the units communicate among themselves, it is easy
+to construct a unit that monitors communications between the other
+units to
+count events (e.g., number of fetches, number of instructions flushed,
+number of instructions retired).
+
+### Communication Channels
 
 There are two main communication channels that the microservices utilize:
 `result` and `event`. The
