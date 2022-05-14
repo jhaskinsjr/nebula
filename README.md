@@ -216,11 +216,9 @@ Consider the script main.ussim:
     cycle
     loadbin /tmp/mainmem.raw 0x80000000 0x40000000 main # using /tmp/mainmem.raw as the main memory file,
                                                         # set x2 to 0x80000000 and %pc to 0x40000000, then
-                                                        # load binary (e.g., ../../examples/bin/sum), and,
-                                                        # optionally, command line parameters (e.g.,
-                                                        # 2 3 5 7 11 13), and execute beginning from the
-                                                        # "main" symbol in the binary's .text section
-
+                                                        # load binary (e.g., ../../examples/bin/sum), and
+                                                        # execute beginning from the "main" symbol in the
+                                                        # binary's .text section
     run
     cycle
     state
