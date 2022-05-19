@@ -1,8 +1,10 @@
 # Welcome to μService-SIMulator!
 
 The μService-SIMulator (ussim) is a framework for developing cyce-accurate
-64-bit RISC-V simulators. Most of the RV64I instruction set is
-implemented (both compressed and uncompressed versions of opcodes).
+microprocessor simulators. At present, Python libraries for decoding and
+executing one instruction set, RISC-V's RV64I, are included. (Most of the
+RV64I instruction set is
+implemented: both compressed and uncompressed versions of opcodes).
 Additionally, this software package comes with two sample simulators:
 Bergamot and Clementine. Bergamot
 implements a very simple single-stage pipeline; Clementine
