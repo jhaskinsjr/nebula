@@ -28,7 +28,7 @@ def do_l1ic(service, state):
             fetch_block(service, state, _jp)
             return
     else:
-        _size = state.get('fetch_size') / 2 # Why div-by-2? because RISC-V instructions are always 4B or 2B
+        _size = state.get('fetch_size') >> 1 # Why div-by-2? because RISC-V instructions are always 4B or 2B
         _ante = state.get('l1ic').peek(_jp, _size)
         if not _ante:
             if len(state.get('pending_fetch')): return # only 1 pending fetch at a time is primitive, but good enough for now
