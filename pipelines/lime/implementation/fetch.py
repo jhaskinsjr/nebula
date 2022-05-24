@@ -49,7 +49,7 @@ def do_l1ic(service, state):
     service.tx({'event': {
         'arrival': 1 + state.get('cycle'),
         'decode': {
-            'addr': _jp,
+            'addr': state.get('%jp'),
             'size': state.get('fetch_size'),
             'data': _data,
         },
@@ -62,7 +62,6 @@ def do_tick(service, state, results, events):
         if 0 == int.from_bytes(_pc, 'little'):
             service.tx({'info': 'Jump to @0x00000000... graceful shutdown'})
             service.tx({'shutdown': None})
-        state.get('pending_fetch').clear()
         state.update({'%jp': _pc})
     for _decode_buffer_available in map(lambda y: y.get('decode.buffer_available'), filter(lambda x: x.get('decode.buffer_available'), results)):
         state.update({'decode.buffer_available': _decode_buffer_available})
