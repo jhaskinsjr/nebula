@@ -12,10 +12,11 @@ def do_tick(service, state, results, events):
     for _reg in map(lambda y: y.get('register'), filter(lambda x: x.get('register'), results)):
         if '%pc' != _reg.get('name'): continue
         _pc = _reg.get('data')
-        service.tx({'info': '_pc           : {}'.format(_pc)})
-        service.tx({'info': 'state.get(pc) : {}'.format(state.get('%pc'))})
         state.get('buffer').clear()
         state.update({'drop_until': _pc})
+        service.tx({'info': '_pc                   : {}'.format(_pc)})
+        service.tx({'info': 'state.get(pc)         : {}'.format(state.get('%pc'))})
+        service.tx({'info': 'state.get(drop_until) : {}'.format(state.get('drop_until'))})
     for _flush in map(lambda y: y.get('flush'), filter(lambda x: x.get('flush'), results)):
         service.tx({'info': '_flush : {}'.format(_flush)})
         assert state.get('issued')[0].get('iid') == _flush.get('iid')
@@ -25,11 +26,13 @@ def do_tick(service, state, results, events):
         assert state.get('issued')[0].get('iid') == _retire.get('iid')
         state.get('issued').pop(0)
     for _dec in map(lambda y: y.get('decode'), filter(lambda x: x.get('decode'), events)):
+        service.tx({'info': '_dec                  : {}'.format(_dec)})
         if state.get('drop_until'):
             if _dec.get('addr') != state.get('drop_until'): continue
-        state.update({'drop_until': None})
-        state.update({'%pc': _dec.get('addr')})
+            state.update({'drop_until': None})
+            state.update({'%pc': _dec.get('addr')})
         state.get('buffer').extend(_dec.get('data'))
+        service.tx({'info': 'state.get(drop_until) : {}'.format(state.get('drop_until'))})
     service.tx({'result': {
         'arrival': 1 + state.get('cycle'),
         'decode.buffer_available': remaining_buffer_availability(),
