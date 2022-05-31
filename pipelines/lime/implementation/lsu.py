@@ -143,7 +143,7 @@ def do_tick(service, state, results, events):
     do_execute(service, state)
 
 if '__main__' == __name__:
-    parser = argparse.ArgumentParser(description='μService-SIMulator: Execute')
+    parser = argparse.ArgumentParser(description='μService-SIMulator: Load-Store Unit')
     parser.add_argument('--debug', '-D', dest='debug', action='store_true', help='print debug messages')
     parser.add_argument('--quiet', '-Q', dest='quiet', action='store_true', help='suppress status messages')
     parser.add_argument('launcher', help='host:port of μService-SIMulator launcher')
