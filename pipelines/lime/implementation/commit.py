@@ -8,7 +8,12 @@ import riscv.constants
 
 def do_commit(service, state):
     service.tx({'info': 'pending_commit : [{}]'.format(', '.join(map(
-        lambda x: '({}, {}, {})'.format(x.get('cmd'), x.get('%pc'), x.get('iid')),
+        lambda x: '({}{}, {}, {})'.format(
+            x.get('cmd'),
+            (' @{}'.format(x.get('operands').get('addr')) if x.get('cmd') in riscv.constants.LOADS + riscv.constants.STORES else ''),
+            x.get('%pc'),
+            x.get('iid')
+        ),
         state.get('pending_commit')
     )))})
     _retire = []
@@ -44,7 +49,7 @@ def do_commit(service, state):
                     'data': _insn.get('ret_pc'),
                 },
             }})
-        if _insn.get('result'):
+        if _insn.get('result') and _insn.get('rd'):
             service.tx({'event': {
                 'arrival': 1 + state.get('cycle'),
                 'register': {
@@ -67,27 +72,36 @@ def do_tick(service, state, results, events):
         _new_insn = None
         _old_insn = None
         for _insn in state.get('pending_commit'):
-            if not _insn.get('cmd') in riscv.constants.LOADS: continue
+            if not _insn.get('cmd') in riscv.constants.LOADS + riscv.constants.STORES: continue
             if _insn.get('operands') and _insn.get('operands').get('addr') != _mem.get('addr'): continue
             service.tx({'info': '_insn : {}'.format(_insn)})
-            _peeked  = _mem.get('data')
-            _peeked += [-1] * (8 - len(_peeked))
-            _result = { # HACK: This is 100% little-endian-specific
-                'LD': _peeked,
-                'LW': _peeked[:4] + [(0xff if ((_peeked[3] >> 7) & 0b1) else 0)] * 4,
-                'LH': _peeked[:2] + [(0xff if ((_peeked[1] >> 7) & 0b1) else 0)] * 6,
-                'LB': _peeked[:1] + [(0xff if ((_peeked[0] >> 7) & 0b1) else 0)] * 7,
-                'LWU': _peeked[:4] + [0] * 4,
-                'LHU': _peeked[:2] + [0] * 6,
-                'LBU': _peeked[:1] + [0] * 7,
-            }.get(_insn.get('cmd'))
-            _old_insn = _insn
-            _new_insn = {
-                **_insn,
-                **{
-                    'result': _result,
-                },
-            }
+            if _insn.get('cmd') in riscv.constants.LOADS and 'data' in _mem.keys():
+                _peeked  = _mem.get('data')
+                _peeked += [-1] * (8 - len(_peeked))
+                _result = { # HACK: This is 100% little-endian-specific
+                    'LD': _peeked,
+                    'LW': _peeked[:4] + [(0xff if ((_peeked[3] >> 7) & 0b1) else 0)] * 4,
+                    'LH': _peeked[:2] + [(0xff if ((_peeked[1] >> 7) & 0b1) else 0)] * 6,
+                    'LB': _peeked[:1] + [(0xff if ((_peeked[0] >> 7) & 0b1) else 0)] * 7,
+                    'LWU': _peeked[:4] + [0] * 4,
+                    'LHU': _peeked[:2] + [0] * 6,
+                    'LBU': _peeked[:1] + [0] * 7,
+                }.get(_insn.get('cmd'))
+                _old_insn = _insn
+                _new_insn = {
+                    **_insn,
+                    **{
+                        'result': _result,
+                    },
+                }
+            else:
+                _old_insn = _insn
+                _new_insn = {
+                    **_insn,
+                    **{
+                        'result': None,
+                    },
+                }
         if _new_insn and _old_insn:
             state.get('pending_commit').remove(_old_insn)
             state.get('pending_commit').append(_new_insn)

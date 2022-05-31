@@ -22,8 +22,9 @@ def do_tick(service, state, results, events):
         assert state.get('issued')[0].get('iid') == _flush.get('iid')
         state.get('issued').pop(0)
     for _retire in map(lambda y: y.get('retire'), filter(lambda x: x.get('retire'), results)):
-        service.tx({'info': '_retire : {}'.format(_retire)})
-        assert state.get('issued')[0].get('iid') == _retire.get('iid')
+        service.tx({'info': '_retire      : {}'.format(_retire)})
+        service.tx({'info': 'state.issued : {}'.format(state.get('issued'))})
+        assert state.get('issued')[0].get('iid') == _retire.get('iid'), '{} {}'.format(_retire, state.get('issued'))
         state.get('issued').pop(0)
     for _dec in map(lambda y: y.get('decode'), filter(lambda x: x.get('decode'), events)):
         service.tx({'info': '_dec                  : {}'.format(_dec)})

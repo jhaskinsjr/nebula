@@ -4,41 +4,91 @@ import functools
 import struct
 
 import service
+import components.simplecache
 import riscv.execute
 import riscv.syscall.linux
 
-def do_unimplemented(service, state, insn):
-#    print('Unimplemented: {}'.format(state.get('pending_execute')))
-    service.tx({'undefined': insn})
-    service.tx({'event': {
-        'arrival': 1 + state.get('cycle'),
-        'commit': {
-            'insn': {
-                **insn,
-                **{
-                    'result': None,
-                },
-            },
-        }
-    }})
-
-def do_load(service, state, insn):
+def fetch_block(service, state, addr):
+    _blockaddr = state.get('l1dc').blockaddr(addr)
+    _blocksize = state.get('l1dc').nbytesperblock
+    state.get('pending_fetch').append(_blockaddr)
     service.tx({'event': {
         'arrival': 1 + state.get('cycle'),
         'mem': {
             'cmd': 'peek',
-            'addr': insn.get('operands').get('addr'),
-            'size': insn.get('nbytes'),
-        }
+            'addr': _blockaddr,
+            'size': _blocksize,
+        },
     }})
-    service.tx({'event': {
-        'arrival': 1 + state.get('cycle'),
-        'commit': {
-            'insn': {
-                **insn,
+def do_l1dc(service, state, addr, size, data=None):
+    service.tx({'info': 'addr : {}'.format(addr)})
+    if state.get('l1dc').fits(addr, size):
+        _data = state.get('l1dc').peek(addr, size)
+#        service.tx({'info': '_data : {}'.format(_data)})
+        if not _data:
+            if len(state.get('pending_fetch')): return # only 1 pending fetch at a time is primitive, but good enough for now
+            fetch_block(service, state, addr)
+            return
+    else:
+        _blockaddr = state.get('l1dc').blockaddr(addr)
+        _blocksize = state.get('l1dc').nbytesperblock
+        _size = _blockaddr + _blocksize - addr
+        _ante = state.get('l1dc').peek(addr, _size)
+        if not _ante:
+            if len(state.get('pending_fetch')): return # only 1 pending fetch at a time is primitive, but good enough for now
+            fetch_block(service, state, addr)
+            return
+        _post = state.get('l1dc').peek(addr + _size, size - _size)
+        if not _post:
+            if len(state.get('pending_fetch')): return # only 1 pending fetch at a time is primitive, but good enough for now
+            fetch_block(service, state, addr + _size)
+            return
+        # NOTE: In an L1DC with only a single block, an incoming _post would
+        #       always displace _ante, and an incoming _ante would always displace
+        #       _post... but an L1DC with only a single block would not be very
+        #       useful in practice, so no effort will be made to handle that scenario.
+        #       Like: No effort AT ALL.
+        _data = _ante + _post
+        assert len(_data) == size
+    if data:
+        # STORE
+        service.tx({'result': {
+            'arrival': 2 + state.get('cycle'),
+            'mem': {
+                'addr': addr,
+                'size': size,
             },
-        }
-    }})
+        }})
+        # writethrough
+        state.get('l1dc').poke(addr, data)
+        service.tx({'event': {
+            'arrival': 1 + state.get('cycle'),
+            'mem': {
+                'cmd': 'poke',
+                'addr': addr,
+                'size': len(data),
+                'data': data
+            }
+        }})
+    else:
+        # LOAD
+        service.tx({'result': {
+            'arrival': 2 + state.get('cycle'), # must not arrive in commit the same cycle as the LOAD instruction
+            'mem': {
+                'addr': addr,
+                'size': size,
+                'data': _data,
+            },
+        }})
+    state.get('executing').pop(0)
+    if len(state.get('pending_fetch')): state.get('pending_fetch').pop(0)
+
+def do_unimplemented(service, state, insn):
+#    print('Unimplemented: {}'.format(state.get('insn')))
+    service.tx({'undefined': insn})
+
+def do_load(service, state, insn):
+    do_l1dc(service, state, insn.get('operands').get('addr'), insn.get('nbytes'))
 def do_store(service, state, insn):
     _data = insn.get('operands').get('data')
     _data = {
@@ -47,56 +97,49 @@ def do_store(service, state, insn):
         'SH': _data[:2],
         'SB': _data[:1],
     }.get(insn.get('cmd'))
-    service.tx({'event': {
-        'arrival': 1 + state.get('cycle'),
-        'mem': {
-            'cmd': 'poke',
-            'addr': insn.get('operands').get('addr'),
-            'size': insn.get('nbytes'),
-            'data': _data
-        }
-    }})
-    service.tx({'event': {
-        'arrival': 1 + state.get('cycle'),
-        'commit': {
-            'insn': {
-                **insn,
-                **{
-                    'result': None,
-                },
-            },
-        }
-    }})
+    do_l1dc(service, state, insn.get('operands').get('addr'), insn.get('nbytes'), _data)
 
 def do_execute(service, state):
-    if not len(state.get('pending_execute')): return
-    for _insn in map(lambda x: x.get('insn'), state.get('pending_execute')):
-        state.get('pending_execute').pop(0)
-        service.tx({'info': '_insn : {}'.format(_insn)})
-        if 0x3 == _insn.get('word') & 0x3:
-            print('do_execute(): @{:8} {:08x} : {}'.format(state.get('cycle'), _insn.get('word'), _insn.get('cmd')))
-        else:
-            print('do_execute(): @{:8}     {:04x} : {}'.format(state.get('cycle'), _insn.get('word'), _insn.get('cmd')))
-        {
-            'LD': do_load,
-            'LW': do_load,
-            'LH': do_load,
-            'LB': do_load,
-            'LWU': do_load,
-            'LHU': do_load,
-            'LBU': do_load,
-            'SD': do_store,
-            'SW': do_store,
-            'SH': do_store,
-            'SB': do_store,
-        }.get(_insn.get('cmd'), do_unimplemented)(service, state, _insn)
+    # NOTE: simpliying to only one in-flight LOAD/STORE at a time
+    _insn = (state.get('executing')[0] if len(state.get('executing')) else (state.get('pending_execute')[0] if len(state.get('pending_execute')) else None))
+    if not _insn: return
+    if not len(state.get('executing')): state.get('executing').append(state.get('pending_execute').pop(0))
+    service.tx({'info': '_insn : {}'.format(_insn)})
+#    if 0x3 == _insn.get('word') & 0x3:
+#        print('do_execute(): @{:8} {:08x} : {}'.format(state.get('cycle'), _insn.get('word'), _insn.get('cmd')))
+#    else:
+#        print('do_execute(): @{:8}     {:04x} : {}'.format(state.get('cycle'), _insn.get('word'), _insn.get('cmd')))
+    {
+        'LD': do_load,
+        'LW': do_load,
+        'LH': do_load,
+        'LB': do_load,
+        'LWU': do_load,
+        'LHU': do_load,
+        'LBU': do_load,
+        'SD': do_store,
+        'SW': do_store,
+        'SH': do_store,
+        'SB': do_store,
+    }.get(_insn.get('cmd'), do_unimplemented)(service, state, _insn)
 
 def do_tick(service, state, results, events):
-    for _insn in map(lambda y: y.get('lsu'), filter(lambda x: x.get('lsu'), events)):
-        state.get('pending_execute').append(_insn)
     for _mem in filter(lambda x: x, map(lambda y: y.get('mem'), results)):
-        if _mem.get('addr') == state.get('operands').get('mem'):
+        _addr = _mem.get('addr')
+        if _addr == state.get('operands').get('mem'):
             state.get('operands').update({'mem': _mem.get('data')})
+        elif _addr in state.get('pending_fetch'):
+            service.tx({'info': '_mem : {}'.format(_mem)})
+            state.get('l1dc').poke(_addr, _mem.get('data'))
+    for _insn in map(lambda y: y.get('lsu'), filter(lambda x: x.get('lsu'), events)):
+        state.get('pending_execute').append(_insn.get('insn'))
+        # TODO: should this commit event be done in alu like everything else?
+        service.tx({'event': {
+            'arrival': 1 + state.get('cycle'),
+            'commit': {
+                'insn': _insn.get('insn'),
+            }
+        }})
     do_execute(service, state)
 
 if '__main__' == __name__:
@@ -113,10 +156,13 @@ if '__main__' == __name__:
     _service = service.Service('lsu', _launcher.get('host'), _launcher.get('port'))
     state = {
         'cycle': 0,
+        'l1dc': components.simplecache.SimpleCache(2**4, 2**1, 2**4),
+        'pending_fetch': [],
         'active': True,
         'running': False,
         'ack': True,
         'pending_execute': [],
+        'executing': [],
         'operands': {},
     }
     while state.get('active'):
