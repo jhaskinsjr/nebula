@@ -71,11 +71,11 @@ def do_tick(service, state, results, events):
         service.tx({'info': '_mem : {}'.format(_mem)})
         _new_insn = None
         _old_insn = None
-        for _insn in state.get('pending_commit'):
-            if not _insn.get('cmd') in riscv.constants.LOADS + riscv.constants.STORES: continue
-            if _insn.get('operands') and _insn.get('operands').get('addr') != _mem.get('addr'): continue
-            service.tx({'info': '_insn : {}'.format(_insn)})
-            if _insn.get('cmd') in riscv.constants.LOADS and 'data' in _mem.keys():
+        if 'data' in _mem.keys():
+            for _insn in filter(lambda a: a.get('cmd') in riscv.constants.LOADS, state.get('pending_commit')):
+                assert _insn.get('operands')
+                if _insn.get('operands').get('addr') != _mem.get('addr'): continue
+                service.tx({'info': '_insn : {}'.format(_insn)})
                 _peeked  = _mem.get('data')
                 _peeked += [-1] * (8 - len(_peeked))
                 _result = { # HACK: This is 100% little-endian-specific
@@ -94,7 +94,11 @@ def do_tick(service, state, results, events):
                         'result': _result,
                     },
                 }
-            else:
+        else:
+            for _insn in filter(lambda a: a.get('cmd') in riscv.constants.STORES, state.get('pending_commit')):
+                assert _insn.get('operands')
+                if _insn.get('operands').get('addr') != _mem.get('addr'): continue
+                service.tx({'info': '_insn : {}'.format(_insn)})
                 _old_insn = _insn
                 _new_insn = {
                     **_insn,
