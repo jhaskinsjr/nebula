@@ -73,8 +73,8 @@ if '__main__' == __name__:
     _launcher = {x:y for x, y in zip(['host', 'port'], args.launcher.split(':'))}
     _launcher['port'] = int(_launcher['port'])
     if args.debug: print('_launcher : {}'.format(_launcher))
-    _service = service.Service('regfile', _launcher.get('host'), _launcher.get('port'))
     state = {
+        'service': 'regfile',
         'cycle': 0,
         'active': True,
         'running': False,
@@ -84,6 +84,7 @@ if '__main__' == __name__:
             **{x: riscv.constants.integer_to_list_of_bytes(0, 64, 'little') for x in range(32)},
         }
     }
+    _service = service.Service(state.get('service'), _launcher.get('host'), _launcher.get('port'))
     while state.get('active'):
         state.update({'ack': True})
         msg = _service.rx()
