@@ -15,7 +15,7 @@ def do_tick(service, state, results, events):
             poke(state, _addr, _size, _data)
         elif 'peek' == _cmd:
             service.tx({'result': {
-                'arrival': 5 + state.get('cycle'),
+                'arrival': state.get('config').get('peek_latency_in_cycles') + state.get('cycle'),
                 'mem': {
                     'addr': _addr,
                     'size': _size,
@@ -51,14 +51,18 @@ if '__main__' == __name__:
     _launcher = {x:y for x, y in zip(['host', 'port'], args.launcher.split(':'))}
     _launcher['port'] = int(_launcher['port'])
     if args.debug: print('_launcher : {}'.format(_launcher))
-    _service = service.Service('mainmem', _launcher.get('host'), _launcher.get('port'))
     state = {
+        'service': 'mainmem',
         'cycle': 0,
         'active': True,
         'running': False,
         'ack': True,
-        'fd': os.open('/tmp/mainmem.raw', os.O_RDWR|os.O_CREAT)
+        'fd': os.open('/tmp/mainmem.raw', os.O_RDWR|os.O_CREAT),
+        'config': {
+            'peek_latency_in_cycles': 500,
+        },
     }
+    _service = service.Service(state.get('service_name'), _launcher.get('host'), _launcher.get('port'))
     os.ftruncate(state.get('fd'), 2**32) # HACK: hard-wired memory is dumb, but I don't want to focus on that right now
     while state.get('active'):
         state.update({'ack': True})
@@ -72,6 +76,13 @@ if '__main__' == __name__:
             elif {'text': 'run'} == {k: v}:
                 state.update({'running': True})
                 state.update({'ack': False})
+            elif 'config' == k:
+                print('config : {}'.format(v))
+                if state.get('service') != v.get('service'): continue
+                _field = v.get('field')
+                _val = v.get('val')
+                assert _field in state.get('config').keys(), 'No such config field, {}, in service {}!'.format(_field, state.get('service'))
+                state.get('config').update({_field: _val})
             elif 'tick' == k:
                 state.update({'cycle': v.get('cycle')})
                 _results = v.get('results')

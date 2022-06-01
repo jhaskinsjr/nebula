@@ -100,7 +100,7 @@ def do_tick(service, state, results, events):
     do_execute(service, state)
 
 if '__main__' == __name__:
-    parser = argparse.ArgumentParser(description='μService-SIMulator: Execute')
+    parser = argparse.ArgumentParser(description='μService-SIMulator: Load-Store Unit')
     parser.add_argument('--debug', '-D', dest='debug', action='store_true', help='print debug messages')
     parser.add_argument('--quiet', '-Q', dest='quiet', action='store_true', help='suppress status messages')
     parser.add_argument('launcher', help='host:port of μService-SIMulator launcher')
@@ -110,8 +110,8 @@ if '__main__' == __name__:
     _launcher = {x:y for x, y in zip(['host', 'port'], args.launcher.split(':'))}
     _launcher['port'] = int(_launcher['port'])
     if args.debug: print('_launcher : {}'.format(_launcher))
-    _service = service.Service('lsu', _launcher.get('host'), _launcher.get('port'))
     state = {
+        'service': 'lsu',
         'cycle': 0,
         'active': True,
         'running': False,
@@ -119,6 +119,7 @@ if '__main__' == __name__:
         'pending_execute': [],
         'operands': {},
     }
+    _service = service.Service(state.get('service'), _launcher.get('host'), _launcher.get('port'))
     while state.get('active'):
         state.update({'ack': True})
         msg = _service.rx()

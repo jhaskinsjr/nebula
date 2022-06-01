@@ -49,8 +49,8 @@ if '__main__' == __name__:
     _launcher = {x:y for x, y in zip(['host', 'port'], args.launcher.split(':'))}
     _launcher['port'] = int(_launcher['port'])
     if args.debug: print('_launcher : {}'.format(_launcher))
-    _service = service.Service('fetch', _launcher.get('host'), _launcher.get('port'))
     state = {
+        'service': 'fetch',
         'cycle': 0,
         'stall_until': 0,
         'active': True,
@@ -60,6 +60,7 @@ if '__main__' == __name__:
         '%jp': None, # This is the fetch pointer. Why %jp? Who knows?
         'ack': True,
     }
+    _service = service.Service(state.get('service'), _launcher.get('host'), _launcher.get('port'))
     while state.get('active'):
         state.update({'ack': True})
         msg = _service.rx()

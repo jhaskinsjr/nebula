@@ -6,7 +6,7 @@ import riscv.constants
 import riscv.decode
 
 def remaining_buffer_availability():
-    return state.get('buffer_capacity') - sum(map(lambda x: x.get('size'), state.get('pending_fetch')))
+    return state.get('config').get('buffer_capacity') - sum(map(lambda x: x.get('size'), state.get('pending_fetch')))
 def hazard(p, c):
     return 'rd' in p.keys() and (('rs1' in c.keys() and p.get('rd') == c.get('rs1')) or ('rs2' in c.keys() and p.get('rd') == c.get('rs2')))
 def do_tick(service, state, results, events):
@@ -93,22 +93,25 @@ if '__main__' == __name__:
     _launcher = {x:y for x, y in zip(['host', 'port'], args.launcher.split(':'))}
     _launcher['port'] = int(_launcher['port'])
     if args.debug: print('_launcher : {}'.format(_launcher))
-    _service = service.Service('decode', _launcher.get('host'), _launcher.get('port'))
     state = {
+        'service': 'decode',
         'cycle': 0,
         'active': True,
         'running': False,
         '%pc': None,
         'ack': True,
         'buffer': [],
-        'buffer_capacity': 16, # HACK: it's dumb to hard code the buffer length, but can't be bothered with that now
         'pending_fetch': [],
         'decoded': [],
         'issued': [],
         'last_flushed': None,
         'iid': 0,
         'max_instructions_to_decode': 1, # HACK: hard-coded max-instructions-to-decode of 1
+        'config': {
+            'buffer_capacity': 16,
+        },
     }
+    _service = service.Service(state.get('service'), _launcher.get('host'), _launcher.get('port'))
     while state.get('active'):
         state.update({'ack': True})
         msg = _service.rx()
