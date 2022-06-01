@@ -125,8 +125,8 @@ if '__main__' == __name__:
     _launcher = {x:y for x, y in zip(['host', 'port'], args.launcher.split(':'))}
     _launcher['port'] = int(_launcher['port'])
     if args.debug: print('_launcher : {}'.format(_launcher))
-    _service = service.Service('commit', _launcher.get('host'), _launcher.get('port'))
     state = {
+        'service': 'commit',
         'cycle': 0,
         'active': True,
         'running': False,
@@ -134,6 +134,7 @@ if '__main__' == __name__:
         'flush_until': None,
         'pending_commit': [],
     }
+    _service = service.Service(state.get('service'), _launcher.get('host'), _launcher.get('port'))
     while state.get('active'):
         state.update({'ack': True})
         msg = _service.rx()

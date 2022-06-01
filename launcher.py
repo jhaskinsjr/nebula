@@ -122,6 +122,27 @@ def register(connections, cmd, name, data=None):
         },
         **({'data': (riscv.constants.integer_to_list_of_bytes(integer(data), 64, 'little') if isinstance(data, str) else riscv.constants.integer_to_list_of_bytes(data, 64, 'little'))} if data else {}),
     }})
+def config(connections, service, field, val):
+#    _output = 'args.{} : {}'.format(field, args.__getattribute__(field))
+#    if val:
+#        _val = val
+#        try:
+#            _val = int(val)
+#        except:
+#            pass
+#        args.__setattr__(field, _val)
+#        _output += ' -> {}'.format(args.__getattribute__(field))
+#    print(_output)
+    _val = val
+    try:
+        _val = integer(val)
+    except:
+        pass
+    tx(connections, {'config': {
+        'service': service,
+        'field': field,
+        'val': _val,
+    }})
 def mainmem(connections, cmd, addr, size, data=None):
     tx(connections, {'mainmem': {**{
             'cmd': cmd,
@@ -190,17 +211,6 @@ def loadbin(connections, mainmem_rawfile, sp, pc, start_symbol, binary, *args):
     register(connections, 'set', 10, hex(_argc))
     register(connections, 'set', 11, hex(8 + sp))
     register(connections, 'set', '%pc', hex(_start_pc))
-def config(args, field, val):
-    _output = 'args.{} : {}'.format(field, args.__getattribute__(field))
-    if val:
-        _val = val
-        try:
-            _val = int(val)
-        except:
-            pass
-        args.__setattr__(field, _val)
-        _output += ' -> {}'.format(args.__getattribute__(field))
-    print(_output)
 def snapshot(mainmem_rawfile, snapshot_rawfile, cycle):
     global state
     subprocess.run('cp {} {}'.format(mainmem_rawfile, snapshot_rawfile).split())
@@ -371,7 +381,7 @@ if __name__ == '__main__':
                     'restore': lambda x, y: state.update({'cycle': restore(x, y)}),
                     'cycle': lambda: print(state.get('cycle')),
                     'state': lambda: print(state),
-                    'config': lambda x, y=None: config(args, x, y),
+                    'config': lambda x, y, z: config(state.get('connections'), x, y, z),
                     'connections': lambda: print(state.get('connections')),
                 }.get(cmd, lambda : print('Unknown command!'))(*params)
     tx(state.get('connections'), 'bye')

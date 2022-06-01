@@ -90,11 +90,11 @@ if '__main__' == __name__:
     _launcher = {x:y for x, y in zip(['host', 'port'], args.launcher.split(':'))}
     _launcher['port'] = int(_launcher['port'])
     if args.debug: print('_launcher : {}'.format(_launcher))
-    _service = service.Service('fetch', _launcher.get('host'), _launcher.get('port'))
     state = {
+        'service': 'fetch',
         'cycle': 0,
         'stall_until': 0,
-        'l1ic': components.simplecache.SimpleCache(2**4, 2**1, 2**4),
+        'l1ic': None,
         'pending_fetch': [],
         'active': True,
         'running': False,
@@ -102,7 +102,18 @@ if '__main__' == __name__:
         'fetch_size': 4, # HACK: hard-coded number of bytes to fetch
         '%jp': None, # This is the fetch pointer. Why %jp? Who knows?
         'ack': True,
+        'config': {
+            'l1ic.nsets': 2**4,
+            'l1ic.nways': 2**1,
+            'l1ic.nbytesperblock': 2**4,
+        },
     }
+    state.update({'l1ic': components.simplecache.SimpleCache(
+        state.get('config').get('l1ic.nsets'),
+        state.get('config').get('l1ic.nways'),
+        state.get('config').get('l1ic.nbytesperblock'),
+    )})
+    _service = service.Service(state.get('service'), _launcher.get('host'), _launcher.get('port'))
     while state.get('active'):
         state.update({'ack': True})
         msg = _service.rx()
@@ -115,6 +126,13 @@ if '__main__' == __name__:
             elif {'text': 'run'} == {k: v}:
                 state.update({'running': True})
                 state.update({'ack': False})
+            elif 'config' == k:
+                print('config : {}'.format(v))
+                if state.get('service') != v.get('service'): continue
+                _field = v.get('field')
+                _val = v.get('val')
+                assert _field in state.get('config').keys(), 'No such config field, {}, in service {}!'.format(_field, state.get('service'))
+                state.get('config').update({_field: _val})
             elif 'tick' == k:
                 state.update({'cycle': v.get('cycle')})
                 _results = v.get('results')

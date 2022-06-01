@@ -5,7 +5,7 @@ import service
 import riscv.constants
 import riscv.decode
 
-def remaining_buffer_availability(): return state.get('buffer_capacity') - len(state.get('buffer'))
+def remaining_buffer_availability(): return state.get('config').get('buffer_capacity') - len(state.get('buffer'))
 def hazard(p, c):
     return 'rd' in p.keys() and (('rs1' in c.keys() and p.get('rd') == c.get('rs1')) or ('rs2' in c.keys() and p.get('rd') == c.get('rs2')))
 def do_tick(service, state, results, events):
@@ -83,20 +83,23 @@ if '__main__' == __name__:
     _launcher = {x:y for x, y in zip(['host', 'port'], args.launcher.split(':'))}
     _launcher['port'] = int(_launcher['port'])
     if args.debug: print('_launcher : {}'.format(_launcher))
-    _service = service.Service('decode', _launcher.get('host'), _launcher.get('port'))
     state = {
+        'service': 'decode',
         'cycle': 0,
         'active': True,
         'running': False,
         '%pc': None,
         'ack': True,
         'buffer': [],
-        'buffer_capacity': 16, # HACK: it's dumb to hard code the buffer length, but can't be bothered with that now
         'drop_until': None,
         'issued': [],
         'iid': 0,
         'max_instructions_to_decode': 1, # HACK: hard-coded max-instructions-to-decode of 1
+        'config': {
+            'buffer_capacity': 16,
+        },
     }
+    _service = service.Service(state.get('service'), _launcher.get('host'), _launcher.get('port'))
     while state.get('active'):
         state.update({'ack': True})
         msg = _service.rx()
@@ -109,6 +112,13 @@ if '__main__' == __name__:
             elif {'text': 'run'} == {k: v}:
                 state.update({'running': True})
                 state.update({'ack': False})
+            elif 'config' == k:
+                print('config : {}'.format(v))
+                if state.get('service') != v.get('service'): continue
+                _field = v.get('field')
+                _val = v.get('val')
+                assert _field in state.get('config').keys(), 'No such config field, {}, in service {}!'.format(_field, state.get('service'))
+                state.get('config').update({_field: _val})
             elif 'tick' == k:
                 state.update({'cycle': v.get('cycle')})
                 _results = v.get('results')

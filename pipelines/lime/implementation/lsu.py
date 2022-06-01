@@ -153,10 +153,10 @@ if '__main__' == __name__:
     _launcher = {x:y for x, y in zip(['host', 'port'], args.launcher.split(':'))}
     _launcher['port'] = int(_launcher['port'])
     if args.debug: print('_launcher : {}'.format(_launcher))
-    _service = service.Service('lsu', _launcher.get('host'), _launcher.get('port'))
     state = {
+        'service': 'lsu',
         'cycle': 0,
-        'l1dc': components.simplecache.SimpleCache(2**4, 2**1, 2**4),
+        'l1dc': None,
         'pending_fetch': [],
         'active': True,
         'running': False,
@@ -164,7 +164,18 @@ if '__main__' == __name__:
         'pending_execute': [],
         'executing': [],
         'operands': {},
+        'config': {
+            'l1dc.nsets': 2**4,
+            'l1dc.nways': 2**1,
+            'l1dc.nbytesperblock': 2**4,
+        },
     }
+    state.update({'l1dc': components.simplecache.SimpleCache(
+        state.get('config').get('l1dc.nsets'),
+        state.get('config').get('l1dc.nways'),
+        state.get('config').get('l1dc.nbytesperblock'),
+    )})
+    _service = service.Service(state.get('service'), _launcher.get('host'), _launcher.get('port'))
     while state.get('active'):
         state.update({'ack': True})
         msg = _service.rx()
