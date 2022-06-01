@@ -145,12 +145,13 @@ defined.
 
 ## Pipeline Designs
 
-At present, there are two pipeline implementations: Bergamot and Clementine.
+At present, there are three pipeline implementations: Bergamot, Clementine, and
+Lime.
 
 The Running section above shows how to execute the examples/bin/sum program
-using the
-Bergamot implementation; to use the Clementine implementation instead, "cd"
-into the pipelines/clementine subdirectory (instead of pipelines/bergamot).
+using the Bergamot implementation; to use the Clementine implementation, "cd" into
+the pipelines/clementine subdirectory (instead of pipelines/bergamot); to use the
+Lime implementation, "cd" into the pipelines/lime subdirectory.
 
 ### Bergamot
 
@@ -202,10 +203,32 @@ the decoder responds by flushing all previously-decoded instructions.
 Finally, the commit stage will flush all instructions following
 the jump/taken branch until it receives an instruction with the target PC.
 
+### Lime
+
+See: https://en.wikipedia.org/wiki/Lime_(fruit).
+
+The Lime implementation uses a six-stage design that is essentially identical
+to the six-stage pipeline of Clementine, featuring automatic read-after-write
+hazard and control-flow hazard detection and handling, with each stage operating
+independently. The key distinguishing feature of Lime is its L1 instruction cache
+and L1 data cache.
+
+During instruction fetch, the L1 instruction cache is probed
+and if the requested address is present in the cache, those bytes are forwarded
+to the decode stage; if not, the bytes are instead fetched from main memory.
+Bytes are fetched from main memory at the granularity of the L1 instruction cache
+block size; when they arrive from main memory, they are installed into the cache,
+and then forwarded to the decode stage. The L1 data cache operates in essentially
+the same manner, but additionally handles STORE instructions that explicitly
+poke data into the cache, and implements write-through semantics.
+
+The cache functionality is implemented in the `SimpleCache` module (see:
+components/simplecache/).
+
 ## Simulator Scripts
 
 The simulator executes according to instructions in an execute script.
-Consider the script main.ussim:
+Consider the script pipelines/lime/main.ussim:
 
     # Sample μService-SIMulator script
     port 10000
@@ -215,6 +238,14 @@ Consider the script main.ussim:
     service implementation/decode.py:localhost
     service implementation/execute.py:localhost
     spawn
+    config mainmem peek_latency_in_cycles 5 # not super-realistic, but it makes the simulation end sooner
+    config fetch l1ic.nsets 16
+    config fetch l1ic.nways 1
+    config fetch l1ic.nbytesperblock 8
+    config decode buffer_capacity 32
+    config lsu l1dc.nsets 32
+    config lsu l1dc.nways 4
+    config lsu l1dc.nbytesperblock 16
     cycle
     loadbin /tmp/mainmem.raw 0x80000000 0x40000000 main # using /tmp/mainmem.raw as the main memory file,
                                                         # set x2 to 0x80000000 and %pc to 0x40000000, then
@@ -228,6 +259,7 @@ Consider the script main.ussim:
 
 The script is comprised of commands
 
+    config A B C                    change configuration of service A field B to value C
     cycle                           print the cycle count to stdout
     loadbin A B C D E X             set main memory file A; locate stack at address B; locate code
                                     at address C; and begin execution from .text section label D 
@@ -240,7 +272,8 @@ The script is comprised of commands
     state                           print launcher's state (i.e., variables, etc) to stdout
     shutdown                        send shutdown signal to services, exit launcher
 
-The script restore.ussim is very similar to main.ussim, but, rather than a
+The script pipelines/bergamot/restore.ussim is very similar to
+pipelines/bergamot/main.ussim, but, rather than a
 loadbin command, instead features a restore command:
 
     ...
