@@ -2,6 +2,7 @@ import sys
 import argparse
 
 import service
+import toolbox
 import riscv.constants
 import riscv.decode
 
@@ -17,6 +18,7 @@ def do_tick(service, state, results, events):
         state.get('buffer').extend(_bytes)
         service.tx({'info': 'buffer : {}'.format(list(map(lambda x: hex(x), state.get('buffer'))))})
         _decoded = riscv.decode.do_decode(state.get('buffer'), 1) # HACK: hard-coded max-instructions-to-decode of 1
+        for _insn in _decoded: toolbox.report_stats(service, state, 'histo', 'decoded.insn', _insn.get('cmd'))
 #        service.tx({'info': '_decoded : {}'.format(_decoded)})
         _bytes_decoded = sum(map(lambda x: x.get('size'), _decoded))
         state.update({'%pc': riscv.constants.integer_to_list_of_bytes(_bytes_decoded + int.from_bytes(state.get('%pc'), 'little'), 64, 'little')})

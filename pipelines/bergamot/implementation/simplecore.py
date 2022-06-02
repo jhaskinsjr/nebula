@@ -2,6 +2,7 @@ import sys
 import argparse
 
 import service
+import toolbox
 import riscv.constants
 
 
@@ -23,6 +24,7 @@ def do_tick(service, state, results, events):
         state.update({'%jp': riscv.constants.integer_to_list_of_bytes(4 + int.from_bytes(state.get('%jp'), 'little'), 64, 'little')})
         state.update({'%pc': pc})
         state.update({'pending_pc': False})
+        toolbox.report_stats(service, state, 'flat', 'fetches')
     for mem in filter(lambda x: x, map(lambda y: y.get('mem'), results)):
 #        service.tx({'info': 'mem.addr      : {}'.format(mem.get('addr'))})
 #        service.tx({'info': 'pending_fetch : {}'.format(state.get('pending_fetch'))})

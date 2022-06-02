@@ -1,9 +1,9 @@
+import os
 import sys
 import argparse
 
 import service
-
-import os
+import toolbox
 
 def do_tick(service, state, results, events):
     for ev in filter(lambda x: x, map(lambda y: y.get('mem'), events)):
@@ -13,6 +13,7 @@ def do_tick(service, state, results, events):
         _data = ev.get('data')
         if 'poke' == _cmd:
             poke(state, _addr, _size, _data)
+            toolbox.report_stats(service, state, 'histo', 'poke.size', _size)
         elif 'peek' == _cmd:
             service.tx({'result': {
                 'arrival': state.get('config').get('peek_latency_in_cycles') + state.get('cycle'),
@@ -22,6 +23,7 @@ def do_tick(service, state, results, events):
                     'data': peek(state, _addr, _size),
                 }
             }})
+            toolbox.report_stats(service, state, 'histo', 'peek.size', _size)
         else:
             print('ev : {}'.format(ev))
             assert False

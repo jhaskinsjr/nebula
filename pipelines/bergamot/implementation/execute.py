@@ -4,6 +4,7 @@ import functools
 import struct
 
 import service
+import toolbox
 import riscv.execute
 import riscv.syscall.linux
 
@@ -503,7 +504,7 @@ def do_execute(service, state):
             print('do_execute(): @{:8} {:08x} : {}'.format(state.get('cycle'), insn.get('word'), insn.get('cmd')))
         else:
             print('do_execute(): @{:8}     {:04x} : {}'.format(state.get('cycle'), insn.get('word'), insn.get('cmd')))
-        {
+        _f = {
             'LUI': do_lui,
             'AUIPC': do_auipc,
             'JAL': do_jal,
@@ -561,7 +562,9 @@ def do_execute(service, state):
             'BGEU': do_branch,
             'ECALL': do_ecall,
             'FENCE': do_fence,
-        }.get(insn.get('cmd'), do_unimplemented)(service, state, insn)
+        }.get(insn.get('cmd'), do_unimplemented)
+        _f(service, state, insn)
+        toolbox.report_stats(service, state, 'histo', 'category', _f.__name__)
 def do_complete(service, state, insns): # finished the work of the instruction, but will not necessarily be committed
     service.tx({'event': {
         'arrival': 1 + state.get('cycle'),
@@ -569,6 +572,7 @@ def do_complete(service, state, insns): # finished the work of the instruction, 
             'insns': insns,
         },
     }})
+    toolbox.report_stats(service, state, 'flat', 'number_of_completes')
 def do_confirm(service, state, insns): # definitely will commit
     service.tx({'event': {
         'arrival': 1 + state.get('cycle'),
@@ -576,6 +580,7 @@ def do_confirm(service, state, insns): # definitely will commit
             'insns': insns,
         },
     }})
+    toolbox.report_stats(service, state, 'flat', 'number_of_confirms')
 def do_commit(service, state, insns):
     service.tx({'event': {
         'arrival': 1 + state.get('cycle'),
@@ -583,6 +588,7 @@ def do_commit(service, state, insns):
             'insns': insns,
         },
     }})
+    toolbox.report_stats(service, state, 'flat', 'number_of_commits')
 
 def do_tick(service, state, results, events):
     for rs in filter(lambda x: x, map(lambda y: y.get('register'), results)):
