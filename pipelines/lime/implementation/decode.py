@@ -42,6 +42,7 @@ def do_tick(service, state, results, events):
     service.tx({'info': 'state.issued        : {}'.format(state.get('issued'))})
     service.tx({'info': 'state.buffer        : {}'.format(state.get('buffer'))})
     for _insn in riscv.decode.do_decode(state.get('buffer'), state.get('max_instructions_to_decode')):
+        toolbox.report_stats(service, state, 'histo', 'decoded.insn', _insn.get('cmd'))
         if any(map(lambda x: hazard(x, _insn), state.get('issued'))): break
         if _insn.get('rs1'): service.tx({'event': {
             'arrival': 1 + state.get('cycle'),
