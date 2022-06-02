@@ -2,21 +2,9 @@ import sys
 import argparse
 
 import service
+import toolbox
 import riscv.constants
 import riscv.decode
-
-def report_stats(service, state, type, name, data=None):
-    service.tx({'event': {
-        'arrival': 1 + state.get('cycle'),
-        'stats': {
-            **{
-                'service': state.get('service'),
-                'type': type,
-                'name': name,
-            },
-            **({'data': data} if None != data else {}),
-        },
-    }})
 
 def remaining_buffer_availability(): return state.get('config').get('buffer_capacity') - len(state.get('buffer'))
 def hazard(p, c):
@@ -84,7 +72,7 @@ def do_tick(service, state, results, events):
         }})
         state.get('issued').append(_insn)
         for _ in range(_insn.get('size')): state.get('buffer').pop(0)
-        report_stats(service, state, 'histo', 'issued.insn', _insn.get('cmd'))
+        toolbox.report_stats(service, state, 'histo', 'issued.insn', _insn.get('cmd'))
 
 if '__main__' == __name__:
     parser = argparse.ArgumentParser(description='μService-SIMulator: Instruction Decode')

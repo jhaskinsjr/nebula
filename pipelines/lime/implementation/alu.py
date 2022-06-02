@@ -4,21 +4,9 @@ import functools
 import struct
 
 import service
+import toolbox
 import riscv.execute
 import riscv.syscall.linux
-
-def report_stats(service, state, type, name, data=None):
-    service.tx({'event': {
-        'arrival': 1 + state.get('cycle'),
-        'stats': {
-            **{
-                'service': state.get('service'),
-                'type': type,
-                'name': name,
-            },
-            **({'data': data} if None != data else {}),
-        },
-    }})
 
 def do_unimplemented(service, state, insn):
 #    print('Unimplemented: {}'.format(state.get('pending_execute')))
@@ -327,7 +315,7 @@ def do_execute(service, state):
             'FENCE': do_fence,
         }.get(_insn.get('cmd'), do_unimplemented)
         _f(service, state, _insn)
-        report_stats(service, state, 'histo', 'category', _f.__name__)
+        toolbox.report_stats(service, state, 'histo', 'category', _f.__name__)
 
 def do_tick(service, state, results, events):
     for _reg in filter(lambda x: x, map(lambda y: y.get('register'), results)):

@@ -3,20 +3,8 @@ import sys
 import argparse
 
 import service
+import toolbox
 import riscv.constants
-
-def report_stats(service, state, type, name, data=None):
-    service.tx({'event': {
-        'arrival': 1 + state.get('cycle'),
-        'stats': {
-            **{
-                'service': state.get('service'),
-                'type': type,
-                'name': name,
-            },
-            **({'data': data} if None != data else {}),
-        },
-    }})
 
 def do_tick(service, state, results, events):
     for ev in filter(lambda x: x, map(lambda y: y.get('register'), events)):
@@ -28,7 +16,7 @@ def do_tick(service, state, results, events):
             assert isinstance(_data, list)
             if 0 != _name:
                 state.update({'registers': setregister(state.get('registers'), _name, _data)})
-            report_stats(service, state, 'histo', 'set.register', _name)
+            toolbox.report_stats(service, state, 'histo', 'set.register', _name)
         elif 'get' == _cmd:
             assert _name in state.get('registers').keys()
             service.tx({'result': {
@@ -38,7 +26,7 @@ def do_tick(service, state, results, events):
                     'data': getregister(state.get('registers'), _name),
                 }
             }})
-            report_stats(service, state, 'histo', 'get.register', _name)
+            toolbox.report_stats(service, state, 'histo', 'get.register', _name)
         elif 'snapshot' == _cmd:
             fd = os.open(_name, os.O_RDWR)
             os.lseek(fd, _data, os.SEEK_SET)
@@ -49,7 +37,7 @@ def do_tick(service, state, results, events):
                 service.tx({'info': 'snapshot: {} : {}'.format(k, v)})
             os.fsync(fd)
             os.close(fd)
-            report_stats(service, state, 'flat', 'snapshot')
+            toolbox.report_stats(service, state, 'flat', 'snapshot')
         elif 'restore' == _cmd:
             fd = os.open(_name, os.O_RDWR)
             os.lseek(fd, _data, os.SEEK_SET)
@@ -59,7 +47,7 @@ def do_tick(service, state, results, events):
                 state.update({'registers': setregister(state.get('registers'), k, v)})
                 service.tx({'info': 'restore: {} : {}'.format(k, v)})
             os.close(fd)
-            report_stats(service, state, 'flat', 'restore')
+            toolbox.report_stats(service, state, 'flat', 'restore')
         else:
             print('ev   : {}'.format(ev))
             print('_cmd : {}'.format(_cmd))
