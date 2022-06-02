@@ -7,9 +7,11 @@ service implementation/decode.py:localhost
 service implementation/alu.py:localhost
 service implementation/lsu.py:localhost
 service implementation/commit.py:localhost
+service ../../toolbox/stats.py:localhost
 spawn
 config mainmem peek_latency_in_cycles 5 # not super-realistic, but it makes the simulation end sooner
 config decode buffer_capacity 32
+config stats output_filename /tmp/stats.json
 cycle
 loadbin /tmp/mainmem.raw 0x80000000 0x40000000 main # using /tmp/mainmem.raw as the main memory file,
                                                     # set x2 to 0x80000000 and %pc to 0x40000000, then

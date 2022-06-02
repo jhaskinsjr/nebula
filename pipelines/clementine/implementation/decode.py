@@ -2,6 +2,7 @@ import sys
 import argparse
 
 import service
+import toolbox
 import riscv.constants
 import riscv.decode
 
@@ -54,6 +55,7 @@ def do_tick(service, state, results, events):
     service.tx({'info': 'state.decoded       : {}'.format(state.get('decoded'))})
     if not len(state.get('decoded')): return
     for _insn in state.get('decoded'):
+        toolbox.report_stats(service, state, 'histo', 'decoded.insn', _insn.get('cmd'))
         if any(map(lambda x: hazard(x, _insn), state.get('issued'))): break
         if _insn.get('rs1'): service.tx({'event': {
             'arrival': 1 + state.get('cycle'),
@@ -77,6 +79,7 @@ def do_tick(service, state, results, events):
         }})
         state.get('issued').append(_insn)
         for _ in range(_insn.get('size')): state.get('buffer').pop(0)
+        toolbox.report_stats(service, state, 'histo', 'issued.insn', _insn.get('cmd'))
     service.tx({'info': 'state.decoded       : {}'.format(state.get('decoded'))})
     service.tx({'info': 'state.issued        : {}'.format(state.get('issued'))})
     for _insn in filter(lambda x: x in state.get('decoded'), state.get('issued')):

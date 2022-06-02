@@ -4,6 +4,7 @@ import functools
 import struct
 
 import service
+import toolbox
 import riscv.constants
 
 def do_commit(service, state):
@@ -28,6 +29,7 @@ def do_commit(service, state):
                     'iid': _insn.get('iid'),
                 },
             }})
+            toolbox.report_stats(service, state, 'flat', 'flushes')
             continue
         state.update({'flush_until': None})
         service.tx({'info': 'retiring {}'.format(_insn)})
@@ -64,6 +66,7 @@ def do_commit(service, state):
                 'iid': _insn.get('iid'),
             },
         }})
+        toolbox.report_stats(service, state, 'flat', 'retires')
     for _insn in _retire: state.get('pending_commit').remove(_insn)
 
 def do_tick(service, state, results, events):

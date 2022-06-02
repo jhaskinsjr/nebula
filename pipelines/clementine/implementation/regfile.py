@@ -3,6 +3,7 @@ import sys
 import argparse
 
 import service
+import toolbox
 import riscv.constants
 
 def do_tick(service, state, results, events):
@@ -15,6 +16,7 @@ def do_tick(service, state, results, events):
             assert isinstance(_data, list)
             if 0 != _name:
                 state.update({'registers': setregister(state.get('registers'), _name, _data)})
+            toolbox.report_stats(service, state, 'histo', 'set.register', _name)
         elif 'get' == _cmd:
             assert _name in state.get('registers').keys()
             service.tx({'result': {
@@ -23,8 +25,8 @@ def do_tick(service, state, results, events):
                     'name': _name,
                     'data': getregister(state.get('registers'), _name),
                 }
-            }
-        })
+            }})
+            toolbox.report_stats(service, state, 'histo', 'get.register', _name)
         elif 'snapshot' == _cmd:
             fd = os.open(_name, os.O_RDWR)
             os.lseek(fd, _data, os.SEEK_SET)
@@ -35,6 +37,7 @@ def do_tick(service, state, results, events):
                 service.tx({'info': 'snapshot: {} : {}'.format(k, v)})
             os.fsync(fd)
             os.close(fd)
+            toolbox.report_stats(service, state, 'flat', 'snapshot')
         elif 'restore' == _cmd:
             fd = os.open(_name, os.O_RDWR)
             os.lseek(fd, _data, os.SEEK_SET)
@@ -44,6 +47,7 @@ def do_tick(service, state, results, events):
                 state.update({'registers': setregister(state.get('registers'), k, v)})
                 service.tx({'info': 'restore: {} : {}'.format(k, v)})
             os.close(fd)
+            toolbox.report_stats(service, state, 'flat', 'restore')
         else:
             print('ev   : {}'.format(ev))
             print('_cmd : {}'.format(_cmd))

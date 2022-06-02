@@ -2,6 +2,7 @@ import sys
 import argparse
 
 import service
+import toolbox
 import riscv.constants
 
 
@@ -36,7 +37,7 @@ def do_tick(service, state, results, events):
         },
     }})
     state.update({'%jp': riscv.constants.integer_to_list_of_bytes(4 + int.from_bytes(state.get('%jp'), 'little'), 64, 'little')})
-    
+    toolbox.report_stats(service, state, 'flat', 'number_of_fetches')
 
 if '__main__' == __name__:
     parser = argparse.ArgumentParser(description='μService-SIMulator: Simple Core')
