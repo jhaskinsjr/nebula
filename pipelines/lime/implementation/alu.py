@@ -7,6 +7,19 @@ import service
 import riscv.execute
 import riscv.syscall.linux
 
+def report_stats(service, state, type, name, data=None):
+    service.tx({'event': {
+        'arrival': 1 + state.get('cycle'),
+        'stats': {
+            **{
+                'service': state.get('service'),
+                'type': type,
+                'name': name,
+            },
+            **({'data': data} if None != data else {}),
+        },
+    }})
+
 def do_unimplemented(service, state, insn):
 #    print('Unimplemented: {}'.format(state.get('pending_execute')))
     service.tx({'undefined': insn})
@@ -262,7 +275,7 @@ def do_execute(service, state):
             print('do_execute(): @{:8} {:08x} : {}'.format(state.get('cycle'), _insn.get('word'), _insn.get('cmd')))
         else:
             print('do_execute(): @{:8}     {:04x} : {}'.format(state.get('cycle'), _insn.get('word'), _insn.get('cmd')))
-        {
+        _f = {
             'LUI': do_lui,
             'AUIPC': do_auipc,
             'JAL': do_jal,
@@ -312,7 +325,9 @@ def do_execute(service, state):
             'BLTU': do_branch,
             'BGEU': do_branch,
             'FENCE': do_fence,
-        }.get(_insn.get('cmd'), do_unimplemented)(service, state, _insn)
+        }.get(_insn.get('cmd'), do_unimplemented)
+        _f(service, state, _insn)
+        report_stats(service, state, 'histo', 'category', _f.__name__)
 
 def do_tick(service, state, results, events):
     for _reg in filter(lambda x: x, map(lambda y: y.get('register'), results)):

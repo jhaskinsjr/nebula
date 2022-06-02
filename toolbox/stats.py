@@ -3,60 +3,25 @@ import argparse
 
 import service
 
-import os
-
-def report_stats(service, state, type, name, data=None):
-    service.tx({'event': {
-        'arrival': 1 + state.get('cycle'),
-        'stats': {
-            **{
-                'service': state.get('service'),
-                'type': type,
-                'name': name,
-            },
-            **({'data': data} if None != data else {}),
-        },
-    }})
+import json
 
 def do_tick(service, state, results, events):
-    for ev in filter(lambda x: x, map(lambda y: y.get('mem'), events)):
-        _cmd = ev.get('cmd')
-        _addr = ev.get('addr')
-        _size = ev.get('size')
-        _data = ev.get('data')
-        if 'poke' == _cmd:
-            poke(state, _addr, _size, _data)
-            report_stats(service, state, 'histo', 'poke.size', _size)
-        elif 'peek' == _cmd:
-            service.tx({'result': {
-                'arrival': state.get('config').get('peek_latency_in_cycles') + state.get('cycle'),
-                'mem': {
-                    'addr': _addr,
-                    'size': _size,
-                    'data': peek(state, _addr, _size),
-                }
-            }})
-            report_stats(service, state, 'histo', 'peek.size', _size)
+    for _stats in map(lambda y: y.get('stats'), filter(lambda x: x.get('stats'), events)):
+        service.tx({'info': '_stats : {}'.format(_stats)})
+        _s = _stats.get('service')
+        _t = _stats.get('type')
+        _n = _stats.get('name')
+        _d = _stats.get('data')
+        if not _s in state.get('stats').keys(): state.get('stats').update({_s: {}})
+        if not _n in state.get('stats').get(_s): state.get('stats').get(_s).update({_n : ({} if 'histo' == _t else 0)})
+        if 'histo' == _t:
+            assert _d != None, 'Histogram-type stat {}:{} requires "data" field ({})'.format(_s, _n, _stats)
+            state.get('stats').get(_s).get(_n).update({_d: 1 + state.get('stats').get(_s).get(_n).get(_d, 0)})
         else:
-            print('ev : {}'.format(ev))
-            assert False
-
-def poke(state, addr, size, data):
-    # data : list of unsigned char, e.g., to make an integer, X, into a list
-    # of N little-endian-formatted bytes -> list(X.to_bytes(N, 'little'))
-    _fd = state.get('fd')
-    os.lseek(_fd, addr, os.SEEK_SET)
-    os.write(_fd, bytes(data))
-#    os.write(_fd, data.to_bytes(size, 'little'))
-def peek(state, addr, size):
-    # return : list of unsigned char, e.g., to make an 8-byte quadword from
-    # a list, X, of N bytes -> int.from_bytes(X, 'little')
-    _fd = state.get('fd')
-    os.lseek(_fd, addr, os.SEEK_SET)
-    return list(os.read(_fd, size))
+            state.get('stats').get(_s).update({_n: 1 + state.get('stats').get(_s).get(_n)})
 
 if '__main__' == __name__:
-    parser = argparse.ArgumentParser(description='μService-SIMulator: Main Memory')
+    parser = argparse.ArgumentParser(description='μService-SIMulator: Statistics')
     parser.add_argument('--debug', '-D', dest='debug', action='store_true', help='print debug messages')
     parser.add_argument('--quiet', '-Q', dest='quiet', action='store_true', help='suppress status messages')
     parser.add_argument('launcher', help='host:port of μService-SIMulator launcher')
@@ -67,21 +32,24 @@ if '__main__' == __name__:
     _launcher['port'] = int(_launcher['port'])
     if args.debug: print('_launcher : {}'.format(_launcher))
     state = {
-        'service': 'mainmem',
+        'service': 'stats',
         'cycle': 0,
         'active': True,
         'running': False,
         'ack': True,
-        'fd': os.open('/tmp/mainmem.raw', os.O_RDWR|os.O_CREAT),
+        'stats': {
+            'message_size': {},
+        },
         'config': {
-            'peek_latency_in_cycles': 500,
+            'output_filename': None,
         },
     }
-    _service = service.Service(state.get('service_name'), _launcher.get('host'), _launcher.get('port'))
-    os.ftruncate(state.get('fd'), 2**32) # HACK: hard-wired memory is dumb, but I don't want to focus on that right now
+    _service = service.Service(state.get('service'), _launcher.get('host'), _launcher.get('port'))
     while state.get('active'):
         state.update({'ack': True})
         msg = _service.rx()
+        _tmp = json.dumps(msg)
+        state.get('stats').get('message_size').update({len(_tmp): 1 + state.get('stats').get('message_size').get(len(_tmp), 0)})
 #        _service.tx({'info': {'msg': msg, 'msg.size()': len(msg)}})
 #        print('msg : {}'.format(msg))
         for k, v in msg.items():
@@ -105,4 +73,8 @@ if '__main__' == __name__:
                 do_tick(_service, state, _results, _events)
         if state.get('ack') and state.get('running'): _service.tx({'ack': {'cycle': state.get('cycle')}})
     if not args.quiet: print('Shutting down {}...'.format(sys.argv[0]))
-    os.close(state.get('fd'))
+#    for k, v in sorted(state.get('histo').items()):
+#        print('{:4} : {}'.format(k, v))
+    _output_filename = state.get('config').get('output_filename')
+    fp = (sys.stdout if not _output_filename else open(_output_filename, 'w'))
+    json.dump(state.get('stats'), fp)

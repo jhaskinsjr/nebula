@@ -307,7 +307,8 @@ def add_service(services, debug, port, s):
         )
     )
 def spawn(services, args):
-    for s in args.services: add_service(services, args.debug, args.port, s)
+    if args.services:
+        for s in args.services: add_service(services, args.debug, args.port, s)
     threading.Thread(target=acceptor, daemon=True).start()
     [th.start() for th in services]
     while len(services) > len(state.get('connections')): time.sleep(1)

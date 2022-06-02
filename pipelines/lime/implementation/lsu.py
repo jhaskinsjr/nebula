@@ -8,6 +8,19 @@ import components.simplecache
 import riscv.execute
 import riscv.syscall.linux
 
+def report_stats(service, state, type, name, data=None):
+    service.tx({'event': {
+        'arrival': 1 + state.get('cycle'),
+        'stats': {
+            **{
+                'service': state.get('service'),
+                'type': type,
+                'name': name,
+            },
+            **({'data': data} if None != data else {}),
+        },
+    }})
+
 def fetch_block(service, state, addr):
     _blockaddr = state.get('l1dc').blockaddr(addr)
     _blocksize = state.get('l1dc').nbytesperblock
@@ -20,6 +33,7 @@ def fetch_block(service, state, addr):
             'size': _blocksize,
         },
     }})
+    report_stats(service, state, 'flat', 'l1dc.misses')
 def do_l1dc(service, state, addr, size, data=None):
     service.tx({'info': 'addr : {}'.format(addr)})
     if state.get('l1dc').fits(addr, size):
@@ -82,6 +96,7 @@ def do_l1dc(service, state, addr, size, data=None):
         }})
     state.get('executing').pop(0)
     if len(state.get('pending_fetch')): state.get('pending_fetch').pop(0)
+    report_stats(service, state, 'flat', 'l1dc.accesses')
 
 def do_unimplemented(service, state, insn):
 #    print('Unimplemented: {}'.format(state.get('insn')))

@@ -6,6 +6,19 @@ import struct
 import service
 import riscv.constants
 
+def report_stats(service, state, type, name, data=None):
+    service.tx({'event': {
+        'arrival': 1 + state.get('cycle'),
+        'stats': {
+            **{
+                'service': state.get('service'),
+                'type': type,
+                'name': name,
+            },
+            **({'data': data} if None != data else {}),
+        },
+    }})
+
 def do_commit(service, state):
     service.tx({'info': 'pending_commit : [{}]'.format(', '.join(map(
         lambda x: '({}{}, {}, {})'.format(
@@ -28,6 +41,7 @@ def do_commit(service, state):
                     'iid': _insn.get('iid'),
                 },
             }})
+            report_stats(service, state, 'flat', 'flushes')
             continue
         state.update({'flush_until': None})
         service.tx({'info': 'retiring {}'.format(_insn)})
@@ -64,6 +78,7 @@ def do_commit(service, state):
                 'iid': _insn.get('iid'),
             },
         }})
+        report_stats(service, state, 'flat', 'retires')
     for _insn in _retire: state.get('pending_commit').remove(_insn)
 
 def do_tick(service, state, results, events):

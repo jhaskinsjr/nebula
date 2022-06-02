@@ -5,6 +5,19 @@ import service
 import components.simplecache
 import riscv.constants
 
+def report_stats(service, state, type, name, data=None):
+    service.tx({'event': {
+        'arrival': 1 + state.get('cycle'),
+        'stats': {
+            **{
+                'service': state.get('service'),
+                'type': type,
+                'name': name,
+            },
+            **({'data': data} if None != data else {}),
+        },
+    }})
+
 def fetch_block(service, state, jp):
     _blockaddr = state.get('l1ic').blockaddr(jp)
     _blocksize = state.get('l1ic').nbytesperblock
@@ -17,6 +30,7 @@ def fetch_block(service, state, jp):
             'size': _blocksize,
         },
     }})
+    report_stats(service, state, 'flat', 'l1ic.misses')
 def do_l1ic(service, state):
     _jp = int.from_bytes(state.get('%jp'), 'little')
     service.tx({'info': '_jp : {}'.format(_jp)})
@@ -55,6 +69,7 @@ def do_l1ic(service, state):
         },
     }})
     state.update({'%jp': riscv.constants.integer_to_list_of_bytes(4 + _jp, 64, 'little')})
+    report_stats(service, state, 'flat', 'l1ic.accesses')
 def do_tick(service, state, results, events):
     for _reg in map(lambda y: y.get('register'), filter(lambda x: x.get('register'), results)):
         if '%pc' != _reg.get('name'): continue
