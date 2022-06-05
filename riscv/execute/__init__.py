@@ -274,6 +274,51 @@ def subw(rs1, rs2):
         64,
         'little',
     )
+def mulw(rs1, rs2):
+    # Implementation
+    # x[rd] = sext((x[rs1] × x[rs2])[31:0])
+    # see: https://msyksphinz-self.github.io/riscv-isadoc/html/rv64m.html#mulw
+    return riscv.constants.integer_to_list_of_bytes(
+        int.from_bytes(((int.from_bytes(rs1, 'little', signed=True) * int.from_bytes(rs2, 'little', signed=True)) & ((2**64) - 1)).to_bytes(8, 'little')[:4], 'little', signed=True),
+        64,
+        'little',
+    )
+def divw(rs1, rs2):
+    # Implementation
+    # x[rd] = sext((x[rs1] /s x[rs2])[31:0])
+    # see: https://msyksphinz-self.github.io/riscv-isadoc/html/rv64m.html#mulw
+    return riscv.constants.integer_to_list_of_bytes(
+        int.from_bytes(((int.from_bytes(rs1, 'little', signed=True) // int.from_bytes(rs2, 'little', signed=True)) & ((2**64) - 1)).to_bytes(8, 'little')[:4], 'little', signed=True),
+        64,
+        'little',
+    )
+def divuw(rs1, rs2):
+    # Implementation
+    # x[rd] = sext((x[rs1] /s x[rs2])[31:0])
+    # see: https://msyksphinz-self.github.io/riscv-isadoc/html/rv64m.html#mulw
+    return riscv.constants.integer_to_list_of_bytes(
+        int.from_bytes(((int.from_bytes(rs1, 'little') // int.from_bytes(rs2, 'little')) & ((2**64) - 1)).to_bytes(8, 'little')[:4], 'little', signed=True),
+        64,
+        'little',
+    )
+def remw(rs1, rs2):
+    # Implementation
+    # x[rd] = sext((x[rs1] /s x[rs2])[31:0])
+    # see: https://msyksphinz-self.github.io/riscv-isadoc/html/rv64m.html#mulw
+    return riscv.constants.integer_to_list_of_bytes(
+        int.from_bytes(((int.from_bytes(rs1, 'little', signed=True) % int.from_bytes(rs2, 'little', signed=True)) & ((2**64) - 1)).to_bytes(8, 'little')[:4], 'little', signed=True),
+        64,
+        'little',
+    )
+def remuw(rs1, rs2):
+    # Implementation
+    # x[rd] = sext((x[rs1] /s x[rs2])[31:0])
+    # see: https://msyksphinz-self.github.io/riscv-isadoc/html/rv64m.html#mulw
+    return riscv.constants.integer_to_list_of_bytes(
+        int.from_bytes(((int.from_bytes(rs1, 'little') % int.from_bytes(rs2, 'little')) & ((2**64) - 1)).to_bytes(8, 'little')[:4], 'little', signed=True),
+        64,
+        'little',
+    )
 def beq(pc, rs1, rs2, imm, sz):
     return (
         (riscv.constants.integer_to_list_of_bytes(imm + int.from_bytes(pc, 'little'), 64, 'little'), True)

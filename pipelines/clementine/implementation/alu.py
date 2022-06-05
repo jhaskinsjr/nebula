@@ -153,6 +153,11 @@ def do_rtype(service, state, insn):
         'DIVU': riscv.execute.divu,
         'REM': riscv.execute.rem,
         'REMU': riscv.execute.remu,
+        'MULW': riscv.execute.mulw,
+        'DIVW': riscv.execute.divw,
+        'DIVUW': riscv.execute.divuw,
+        'REMW': riscv.execute.remw,
+        'REMUW': riscv.execute.remuw,
     }.get(insn.get('cmd'))(_rs1, _rs2)
     service.tx({'event': {
         'arrival': 2 + state.get('cycle'),
@@ -288,6 +293,11 @@ def do_execute(service, state):
             'DIVU': do_rtype,
             'REM': do_rtype,
             'REMU': do_rtype,
+            'MULW': do_rtype,
+            'DIVW': do_rtype,
+            'DIVUW': do_rtype,
+            'REMW': do_rtype,
+            'REMUW': do_rtype,
             'LD': do_load,
             'LW': do_load,
             'LH': do_load,

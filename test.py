@@ -36,6 +36,11 @@ class Harness:
             'addiw': self.addiw,
             'add': self.add,
             'sub': self.sub,
+            'mulw': self.mulw,
+            'divw': self.divw,
+            'divuw': self.divuw,
+            'remw': self.remw,
+            'remuw': self.remuw,
             'and': self.test_and,
             'or': self.test_or,
             'xor': self.test_xor,
@@ -398,6 +403,21 @@ class Harness:
         _correct_answer = _const_0 - _const_1
         _correct_answer = list(_correct_answer.to_bytes(8, 'little', signed=True))
         return _correct_answer, _assembly
+    def mulw(self):
+        # TODO: implement test
+        pass
+    def divw(self):
+        # TODO: implement test
+        pass
+    def divuw(self):
+        # TODO: implement test
+        pass
+    def remw(self):
+        # TODO: implement test
+        pass
+    def remuw(self):
+        # TODO: implement test
+        pass
     def test_and(self):
         _const_0 = random.randint(0, 2**20 - 1)
         _assembly  = ['lui x29, {}'.format(_const_0)]
@@ -566,10 +586,16 @@ if __name__ == '__main__':
 #    _harness.generate(args, 'addiw')
 #    _harness.generate(args, 'add')
 #    _harness.generate(args, 'sub')
+# TODO: actually implement MULW, DIVW, DIVUW, REMW, REMUW tests
+#    _harness.generate(args, 'mulw')
+#    _harness.generate(args, 'divw')
+#    _harness.generate(args, 'divuw')
+#    _harness.generate(args, 'remw')
+#    _harness.generate(args, 'remuw')
 #    _harness.generate(args, 'and')
 #    _harness.generate(args, 'or')
 #    _harness.generate(args, 'xor')
-    _harness.generate(args, 'slti')
-    _harness.generate(args, 'sltiu')
+#    _harness.generate(args, 'slti')
+#    _harness.generate(args, 'sltiu')
 #    _harness.generate(args, 'lui')
 #    _harness.generate(args, 'auipc')

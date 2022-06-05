@@ -539,6 +539,11 @@ def r_type(word):
         (0b000_0001, 0b101, 0b011_0011): 'DIVU',
         (0b000_0001, 0b110, 0b011_0011): 'REM',
         (0b000_0001, 0b111, 0b011_0011): 'REMU',
+        (0b000_0001, 0b000, 0b011_1011): 'MULW',
+        (0b000_0001, 0b100, 0b011_1011): 'DIVW',
+        (0b000_0001, 0b101, 0b011_1011): 'DIVUW',
+        (0b000_0001, 0b110, 0b011_1011): 'REMW',
+        (0b000_0001, 0b111, 0b011_1011): 'REMUW',
     }
     _cmd = _cmds.get((uncompressed_funct7(word), uncompressed_funct3(word), uncompressed_opcode(word)), 'Undefined')
     return {
