@@ -16,16 +16,19 @@ def do_tick(service, state, results, events):
         _pc = _reg.get('data')
         service.tx({'info': '_pc           : {}'.format(_pc)})
         service.tx({'info': 'state.get(pc) : {}'.format(state.get('%pc'))})
-        if _pc != state.get('%pc'):
-            state.get('pending_fetch').clear()
-            state.get('buffer').clear()
-            state.get('decoded').clear()
-            state.update({'%pc': _pc})
-            state.update({'last_flushed': state.get('cycle')})
+        state.get('pending_fetch').clear()
+        state.update({'drop_until': int.from_bytes(_pc, 'little')})
+        state.get('buffer').clear()
+        state.get('decoded').clear()
     for _mem in map(lambda y: y.get('mem'), filter(lambda x: x.get('mem'), results)):
         _data = _mem.pop('data')
         if _mem not in state.get('pending_fetch'): continue
         state.get('pending_fetch').remove(_mem)
+        if state.get('drop_until'):
+            if _mem.get('addr') != state.get('drop_until'): continue
+            state.update({'drop_until': None})
+            state.update({'%pc': list(_mem.get('addr').to_bytes(8, 'little'))})
+        service.tx({'info': '_mem : {}'.format(_mem)})
         state.get('buffer').extend(_data)
         service.tx({'info': 'buffer : {}'.format(list(map(lambda x: hex(x), state.get('buffer'))))})
     for _flush in map(lambda y: y.get('flush'), filter(lambda x: x.get('flush'), results)):
@@ -37,7 +40,6 @@ def do_tick(service, state, results, events):
         assert state.get('issued')[0].get('iid') == _retire.get('iid')
         state.get('issued').pop(0)
     for _dec in map(lambda y: y.get('decode'), filter(lambda x: x.get('decode'), events)):
-        if state.get('last_flushed') == state.get('cycle') and _dec.get('addr') != int.from_bytes(state.get('%pc'), 'little'): continue
         state.get('pending_fetch').append(_dec)
     service.tx({'info': 'max - len(decoded)  : {}'.format(state.get('max_instructions_to_decode') - len(state.get('decoded')))})
     for _insn in riscv.decode.do_decode(state.get('buffer'), state.get('max_instructions_to_decode') - len(state.get('decoded'))):
@@ -104,10 +106,10 @@ if '__main__' == __name__:
         '%pc': None,
         'ack': True,
         'buffer': [],
+        'drop_until': None,
         'pending_fetch': [],
         'decoded': [],
         'issued': [],
-        'last_flushed': None,
         'iid': 0,
         'max_instructions_to_decode': 1, # HACK: hard-coded max-instructions-to-decode of 1
         'config': {
