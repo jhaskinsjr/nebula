@@ -12,7 +12,7 @@ def fetch_block(service, state, jp):
     state.get('pending_fetch').append(_blockaddr)
     service.tx({'event': {
         'arrival': 1 + state.get('cycle'),
-        'mem': {
+        'l2': {
             'cmd': 'peek',
             'addr': _blockaddr,
             'size': _blocksize,

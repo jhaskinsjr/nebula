@@ -70,7 +70,7 @@ def do_commit(service, state):
     for _insn in _retire: state.get('pending_commit').remove(_insn)
 
 def do_tick(service, state, results, events):
-    for _mem in map(lambda y: y.get('mem'), filter(lambda x: x.get('mem'), results)):
+    for _mem in map(lambda y: y.get('mem'), filter(lambda x: x.get('mem'), results)): # TODO: 'mem' -> 'l1dc'
         service.tx({'info': '_mem : {}'.format(_mem)})
         _new_insn = None
         _old_insn = None
