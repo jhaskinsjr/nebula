@@ -24,6 +24,8 @@ def fetch_block(service, state, addr):
     toolbox.report_stats(service, state, 'flat', 'l1dc.misses')
 def do_l1dc(service, state, addr, size, data=None):
     service.tx({'info': 'addr : {}'.format(addr)})
+    _ante = None
+    _post = None
     if state.get('l1dc').fits(addr, size):
         _data = state.get('l1dc').peek(addr, size)
 #        service.tx({'info': '_data : {}'.format(_data)})
@@ -61,8 +63,12 @@ def do_l1dc(service, state, addr, size, data=None):
                 'size': size,
             },
         }})
-        # TODO: Should _ante and _post be poke()'d into L1DC separately?
-        state.get('l1dc').poke(addr, data)
+        if _ante:
+            assert _post
+            state.get('l1dc').poke(addr, _ante)
+            state.get('l1dc').poke(addr + size, _post)
+        else:
+            state.get('l1dc').poke(addr, data)
         # writethrough
         service.tx({'event': {
             'arrival': 1 + state.get('cycle'),
