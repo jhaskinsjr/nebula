@@ -56,7 +56,7 @@ def do_l2(service, state, addr, size, data=None):
         # POKE
         service.tx({'result': {
             'arrival': state.get('config').get('l2.hitlatency') + state.get('cycle'),
-            'mem': {
+            'l2': {
                 'addr': addr,
                 'size': size,
             },
@@ -77,7 +77,7 @@ def do_l2(service, state, addr, size, data=None):
         # PEEK
         service.tx({'result': {
             'arrival': state.get('config').get('l2.hitlatency') + state.get('cycle'), # must not arrive in commit the same cycle as the LOAD instruction
-            'mem': {
+            'l2': {
                 'addr': addr,
                 'size': size,
                 'data': _data,
@@ -99,7 +99,7 @@ def do_tick(service, state, results, events):
         state.get('executing').append(ev)
     if len(state.get('executing')):
         _op = state.get('executing')[0] # forcing single outstanding operation for now
-#        _cmd = _op.get('cmd') # NOTE: assumed to be a poke if message contains a payload (i.e., _data != None)
+        # NOTE: _op.get('cmd') assumed to be 'poke' if message contains a payload (i.e., _op.get('data') != None)
         _addr = _op.get('addr')
         _size = _op.get('size')
         _data = _op.get('data')

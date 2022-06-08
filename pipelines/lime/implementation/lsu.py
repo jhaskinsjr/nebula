@@ -56,7 +56,7 @@ def do_l1dc(service, state, addr, size, data=None):
         # STORE
         service.tx({'result': {
             'arrival': 2 + state.get('cycle'),
-            'mem': { # TODO: change 'mem' -> 'l1dc'
+            'l1dc': {
                 'addr': addr,
                 'size': size,
             },
@@ -77,7 +77,7 @@ def do_l1dc(service, state, addr, size, data=None):
         # LOAD
         service.tx({'result': {
             'arrival': 2 + state.get('cycle'), # must not arrive in commit the same cycle as the LOAD instruction
-            'mem': { # TODO: change 'mem' -> 'l1dc'
+            'l1dc': {
                 'addr': addr,
                 'size': size,
                 'data': _data,
@@ -128,13 +128,13 @@ def do_execute(service, state):
     }.get(_insn.get('cmd'), do_unimplemented)(service, state, _insn)
 
 def do_tick(service, state, results, events):
-    for _mem in filter(lambda x: x, map(lambda y: y.get('mem'), results)):
-        _addr = _mem.get('addr')
-        if _addr == state.get('operands').get('mem'):
-            state.get('operands').update({'mem': _mem.get('data')})
+    for _l2 in filter(lambda x: x, map(lambda y: y.get('l2'), results)):
+        _addr = _l2.get('addr')
+        if _addr == state.get('operands').get('l2'):
+            state.get('operands').update({'l2': _l2.get('data')})
         elif _addr in state.get('pending_fetch'):
-            service.tx({'info': '_mem : {}'.format(_mem)})
-            state.get('l1dc').poke(_addr, _mem.get('data'))
+            service.tx({'info': '_l2 : {}'.format(_l2)})
+            state.get('l1dc').poke(_addr, _l2.get('data'))
     for _insn in map(lambda y: y.get('lsu'), filter(lambda x: x.get('lsu'), events)):
         state.get('pending_execute').append(_insn.get('insn'))
         # TODO: should this commit event be done in alu like everything else?

@@ -70,16 +70,16 @@ def do_commit(service, state):
     for _insn in _retire: state.get('pending_commit').remove(_insn)
 
 def do_tick(service, state, results, events):
-    for _mem in map(lambda y: y.get('mem'), filter(lambda x: x.get('mem'), results)): # TODO: 'mem' -> 'l1dc'
-        service.tx({'info': '_mem : {}'.format(_mem)})
+    for _l1dc in map(lambda y: y.get('l1dc'), filter(lambda x: x.get('l1dc'), results)):
+        service.tx({'info': '_l1dc : {}'.format(_l1dc)})
         _new_insn = None
         _old_insn = None
-        if 'data' in _mem.keys():
+        if 'data' in _l1dc.keys():
             for _insn in filter(lambda a: a.get('cmd') in riscv.constants.LOADS, state.get('pending_commit')):
                 assert _insn.get('operands')
-                if _insn.get('operands').get('addr') != _mem.get('addr'): continue
+                if _insn.get('operands').get('addr') != _l1dc.get('addr'): continue
                 service.tx({'info': '_insn : {}'.format(_insn)})
-                _peeked  = _mem.get('data')
+                _peeked  = _l1dc.get('data')
                 _peeked += [-1] * (8 - len(_peeked))
                 _result = { # HACK: This is 100% little-endian-specific
                     'LD': _peeked,
@@ -100,7 +100,7 @@ def do_tick(service, state, results, events):
         else:
             for _insn in filter(lambda a: a.get('cmd') in riscv.constants.STORES, state.get('pending_commit')):
                 assert _insn.get('operands')
-                if _insn.get('operands').get('addr') != _mem.get('addr'): continue
+                if _insn.get('operands').get('addr') != _l1dc.get('addr'): continue
                 service.tx({'info': '_insn : {}'.format(_insn)})
                 _old_insn = _insn
                 _new_insn = {

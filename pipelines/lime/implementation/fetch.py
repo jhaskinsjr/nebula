@@ -68,12 +68,12 @@ def do_tick(service, state, results, events):
         state.update({'%jp': _pc})
     for _decode_buffer_available in map(lambda y: y.get('decode.buffer_available'), filter(lambda x: x.get('decode.buffer_available'), results)):
         state.update({'decode.buffer_available': _decode_buffer_available})
-    for _mem in map(lambda y: y.get('mem'), filter(lambda x: x.get('mem'), results)):
-        _addr = _mem.get('addr')
+    for _l2 in map(lambda y: y.get('l2'), filter(lambda x: x.get('l2'), results)):
+        _addr = _l2.get('addr')
         if _addr not in state.get('pending_fetch'): continue
-        service.tx({'info': '_mem : {}'.format(_mem)})
+        service.tx({'info': '_l2 : {}'.format(_l2)})
         state.get('pending_fetch').remove(_addr)
-        state.get('l1ic').poke(_addr, _mem.get('data'))
+        state.get('l1ic').poke(_addr, _l2.get('data'))
     service.tx({'info': 'decode.buffer_available : {}'.format(state.get('decode.buffer_available'))})
     service.tx({'info': 'fetch_size              : {}'.format(state.get('fetch_size'))})
     if state.get('decode.buffer_available') <= state.get('fetch_size'): return

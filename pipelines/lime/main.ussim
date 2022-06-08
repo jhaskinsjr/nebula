@@ -10,7 +10,7 @@ service implementation/commit.py:localhost
 service implementation/l2.py:localhost
 service ../../toolbox/stats.py:localhost
 spawn
-config mainmem peek_latency_in_cycles 5 # not super-realistic, but it makes the simulation end sooner
+config mainmem peek_latency_in_cycles 25
 config fetch l1ic.nsets 16
 config fetch l1ic.nways 1
 config fetch l1ic.nbytesperblock 8
@@ -23,6 +23,10 @@ config l2 l2.nways 8
 config l2 l2.nbytesperblock 32
 config l2 l2.hitlatency 5
 config stats output_filename /tmp/stats.json
+# Memory hierarhchy peek latencies...
+# - L1 peek-hit latency: 5**0 cycles
+# - L2 peek-hit latency: 5**1 cycles
+# - MM peek     latency: 5**2 cycles
 cycle
 loadbin /tmp/mainmem.raw 0x80000000 0x40000000 main # using /tmp/mainmem.raw as the main memory file,
                                                     # set x2 to 0x80000000 and %pc to 0x40000000, then
