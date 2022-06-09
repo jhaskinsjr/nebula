@@ -1,3 +1,5 @@
+// return the sum of the numbers on the command line
+
 #include <stdio.h>
 
 #include "basics.h"
