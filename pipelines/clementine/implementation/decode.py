@@ -31,13 +31,11 @@ def do_tick(service, state, results, events):
         service.tx({'info': '_mem : {}'.format(_mem)})
         state.get('buffer').extend(_data)
         service.tx({'info': 'buffer : {}'.format(list(map(lambda x: hex(x), state.get('buffer'))))})
-    for _flush in map(lambda y: y.get('flush'), filter(lambda x: x.get('flush'), results)):
-        service.tx({'info': '_flush : {}'.format(_flush)})
-        assert state.get('issued')[0].get('iid') == _flush.get('iid')
-        state.get('issued').pop(0)
-    for _retire in map(lambda y: y.get('retire'), filter(lambda x: x.get('retire'), results)):
-        service.tx({'info': '_retire : {}'.format(_retire)})
-        assert state.get('issued')[0].get('iid') == _retire.get('iid')
+    for _flush, _retire in map(lambda y: (y.get('flush'), y.get('retire')), filter(lambda x: x.get('flush') or x.get('retire'), results)):
+        if _flush: service.tx({'info': '_flush : {}'.format(_flush)})
+        if _retire: service.tx({'info': '_retire : {}'.format(_retire)})
+        _commit = (_flush if _flush else _retire)
+        assert state.get('issued')[0].get('iid') == _commit.get('iid')
         state.get('issued').pop(0)
     for _dec in map(lambda y: y.get('decode'), filter(lambda x: x.get('decode'), events)):
         state.get('pending_fetch').append(_dec)
