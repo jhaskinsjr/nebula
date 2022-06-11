@@ -16,7 +16,6 @@ def do_tick(service, state, results, events):
         _pc = _reg.get('data')
         service.tx({'info': '_pc           : {}'.format(_pc)})
         service.tx({'info': 'state.get(pc) : {}'.format(state.get('%pc'))})
-        state.get('pending_fetch').clear()
         state.update({'drop_until': int.from_bytes(_pc, 'little')})
         state.get('buffer').clear()
         state.get('decoded').clear()
