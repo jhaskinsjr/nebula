@@ -7,7 +7,7 @@ import riscv.constants
 import riscv.decode
 
 def remaining_buffer_availability():
-    return state.get('config').get('buffer_capacity') - sum(map(lambda x: x.get('size'), state.get('pending_fetch')))
+    return state.get('config').get('buffer_capacity') - len(state.get('buffer')) - sum(map(lambda x: x.get('size'), state.get('pending_fetch')))
 def hazard(p, c):
     return 'rd' in p.keys() and (('rs1' in c.keys() and p.get('rd') == c.get('rs1')) or ('rs2' in c.keys() and p.get('rd') == c.get('rs2')))
 def do_tick(service, state, results, events):
