@@ -18,7 +18,9 @@ def do_commit(service, state):
         state.get('pending_commit')
     )))})
     _retire = []
+    service.tx({'info': 'pending_commut : {}'.format(state.get('pending_commit'))})
     for _insn in state.get('pending_commit'):
+        service.tx({'info': '_insn : {}'.format(_insn)})
         if not any(map(lambda x: x in _insn.keys(), ['next_pc', 'ret_pc', 'result'])): break
         _retire.append(_insn)
         if state.get('flush_until') and state.get('flush_until') != _insn.get('%pc'):
@@ -72,13 +74,11 @@ def do_commit(service, state):
 def do_tick(service, state, results, events):
     for _mem in map(lambda y: y.get('mem'), filter(lambda x: x.get('mem'), results)):
         service.tx({'info': '_mem : {}'.format(_mem)})
-        _new_insn = None
-        _old_insn = None
         if 'data' in _mem.keys():
             for _insn in filter(lambda a: a.get('cmd') in riscv.constants.LOADS, state.get('pending_commit')):
                 assert _insn.get('operands')
                 if _insn.get('operands').get('addr') != _mem.get('addr'): continue
-                service.tx({'info': '_insn : {}'.format(_insn)})
+                service.tx({'info': '(LOAD)  _insn : {}'.format(_insn)})
                 _peeked  = _mem.get('data')
                 _peeked += [-1] * (8 - len(_peeked))
                 _result = { # HACK: This is 100% little-endian-specific
@@ -90,8 +90,8 @@ def do_tick(service, state, results, events):
                     'LHU': _peeked[:2] + [0] * 6,
                     'LBU': _peeked[:1] + [0] * 7,
                 }.get(_insn.get('cmd'))
-                _old_insn = _insn
-                _new_insn = {
+                _index = state.get('pending_commit').index(_insn)
+                state.get('pending_commit')[_index] = {
                     **_insn,
                     **{
                         'result': _result,
@@ -101,17 +101,14 @@ def do_tick(service, state, results, events):
             for _insn in filter(lambda a: a.get('cmd') in riscv.constants.STORES, state.get('pending_commit')):
                 assert _insn.get('operands')
                 if _insn.get('operands').get('addr') != _mem.get('addr'): continue
-                service.tx({'info': '_insn : {}'.format(_insn)})
-                _old_insn = _insn
-                _new_insn = {
+                service.tx({'info': '(STORE) _insn : {}'.format(_insn)})
+                _index = state.get('pending_commit').index(_insn)
+                state.get('pending_commit')[_index] = {
                     **_insn,
                     **{
                         'result': None,
                     },
                 }
-        if _new_insn and _old_insn:
-            state.get('pending_commit').remove(_old_insn)
-            state.get('pending_commit').append(_new_insn)
     for _commit in map(lambda y: y.get('commit'), filter(lambda x: x.get('commit'), events)):
         state.get('pending_commit').append(_commit.get('insn'))
     state.update({'pending_commit': sorted(state.get('pending_commit'), key=lambda x: x.get('iid'))})
