@@ -72,8 +72,8 @@ def do_commit(service, state):
 def do_tick(service, state, results, events):
     for _l1dc in map(lambda y: y.get('l1dc'), filter(lambda x: x.get('l1dc'), results)):
         service.tx({'info': '_l1dc : {}'.format(_l1dc)})
-        _new_insn = None
-        _old_insn = None
+#        _new_insn = None
+#        _old_insn = None
         if 'data' in _l1dc.keys():
             for _insn in filter(lambda a: a.get('cmd') in riscv.constants.LOADS, state.get('pending_commit')):
                 assert _insn.get('operands')
@@ -90,8 +90,15 @@ def do_tick(service, state, results, events):
                     'LHU': _peeked[:2] + [0] * 6,
                     'LBU': _peeked[:1] + [0] * 7,
                 }.get(_insn.get('cmd'))
-                _old_insn = _insn
-                _new_insn = {
+#                _old_insn = _insn
+#                _new_insn = {
+#                    **_insn,
+#                    **{
+#                        'result': _result,
+#                    },
+#                }
+                _index = state.get('pending_commit').index(_insn)
+                state.get('pending_commit')[_index] = {
                     **_insn,
                     **{
                         'result': _result,
@@ -102,16 +109,23 @@ def do_tick(service, state, results, events):
                 assert _insn.get('operands')
                 if _insn.get('operands').get('addr') != _l1dc.get('addr'): continue
                 service.tx({'info': '_insn : {}'.format(_insn)})
-                _old_insn = _insn
-                _new_insn = {
+#                _old_insn = _insn
+#                _new_insn = {
+#                    **_insn,
+#                    **{
+#                        'result': None,
+#                    },
+#                }
+                _index = state.get('pending_commit').index(_insn)
+                state.get('pending_commit')[_index] = {
                     **_insn,
                     **{
                         'result': None,
                     },
                 }
-        if _new_insn and _old_insn:
-            state.get('pending_commit').remove(_old_insn)
-            state.get('pending_commit').append(_new_insn)
+#        if _new_insn and _old_insn:
+#            state.get('pending_commit').remove(_old_insn)
+#            state.get('pending_commit').append(_new_insn)
     for _commit in map(lambda y: y.get('commit'), filter(lambda x: x.get('commit'), events)):
         state.get('pending_commit').append(_commit.get('insn'))
     state.update({'pending_commit': sorted(state.get('pending_commit'), key=lambda x: x.get('iid'))})
