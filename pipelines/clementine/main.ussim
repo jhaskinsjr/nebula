@@ -10,6 +10,8 @@ service implementation/commit.py:localhost
 service ../../toolbox/stats.py:localhost
 spawn
 config mainmem peek_latency_in_cycles 25
+config mainmem main_memory_filename /tmp/mainmem.raw
+config mainmem main_memory_capacity 4294967296 # 2**32
 config decode buffer_capacity 32
 config stats output_filename /tmp/stats.json
 cycle

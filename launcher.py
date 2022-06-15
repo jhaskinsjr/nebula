@@ -124,16 +124,6 @@ def register(connections, cmd, name, data=None):
         **({'data': (riscv.constants.integer_to_list_of_bytes(integer(data), 64, 'little') if isinstance(data, str) else riscv.constants.integer_to_list_of_bytes(data, 64, 'little'))} if data else {}),
     }})
 def config(connections, service, field, val):
-#    _output = 'args.{} : {}'.format(field, args.__getattribute__(field))
-#    if val:
-#        _val = val
-#        try:
-#            _val = int(val)
-#        except:
-#            pass
-#        args.__setattr__(field, _val)
-#        _output += ' -> {}'.format(args.__getattribute__(field))
-#    print(_output)
     _val = val
     try:
         _val = integer(val)
@@ -319,6 +309,7 @@ if __name__ == '__main__':
     parser.add_argument('--debug', '-D', dest='debug', action='store_true', help='print debug messages')
     parser.add_argument('--break_on_undefined', '-B', dest='break_on_undefined', action='store_true', help='cease execution on undefined instruction')
     parser.add_argument('--services', dest='services', nargs='+', help='code:host')
+    parser.add_argument('--config', dest='config', nargs='+', help='service:field:val')
     parser.add_argument('--max_cycles', type=int, dest='max_cycles', default=None, help='maximum number of cycles to run for')
     parser.add_argument('--max_instructions', type=int, dest='max_instructions', default=None, help='maximum number of instructions to execute')
     parser.add_argument('--snapshots', type=int, dest='snapshots', default=0, help='number of cycles per snapshot')
@@ -357,6 +348,7 @@ if __name__ == '__main__':
                     }
                 })
             elif 'run' == cmd:
+                for c in args.config: config(state.get('connections'), *c.split(':'))
                 state.update({'running': True})
                 state.update({'cycle': run(state.get('cycle'), args.max_cycles, args.max_instructions, args.break_on_undefined, args.snapshots)})
                 state.update({'running': False})

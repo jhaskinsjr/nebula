@@ -123,7 +123,7 @@ if '__main__' == __name__:
     _launcher['port'] = int(_launcher['port'])
     if args.debug: print('_launcher : {}'.format(_launcher))
     state = {
-        'service': 'lsu',
+        'service': 'l2',
         'cycle': 0,
         'l2': None,
         'pending_fetch': [],
@@ -158,6 +158,13 @@ if '__main__' == __name__:
             elif {'text': 'run'} == {k: v}:
                 state.update({'running': True})
                 state.update({'ack': False})
+            elif 'config' == k:
+                print('config : {}'.format(v))
+                if state.get('service') != v.get('service'): continue
+                _field = v.get('field')
+                _val = v.get('val')
+                assert _field in state.get('config').keys(), 'No such config field, {}, in service {}!'.format(_field, state.get('service'))
+                state.get('config').update({_field: _val})
             elif 'tick' == k:
                 state.update({'cycle': v.get('cycle')})
                 _results = v.get('results')

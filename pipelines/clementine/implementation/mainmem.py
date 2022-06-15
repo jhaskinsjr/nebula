@@ -59,13 +59,16 @@ if '__main__' == __name__:
         'active': True,
         'running': False,
         'ack': True,
-        'fd': os.open('/tmp/mainmem.raw', os.O_RDWR|os.O_CREAT),
+        'fd': None,
         'config': {
+            'main_memory_filename': '/tmp/mainmem.raw',
+            'main_memory_capacity': 2**32,
             'peek_latency_in_cycles': 500,
         },
     }
+    state.update({'fd': os.open(state.get('config').get('main_memory_filename'), os.O_RDWR|os.O_CREAT)})
     _service = service.Service(state.get('service_name'), _launcher.get('host'), _launcher.get('port'))
-    os.ftruncate(state.get('fd'), 2**32) # HACK: hard-wired memory is dumb, but I don't want to focus on that right now
+    os.ftruncate(state.get('fd'), state.get('config').get('main_memory_capacity'))
     while state.get('active'):
         state.update({'ack': True})
         msg = _service.rx()
@@ -78,6 +81,13 @@ if '__main__' == __name__:
             elif {'text': 'run'} == {k: v}:
                 state.update({'running': True})
                 state.update({'ack': False})
+            elif 'config' == k:
+                print('config : {}'.format(v))
+                if state.get('service') != v.get('service'): continue
+                _field = v.get('field')
+                _val = v.get('val')
+                assert _field in state.get('config').keys(), 'No such config field, {}, in service {}!'.format(_field, state.get('service'))
+                state.get('config').update({_field: _val})
             elif 'config' == k:
                 print('config : {}'.format(v))
                 if state.get('service') != v.get('service'): continue
