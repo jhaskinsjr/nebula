@@ -9,6 +9,7 @@ import itertools
 
 import elftools.elf.elffile
 
+import service
 import riscv.constants
 
 def tx(conns, msg):
@@ -16,8 +17,8 @@ def tx(conns, msg):
         str: lambda : json.dumps({'text': msg}),
         dict: lambda : json.dumps(msg),
     }.get(type(msg), lambda : json.dumps({'error': 'Undeliverable object'}))().encode('ascii')
-    assert 2048 >= len(_message), 'Message too big! ({} bytes) -> {}'.format(len(_message), _message)
-    _message += (' ' * (2048 - len(_message))).encode('ascii')
+    assert service.Service.MESSAGE_SIZE >= len(_message), 'Message too big! ({} bytes) -> {}'.format(len(_message), _message)
+    _message += (' ' * (service.Service.MESSAGE_SIZE - len(_message))).encode('ascii')
     for c in conns: c.send(_message)
 def handler(conn, addr):
     global state
@@ -28,7 +29,7 @@ def handler(conn, addr):
     tx([conn], {'ack': 'launcher'})
     while True:
         try:
-            msg = conn.recv(2048)
+            msg = conn.recv(service.Service.MESSAGE_SIZE)
             if not len(msg):
                 time.sleep(0.01)
                 continue
