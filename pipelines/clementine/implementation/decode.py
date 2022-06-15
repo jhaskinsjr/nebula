@@ -17,16 +17,17 @@ def do_tick(service, state, results, events):
         service.tx({'info': '_pc           : {}'.format(_pc)})
         service.tx({'info': 'state.get(pc) : {}'.format(state.get('%pc'))})
         state.update({'drop_until': int.from_bytes(_pc, 'little')})
+        state.update({'purge_pending_fetch': True})
         state.get('buffer').clear()
         state.get('decoded').clear()
     for _mem in map(lambda y: y.get('mem'), filter(lambda x: x.get('mem'), results)):
-        _data = _mem.pop('data')
-        if _mem not in state.get('pending_fetch'): continue
-        state.get('pending_fetch').remove(_mem)
         if state.get('drop_until'):
             if _mem.get('addr') != state.get('drop_until'): continue
             state.update({'drop_until': None})
             state.update({'%pc': list(_mem.get('addr').to_bytes(8, 'little'))})
+        _data = _mem.pop('data')
+        if _mem not in state.get('pending_fetch'): continue
+        state.get('pending_fetch').remove(_mem)
         service.tx({'info': '_mem : {}'.format(_mem)})
         state.get('buffer').extend(_data)
         service.tx({'info': 'buffer : {}'.format(list(map(lambda x: hex(x), state.get('buffer'))))})
@@ -38,6 +39,10 @@ def do_tick(service, state, results, events):
         state.get('issued').pop(0)
     for _dec in map(lambda y: y.get('decode'), filter(lambda x: x.get('decode'), events)):
         state.get('pending_fetch').append(_dec)
+    if state.get('purge_pending_fetch'):
+        state.get('pending_fetch').clear()
+        state.update({'purge_pending_fetch': False})
+    service.tx({'info': 'pending_fetch : {}'.format(state.get('pending_fetch'))})
     service.tx({'info': 'max - len(decoded)  : {}'.format(state.get('max_instructions_to_decode') - len(state.get('decoded')))})
     for _insn in riscv.decode.do_decode(state.get('buffer'), state.get('max_instructions_to_decode') - len(state.get('decoded'))):
         state.get('decoded').append({
@@ -105,6 +110,7 @@ if '__main__' == __name__:
         'buffer': [],
         'drop_until': None,
         'pending_fetch': [],
+        'purge_pending_fetch': False,
         'decoded': [],
         'issued': [],
         'iid': 0,

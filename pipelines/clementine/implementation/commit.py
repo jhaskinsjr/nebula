@@ -18,7 +18,7 @@ def do_commit(service, state):
         state.get('pending_commit')
     )))})
     _retire = []
-    service.tx({'info': 'pending_commut : {}'.format(state.get('pending_commit'))})
+    service.tx({'info': 'pending_commit : {}'.format(state.get('pending_commit'))})
     for _insn in state.get('pending_commit'):
         service.tx({'info': '_insn : {}'.format(_insn)})
         if not any(map(lambda x: x in _insn.keys(), ['next_pc', 'ret_pc', 'result'])): break

@@ -13,7 +13,11 @@ def do_tick(service, state, results, events):
         if 0 == int.from_bytes(_pc, 'little'):
             service.tx({'info': 'Jump to @0x00000000... graceful shutdown'})
             service.tx({'shutdown': None})
+        service.tx({'info': '_pc           : {}'.format(_pc)})
+        service.tx({'info': 'state.get(jp) : {}'.format(state.get('%jp'))})
+        _jp_old = state.get('%jp')
         state.update({'%jp': _pc})
+        service.tx({'info': '_jp : {} -> {} (%pc update)'.format(_jp_old, state.get('%jp'))})
     for _decode_buffer_available in map(lambda y: y.get('decode.buffer_available'), filter(lambda x: x.get('decode.buffer_available'), results)):
         state.update({'decode.buffer_available': _decode_buffer_available})
     service.tx({'info': 'decode.buffer_available : {}'.format(state.get('decode.buffer_available'))})
@@ -36,7 +40,9 @@ def do_tick(service, state, results, events):
             'size': state.get('fetch_size'),
         },
     }})
+    _jp_old = state.get('%jp')
     state.update({'%jp': riscv.constants.integer_to_list_of_bytes(4 + int.from_bytes(state.get('%jp'), 'little'), 64, 'little')})
+    service.tx({'info': '_jp : {} -> {} (%pc + 4)'.format(_jp_old, state.get('%jp'))})
     toolbox.report_stats(service, state, 'flat', 'number_of_fetches')
 
 if '__main__' == __name__:
