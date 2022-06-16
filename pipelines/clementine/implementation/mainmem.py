@@ -1,6 +1,7 @@
 import os
 import sys
 import argparse
+import logging
 
 import service
 import toolbox
@@ -25,7 +26,7 @@ def do_tick(service, state, results, events):
             }})
             toolbox.report_stats(service, state, 'histo', 'peek.size', _size)
         else:
-            print('ev : {}'.format(ev))
+            logging.fatal('ev : {}'.format(ev))
             assert False
 
 def poke(state, addr, size, data):
@@ -44,15 +45,21 @@ def peek(state, addr, size):
 
 if '__main__' == __name__:
     parser = argparse.ArgumentParser(description='μService-SIMulator: Main Memory')
-    parser.add_argument('--debug', '-D', dest='debug', action='store_true', help='print debug messages')
+    parser.add_argument('--debug', '-D', dest='debug', action='store_true', help='output debug messages')
     parser.add_argument('--quiet', '-Q', dest='quiet', action='store_true', help='suppress status messages')
+    parser.add_argument('--log', type=str, dest='log', default='/tmp', help='logging output directory (absolute path!)')
     parser.add_argument('launcher', help='host:port of μService-SIMulator launcher')
     args = parser.parse_args()
-    if args.debug: print('args : {}'.format(args))
+    logging.basicConfig(
+        filename=os.path.join(args.log, '{}.log'.format(os.path.basename(__file__))),
+        format='%(message)s',
+        level=(logging.DEBUG if args.debug else logging.INFO),
+    )
+    logging.debug('args : {}'.format(args))
     if not args.quiet: print('Starting {}...'.format(sys.argv[0]))
     _launcher = {x:y for x, y in zip(['host', 'port'], args.launcher.split(':'))}
     _launcher['port'] = int(_launcher['port'])
-    if args.debug: print('_launcher : {}'.format(_launcher))
+    logging.debug('_launcher : {}'.format(_launcher))
     state = {
         'service': 'mainmem',
         'cycle': 0,
@@ -82,14 +89,7 @@ if '__main__' == __name__:
                 state.update({'running': True})
                 state.update({'ack': False})
             elif 'config' == k:
-                print('config : {}'.format(v))
-                if state.get('service') != v.get('service'): continue
-                _field = v.get('field')
-                _val = v.get('val')
-                assert _field in state.get('config').keys(), 'No such config field, {}, in service {}!'.format(_field, state.get('service'))
-                state.get('config').update({_field: _val})
-            elif 'config' == k:
-                print('config : {}'.format(v))
+                logging.debug('config : {}'.format(v))
                 if state.get('service') != v.get('service'): continue
                 _field = v.get('field')
                 _val = v.get('val')

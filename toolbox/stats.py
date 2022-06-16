@@ -1,5 +1,7 @@
+import os
 import sys
 import argparse
+import logging
 
 import service
 
@@ -22,15 +24,21 @@ def do_tick(service, state, results, events):
 
 if '__main__' == __name__:
     parser = argparse.ArgumentParser(description='μService-SIMulator: Statistics')
-    parser.add_argument('--debug', '-D', dest='debug', action='store_true', help='print debug messages')
+    parser.add_argument('--debug', '-D', dest='debug', action='store_true', help='output debug messages')
     parser.add_argument('--quiet', '-Q', dest='quiet', action='store_true', help='suppress status messages')
+    parser.add_argument('--log', type=str, dest='log', default='/tmp', help='logging output directory (absolute path!)')
     parser.add_argument('launcher', help='host:port of μService-SIMulator launcher')
     args = parser.parse_args()
-    if args.debug: print('args : {}'.format(args))
+    logging.basicConfig(
+        filename=os.path.join(args.log, '{}.log'.format(os.path.basename(__file__))),
+        format='%(message)s',
+        level=(logging.DEBUG if args.debug else logging.INFO),
+    )
+    logging.debug('args : {}'.format(args))
     if not args.quiet: print('Starting {}...'.format(sys.argv[0]))
     _launcher = {x:y for x, y in zip(['host', 'port'], args.launcher.split(':'))}
     _launcher['port'] = int(_launcher['port'])
-    if args.debug: print('_launcher : {}'.format(_launcher))
+    logging.debug('_launcher : {}'.format(_launcher))
     state = {
         'service': 'stats',
         'cycle': 0,
@@ -60,7 +68,7 @@ if '__main__' == __name__:
                 state.update({'running': True})
                 state.update({'ack': False})
             elif 'config' == k:
-                print('config : {}'.format(v))
+                logging.debug('config : {}'.format(v))
                 if state.get('service') != v.get('service'): continue
                 _field = v.get('field')
                 _val = v.get('val')
@@ -73,8 +81,6 @@ if '__main__' == __name__:
                 do_tick(_service, state, _results, _events)
         if state.get('ack') and state.get('running'): _service.tx({'ack': {'cycle': state.get('cycle')}})
     if not args.quiet: print('Shutting down {}...'.format(sys.argv[0]))
-#    for k, v in sorted(state.get('histo').items()):
-#        print('{:4} : {}'.format(k, v))
     _output_filename = state.get('config').get('output_filename')
     fp = (sys.stdout if not _output_filename else open(_output_filename, 'w'))
     json.dump(state.get('stats'), fp)

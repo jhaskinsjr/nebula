@@ -1,5 +1,7 @@
+import os
 import sys
 import argparse
+import logging
 import functools
 import struct
 
@@ -94,7 +96,7 @@ def do_l1dc(service, state, addr, size, data=None):
     toolbox.report_stats(service, state, 'flat', 'l1dc.accesses')
 
 def do_unimplemented(service, state, insn):
-#    print('Unimplemented: {}'.format(state.get('insn')))
+    logging.info('Unimplemented: {}'.format(state.get('insn')))
     service.tx({'undefined': insn})
 
 def do_load(service, state, insn):
@@ -115,10 +117,6 @@ def do_execute(service, state):
     if not _insn: return
     if not len(state.get('executing')): state.get('executing').append(state.get('pending_execute').pop(0))
     service.tx({'info': '_insn : {}'.format(_insn)})
-#    if 0x3 == _insn.get('word') & 0x3:
-#        print('do_execute(): @{:8} {:08x} : {}'.format(state.get('cycle'), _insn.get('word'), _insn.get('cmd')))
-#    else:
-#        print('do_execute(): @{:8}     {:04x} : {}'.format(state.get('cycle'), _insn.get('word'), _insn.get('cmd')))
     {
         'LD': do_load,
         'LW': do_load,
@@ -154,15 +152,21 @@ def do_tick(service, state, results, events):
 
 if '__main__' == __name__:
     parser = argparse.ArgumentParser(description='μService-SIMulator: Load-Store Unit')
-    parser.add_argument('--debug', '-D', dest='debug', action='store_true', help='print debug messages')
+    parser.add_argument('--debug', '-D', dest='debug', action='store_true', help='output debug messages')
     parser.add_argument('--quiet', '-Q', dest='quiet', action='store_true', help='suppress status messages')
+    parser.add_argument('--log', type=str, dest='log', default='/tmp', help='logging output directory (absolute path!)')
     parser.add_argument('launcher', help='host:port of μService-SIMulator launcher')
     args = parser.parse_args()
-    if args.debug: print('args : {}'.format(args))
+    logging.basicConfig(
+        filename=os.path.join(args.log, '{}.log'.format(os.path.basename(__file__))),
+        format='%(message)s',
+        level=(logging.DEBUG if args.debug else logging.INFO),
+    )
+    logging.debug('args : {}'.format(args))
     if not args.quiet: print('Starting {}...'.format(sys.argv[0]))
     _launcher = {x:y for x, y in zip(['host', 'port'], args.launcher.split(':'))}
     _launcher['port'] = int(_launcher['port'])
-    if args.debug: print('_launcher : {}'.format(_launcher))
+    logging.debug('_launcher : {}'.format(_launcher))
     state = {
         'service': 'lsu',
         'cycle': 0,

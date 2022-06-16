@@ -1,5 +1,7 @@
+import os
 import sys
 import argparse
+import logging
 import functools
 import struct
 
@@ -9,7 +11,7 @@ import riscv.execute
 import riscv.syscall.linux
 
 def do_unimplemented(service, state, insn):
-#    print('Unimplemented: {}'.format(state.get('pending_execute')))
+    logging.info('Unimplemented: {}'.format(state.get('pending_execute')))
     service.tx({'undefined': insn})
     do_complete(service, state, state.get('pending_execute'))
     do_confirm(service, state, state.get('pending_execute'))
@@ -265,7 +267,7 @@ def do_load(service, state, insn):
         return
     _fetched  = state.get('operands').get('mem')
     _fetched += [-1] * (8 - len(_fetched))
-#    print('do_load(): _fetched : {} ({})'.format(_fetched, len(_fetched)))
+    logging.debug('do_load(): _fetched : {} ({})'.format(_fetched, len(_fetched)))
     _data = { # HACK: This is 100% little-endian-specific
         'LD': _fetched,
         'LW': _fetched[:4] + [(0xff if ((_fetched[3] >> 7) & 0b1) else 0)] * 4,
@@ -506,9 +508,9 @@ def do_fence(service, state, insn):
 def do_execute(service, state):
     for insn in state.get('pending_execute'):
         if 0x3 == insn.get('word') & 0x3:
-            print('do_execute(): @{:8} {:08x} : {}'.format(state.get('cycle'), insn.get('word'), insn.get('cmd')))
+            logging.info('do_execute(): @{:8} {:08x} : {}'.format(state.get('cycle'), insn.get('word'), insn.get('cmd')))
         else:
-            print('do_execute(): @{:8}     {:04x} : {}'.format(state.get('cycle'), insn.get('word'), insn.get('cmd')))
+            logging.info('do_execute(): @{:8}     {:04x} : {}'.format(state.get('cycle'), insn.get('word'), insn.get('cmd')))
         _f = {
             'LUI': do_lui,
             'AUIPC': do_auipc,
@@ -625,15 +627,21 @@ def do_tick(service, state, results, events):
 
 if '__main__' == __name__:
     parser = argparse.ArgumentParser(description='μService-SIMulator: Execute')
-    parser.add_argument('--debug', '-D', dest='debug', action='store_true', help='print debug messages')
+    parser.add_argument('--debug', '-D', dest='debug', action='store_true', help='output debug messages')
     parser.add_argument('--quiet', '-Q', dest='quiet', action='store_true', help='suppress status messages')
+    parser.add_argument('--log', type=str, dest='log', default='/tmp', help='logging output directory (absolute path!)')
     parser.add_argument('launcher', help='host:port of μService-SIMulator launcher')
     args = parser.parse_args()
-    if args.debug: print('args : {}'.format(args))
+    logging.basicConfig(
+        filename=os.path.join(args.log, '{}.log'.format(os.path.basename(__file__))),
+        format='%(message)s',
+        level=(logging.DEBUG if args.debug else logging.INFO),
+    )
+    logging.debug('args : {}'.format(args))
     if not args.quiet: print('Starting {}...'.format(sys.argv[0]))
     _launcher = {x:y for x, y in zip(['host', 'port'], args.launcher.split(':'))}
     _launcher['port'] = int(_launcher['port'])
-    if args.debug: print('_launcher : {}'.format(_launcher))
+    logging.debug('_launcher : {}'.format(_launcher))
     state = {
         'service': 'execute',
         'cycle': 0,
