@@ -293,7 +293,7 @@ def add_service(services, arguments, s):
                 'python3 {} {} {} {}'.format(
                     os.path.join(os.getcwd(), c),
                     ('-D' if arguments.debug else ''),
-                    '{}:{}'.format(socket.gethostname(), arguments.port),
+                    '{}:{}'.format(socket.gethostbyaddr(socket.gethostname())[0], arguments.port),
                     ('--log {}'.format(arguments.log) if arguments.log else ''),
                 )
             ],),
