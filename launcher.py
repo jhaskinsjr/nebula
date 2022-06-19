@@ -373,20 +373,7 @@ if __name__ == '__main__':
                 state.update({'running': True})
                 state.update({'cycle': run(state.get('cycle'), args.max_cycles, args.max_instructions, args.break_on_undefined, args.snapshots)})
                 state.update({'running': False})
-#            elif 'port' == cmd:
-#                args.__dict__.update({'port': int(next(iter(params)))})
-#                _s = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
-#                _s.setsockopt(socket.SOL_SOCKET, socket.SO_REUSEADDR, 1)
-#                _s.bind(('0.0.0.0', args.port))
-#                _s.listen(5)
             elif 'loadbin' == cmd:
-#                _mainmem_rawfile = params[0]
-#                _sp = integer(params[1])
-#                _pc = integer(params[2])
-#                _start_symbol = params[3]
-#                _binary = args.cmdline[0]
-#                _args = tuple(args.cmdline[1:])
-#                loadbin(state.get('connections'), _mainmem_rawfile, _sp, _pc, _start_symbol, _binary, *((_binary,) + _args)),
                 _sp = integer(params[0])
                 _pc = integer(params[1])
                 _start_symbol = params[2]

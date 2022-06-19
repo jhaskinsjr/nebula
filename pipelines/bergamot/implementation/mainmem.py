@@ -74,8 +74,6 @@ if '__main__' == __name__:
         },
     }
     _service = service.Service(state.get('service_name'), _launcher.get('host'), _launcher.get('port'))
-#    state.update({'fd': os.open(state.get('config').get('main_memory_filename'), os.O_RDWR|os.O_CREAT)})
-#    os.ftruncate(state.get('fd'), state.get('config').get('main_memory_capacity'))
     while state.get('active'):
         state.update({'ack': True})
         msg = _service.rx()
