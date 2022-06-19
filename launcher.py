@@ -135,20 +135,11 @@ def config(connections, service, field, val):
         'field': field,
         'val': _val,
     }})
-def mainmem(connections, cmd, addr, size, data=None):
-    tx(connections, {'mainmem': {**{
-            'cmd': cmd,
-            'addr': integer(addr),
-            'size': integer(size),
-        },
-        **({'data': integer(data)} if data else {}),
-    }})
-def loadbin(connections, mainmem_rawfile, sp, pc, start_symbol, binary, *args):
+def loadbin(connections, mainmem_filename, mainmem_capacity, sp, pc, start_symbol, binary, *args):
     global state
-    state.update({'mainmem_rawfile': mainmem_rawfile})
-    fd = os.open(mainmem_rawfile, os.O_RDWR | os.O_CREAT)
+    fd = os.open(mainmem_filename, os.O_RDWR | os.O_CREAT)
     os.ftruncate(fd, 0)
-    os.ftruncate(fd, 2**32) # HACK: hard-wired memory size is dumb, but I don't want to focus on that right now
+    os.ftruncate(fd, mainmem_capacity) # HACK: hard-wired memory size is dumb, but I don't want to focus on that right now
     _start_pc = pc
     with open(binary, 'rb') as fp:
         elffile = elftools.elf.elffile.ELFFile(fp)
@@ -202,10 +193,10 @@ def loadbin(connections, mainmem_rawfile, sp, pc, start_symbol, binary, *args):
     register(connections, 'set', 10, hex(_argc))
     register(connections, 'set', 11, hex(8 + sp))
     register(connections, 'set', '%pc', hex(_start_pc))
-def snapshot(mainmem_rawfile, snapshot_rawfile, cycle):
+def snapshot(mainmem_filename, snapshot_filename, cycle):
     global state
-    subprocess.run('cp {} {}'.format(mainmem_rawfile, snapshot_rawfile).split())
-    fd = os.open(snapshot_rawfile, os.O_RDWR)
+    subprocess.run('cp {} {}'.format(mainmem_filename, snapshot_filename).split())
+    fd = os.open(snapshot_filename, os.O_RDWR)
     os.lseek(fd, 0x10000000, os.SEEK_SET) # HACK: hard-coding snapshot metadata to 0x10000000 is dumb, but I don't want to be bothered with that now
     os.write(fd, (1 + cycle).to_bytes(8, 'little'))
     os.lseek(fd, 8, os.SEEK_CUR)
@@ -215,16 +206,15 @@ def snapshot(mainmem_rawfile, snapshot_rawfile, cycle):
     _res_evt.get('events').append({
         'register': {
             'cmd': 'snapshot',
-            'name': '{}'.format(snapshot_rawfile),
+            'name': '{}'.format(snapshot_filename),
             'data': 0x20000000, # HACK: hard-coding snapshot metadata to 0x20000000 is dumb, but I don't want to be bothere with that now
         }
     })
     state.get('futures').update({1 + cycle: _res_evt})
-def restore(mainmem_rawfile, snapshot_rawfile):
+def restore(mainmem_filename, snapshot_filename):
     global state
-    state.update({'mainmem_rawfile': mainmem_rawfile})
-    subprocess.run('cp {} {}'.format(snapshot_rawfile, mainmem_rawfile).split())
-    fd = os.open(mainmem_rawfile, os.O_RDWR)
+    subprocess.run('cp {} {}'.format(snapshot_filename, mainmem_filename).split())
+    fd = os.open(mainmem_filename, os.O_RDWR)
     os.lseek(fd, 0x10000000, os.SEEK_SET)
     cycle = int.from_bytes(os.read(fd, 8), 'little')
 #    os.write(fd, (0).to_bytes(4096, 'little'))
@@ -236,7 +226,7 @@ def restore(mainmem_rawfile, snapshot_rawfile):
     _res_evt.get('events').append({
         'register': {
             'cmd': 'restore',
-            'name': '{}'.format(snapshot_rawfile),
+            'name': '{}'.format(snapshot_filename),
             'data': 0x20000000, # HACK: hard-coding snapshot metadata to 0x20000000 is dumb, but I don't want to be bothere with that now
         }
     })
@@ -262,7 +252,11 @@ def run(cycle, max_cycles, max_instructions, break_on_undefined, snapshot_freque
           (None == state.get('undefined') if break_on_undefined else True):
         state.get('lock').acquire()
         if snapshot_at and cycle >= snapshot_at:
-            snapshot(state.get('mainmem_rawfile'), '{}.snapshot'.format(state.get('mainmem_rawfile')), cycle)
+            snapshot(
+                state.get('config').get('mainmem_filename'),
+                '{}.snapshot'.format(state.get('config').get('mainmem_filename')),
+                cycle
+            )
             snapshot_at += snapshot_frequency
         logging.info('run(): @{:8}'.format(cycle))
         logging.info('\tinfo :\n\t\t{}'.format('\n\t\t'.join(state.get('info'))))
@@ -319,10 +313,12 @@ if __name__ == '__main__':
     parser.add_argument('--break_on_undefined', '-B', dest='break_on_undefined', action='store_true', help='cease execution on undefined instruction')
     parser.add_argument('--services', dest='services', nargs='+', help='code:host')
     parser.add_argument('--config', dest='config', nargs='+', help='service:field:val')
+    parser.add_argument('--mainmem', dest='mainmem', default='/tmp/mainmem.raw:{}'.format(2**32), help='filename:capacity')
     parser.add_argument('--log', type=str, dest='log', default='/tmp', help='logging output directory')
     parser.add_argument('--max_cycles', type=int, dest='max_cycles', default=None, help='maximum number of cycles to run for')
     parser.add_argument('--max_instructions', type=int, dest='max_instructions', default=None, help='maximum number of instructions to execute')
     parser.add_argument('--snapshots', type=int, dest='snapshots', default=0, help='number of cycles per snapshot')
+    parser.add_argument('port', type=int, help='port for accepting connections')
     parser.add_argument('script', type=str, help='script to be executed by μService-SIMulator')
     parser.add_argument('cmdline', nargs='*', help='binary to be executed and parameters')
     args = parser.parse_args()
@@ -336,7 +332,6 @@ if __name__ == '__main__':
     state = {
         'lock': threading.Lock(),
         'connections': [],
-        'mainmem_rawfile': None,
         'ack': [],
         'futures': {},
         'info': [],
@@ -344,7 +339,18 @@ if __name__ == '__main__':
         'cycle': 0,
         'instructions_committed': 0,
         'undefined': None,
+        'config': {
+            'mainmem_filename': None,
+            'mainmem_capacity': None,
+        },
     }
+    _mainmem_filename, _mainmem_capacity = args.mainmem.split(':')
+    state.get('config').update({'mainmem_filename': _mainmem_filename})
+    state.get('config').update({'mainmem_capacity': integer(_mainmem_capacity)})
+    _s = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
+    _s.setsockopt(socket.SOL_SOCKET, socket.SO_REUSEADDR, 1)
+    _s.bind(('0.0.0.0', args.port))
+    _s.listen(5)
     _services = []
     with open(args.script) as fp:
         for raw in map(lambda x: x.strip(), fp.readlines()):
@@ -367,26 +373,46 @@ if __name__ == '__main__':
                 state.update({'running': True})
                 state.update({'cycle': run(state.get('cycle'), args.max_cycles, args.max_instructions, args.break_on_undefined, args.snapshots)})
                 state.update({'running': False})
-            elif 'port' == cmd:
-                args.__dict__.update({'port': int(next(iter(params)))})
-                _s = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
-                _s.setsockopt(socket.SOL_SOCKET, socket.SO_REUSEADDR, 1)
-                _s.bind(('0.0.0.0', args.port))
-                _s.listen(5)
+#            elif 'port' == cmd:
+#                args.__dict__.update({'port': int(next(iter(params)))})
+#                _s = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
+#                _s.setsockopt(socket.SOL_SOCKET, socket.SO_REUSEADDR, 1)
+#                _s.bind(('0.0.0.0', args.port))
+#                _s.listen(5)
             elif 'loadbin' == cmd:
-                _mainmem_rawfile = params[0]
-                _sp = integer(params[1])
-                _pc = integer(params[2])
-                _start_symbol = params[3]
+#                _mainmem_rawfile = params[0]
+#                _sp = integer(params[1])
+#                _pc = integer(params[2])
+#                _start_symbol = params[3]
+#                _binary = args.cmdline[0]
+#                _args = tuple(args.cmdline[1:])
+#                loadbin(state.get('connections'), _mainmem_rawfile, _sp, _pc, _start_symbol, _binary, *((_binary,) + _args)),
+                _sp = integer(params[0])
+                _pc = integer(params[1])
+                _start_symbol = params[2]
                 _binary = args.cmdline[0]
                 _args = tuple(args.cmdline[1:])
-                loadbin(state.get('connections'), _mainmem_rawfile, _sp, _pc, _start_symbol, _binary, *((_binary,) + _args)),
+                loadbin(
+                    state.get('connections'),
+                    state.get('config').get('mainmem_filename'),
+                    state.get('config').get('mainmem_capacity'),
+                    _sp, _pc, _start_symbol,
+                    _binary,
+                    *((_binary,) + _args)
+                ),
+            elif 'spawn' == cmd:
+                spawn(_services, args)
+                # since main memory is configured from launcher.py, the filename and capacity
+                # need to be reported to the mainmem.py service... this kinda FORCES pipeline
+                # implementations to have a mainmem.py service. That's not super-elegant, but
+                # will get the job done for now.
+                config(state.get('connections'), 'mainmem', 'main_memory_filename', state.get('config').get('mainmem_filename'))
+                config(state.get('connections'), 'mainmem', 'main_memory_capacity', state.get('config').get('mainmem_capacity'))
             else:
                 {
-                    'spawn': lambda: spawn(_services, args),
+#                    'spawn': lambda: spawn(_services, args),
                     'service': lambda x: add_service(_services, args, x),
                     'register': lambda x, y, z=None: register(state.get('connections'), x, y, z),
-                    'mainmem': lambda w, x, y, z=None: mainmem(state.get('connections'), w, x, y, z),
                     'restore': lambda x, y: state.update({'cycle': restore(x, y)}),
                     'cycle': lambda: logging.info(state.get('cycle')),
                     'state': lambda: logging.info(state),

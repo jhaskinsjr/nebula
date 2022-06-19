@@ -73,9 +73,9 @@ if '__main__' == __name__:
             'peek_latency_in_cycles': 500,
         },
     }
-    state.update({'fd': os.open(state.get('config').get('main_memory_filename'), os.O_RDWR|os.O_CREAT)})
     _service = service.Service(state.get('service_name'), _launcher.get('host'), _launcher.get('port'))
-    os.ftruncate(state.get('fd'), state.get('config').get('main_memory_capacity'))
+#    state.update({'fd': os.open(state.get('config').get('main_memory_filename'), os.O_RDWR|os.O_CREAT)})
+#    os.ftruncate(state.get('fd'), state.get('config').get('main_memory_capacity'))
     while state.get('active'):
         state.update({'ack': True})
         msg = _service.rx()
@@ -86,6 +86,8 @@ if '__main__' == __name__:
                 state.update({'active': False})
                 state.update({'running': False})
             elif {'text': 'run'} == {k: v}:
+                state.update({'fd': os.open(state.get('config').get('main_memory_filename'), os.O_RDWR|os.O_CREAT)})
+                os.ftruncate(state.get('fd'), state.get('config').get('main_memory_capacity'))
                 state.update({'running': True})
                 state.update({'ack': False})
             elif 'config' == k:
