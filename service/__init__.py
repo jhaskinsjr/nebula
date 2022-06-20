@@ -7,7 +7,6 @@ class Service:
         self.name = name
         self.s = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
         self.s.connect((host, port))
-        assert {'ack': 'launcher'} == self.rx()
         self.tx({'name': name})
         self.tx({'blocking': self.s.getblocking()})
     def __del__(self):
