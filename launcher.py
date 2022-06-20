@@ -369,7 +369,8 @@ if __name__ == '__main__':
                     }
                 })
             elif 'run' == cmd:
-                for c in args.config: config(state.get('connections'), *c.split(':'))
+                if args.config:
+                    for c in args.config: config(state.get('connections'), *c.split(':'))
                 state.update({'running': True})
                 state.update({'cycle': run(state.get('cycle'), args.max_cycles, args.max_instructions, args.break_on_undefined, args.snapshots)})
                 state.update({'running': False})
