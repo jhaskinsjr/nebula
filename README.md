@@ -123,7 +123,9 @@ https://www.ibm.com/support/pages/configuring-ssh-login-without-password
 Once passwordless SSH has been set up, to quickly run, execute:
 
     cd pipelines/bergamot
+    mkdir -p /tmp/bergamot/sum
     python3 ../../launcher.py \
+        --log /tmp/bergamot/sum \
         --max_cycles 32000 \
         --snapshots 1000 \
         --break_on_undefined \
@@ -134,7 +136,10 @@ Once passwordless SSH has been set up, to quickly run, execute:
 
 First, the "cd" command changes into the subdirectory with the
 very simple, very primitive μService-SIMulator pipeline implementation
-(codename: Bergamot). The "python3" command then executes the launcher
+(codename: Bergamot).
+Then, the "mkdir" command creates a directory into which each of
+the service's log files will be deposited.
+The "python3" command then executes the launcher
 module (launcher.py). The launcher module will then begin by
 opening a socket and accepting connections on port 10,000, executing
 the script main.ussim, and
@@ -144,6 +149,10 @@ for a maximum of 32,000 simulated cycles, taking snapshots (of the
 simulated main memory and register file) every 1,000 simulated cycles, but
 will cease execution if it encounters an instruction that is not (yet)
 defined.
+
+Once the simulation completes, the directory /tmp/bergamot/sum will
+contain one log file for each of the services that executed during the
+simulation.
 
 ## Pipeline Designs
 
