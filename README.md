@@ -128,14 +128,16 @@ Once passwordless SSH has been set up, to quickly run, execute:
         --snapshots 1000 \
         --break_on_undefined \
         -- \
+        10000 \
         main.ussim \
         ../../examples/bin/sum 2 3 5 7 11 13
 
 First, the "cd" command changes into the subdirectory with the
 very simple, very primitive μService-SIMulator pipeline implementation
 (codename: Bergamot). The "python3" command then executes the launcher
-module (launcher.py). The
-launcher module will then begin by executing the script main.ussim, and
+module (launcher.py). The launcher module will then begin by
+opening a socket and accepting connections on port 10,000, executing
+the script main.ussim, and
 loading the binary "../../examples/bin/sum" together with its command-line
 parameters "2 3 5 7 11 13", into the simulator's main memory; and simulating
 for a maximum of 32,000 simulated cycles, taking snapshots (of the
@@ -232,7 +234,6 @@ The simulator executes according to instructions in an execute script.
 Consider the script pipelines/lime/main.ussim:
 
     # Sample μService-SIMulator script
-    port 10000
     service implementation/simplecore.py:localhost
     service implementation/regfile.py:localhost
     service implementation/mainmem.py:localhost
@@ -264,7 +265,6 @@ The script is comprised of commands
     cycle                           print the cycle count to stdout
     loadbin A B C D E X             set main memory file A; locate stack at address B; locate code
                                     at address C; and begin execution from .text section label D 
-    port A                          set simulator to accept connections at port A
     restore A B                     restore previously captured state in B to main memory file A
     register set A B                set register A to value B
     run                             begin execution
