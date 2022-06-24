@@ -1,6 +1,6 @@
 #!/bin/bash
 
-N_CONCURRENT_SIMULATIONS=32
+N_CONCURRENT_SIMULATIONS=64
 
 ROOT=/tmp/log
 mkdir -p ${ROOT}
@@ -18,7 +18,7 @@ for bin in $( find ../../examples/bin/ -type f ) ; do
                 --mainmem /tmp/mainmem.$( uuid ).raw:$((2**32)) \
                 --config mainmem:peek_latency_in_cycles:1 \
                 -- \
-                $((10000+$((${RANDOM}%20000)))) main.ussim ${bin} 2 -3 -5 7
+                $((10000+$((${RANDOM}%20000)))) main.ussim ${bin} 2 -3 -5 7 >${LOGDIR}/stdout.txt 2>${LOGDIR}/stderr.txt
         ) &
         sleep 1
     else
@@ -31,24 +31,22 @@ echo "Waiting for gold-standard output generation to complete..."
 while [[ $( ps aux | egrep "python3.*log" | egrep -v grep | wc -l ) -gt 0 ]] ; do ( sleep 1) ; done
 echo "Done."
 
-ROOT=/tmp/log
-mkdir -p ${LOGDIR}
-
 echo "Performing Lime tests..."
 pushd pipelines/lime
 for bin in $( find ../../examples/bin/ -type f ) ; do
-    for s in 1 256 ; do
+    echo "${bin}"
+    for s in 4 256 ; do
         for w in 1 4 ; do
             for n in 32 64 ; do
-                for l in 1 125 ; do
-                    for x in 1 256 ; do 
-                        for y in 1 4 ; do
-                            for z in 32 64 ; do
-                                for t in 16 64 ; do
-                                    for a in 64 1024 ; do
-                                        for b in 1 8 ; do 
-                                            for c in 64 128 ; do
-                                                for d in 1 5 ; do
+                for x in 4 256 ; do 
+                    for y in 1 4 ; do
+                        for z in 32 64 ; do
+                            for a in 64 256; do
+                                for b in 1 8 ; do 
+                                    for c in 64 128 ; do
+                                        for d in 1 5 ; do
+                                            for l in 1 125 ; do
+                                                for t in 20 64 ; do
                                                     while [[ $( ps aux | egrep "python3.*launcher.py" | egrep -v "grep" | wc -l ) -ge ${N_CONCURRENT_SIMULATIONS} ]] ; do
                                                         sleep 1
                                                     done
@@ -61,15 +59,16 @@ for bin in $( find ../../examples/bin/ -type f ) ; do
                                                     (
                                                         python3 ../../launcher.py -B \
                                                             --log ${LOGDIR} \
-                                                            --mainmem /tmp/mainmem.$( uuid ).raw:$((2**32)) \
+                                                            --mainmem ${LOGDIR}/mainmem.raw:$((2**32)) \
                                                             --config \
                                                                 lsu:l1dc.nsets:${s} lsu:l1dc.nways:${w} lsu:l1dc.nbytesperblock:${n} \
                                                                 fetch:l1ic.nsets:${x} fetch:l1ic.nways:${y} fetch:l1ic.nbytesperblock:${z} \
-                                                                decode:buffer_capacity:${t} \
                                                                 l2:l2.nsets:${a} l2:l2.nways:${b} l2:l2.nbytesperblock:${c} l2:l2.hitlatency:${d} \
                                                                 mainmem:peek_latency_in_cycles:${l} \
+                                                                decode:buffer_capacity:${t} \
+                                                                stats:output_filename:${LOGDIR}/stats.json \
                                                             -- \
-                                                            $((10000+$((${RANDOM}%20000)))) main.ussim ${bin} 2 -3 -5 7
+                                                            $((10000+$((${RANDOM}%20000)))) main.ussim ${bin} 2 -3 -5 7 >${LOGDIR}/stdout.txt 2>${LOGDIR}/stderr.txt
                                                     ) &
                                                     sleep 1
                                                 done
