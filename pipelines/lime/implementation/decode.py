@@ -20,6 +20,7 @@ def do_tick(service, state, results, events):
         service.tx({'info': '_pc                   : {}'.format(_pc)})
         service.tx({'info': 'state.get(pc)         : {}'.format(state.get('%pc'))})
         service.tx({'info': 'state.get(drop_until) : {}'.format(state.get('drop_until'))})
+        state.update({'reset_buffer_available': True})
     for _flush, _retire in map(lambda y: (y.get('flush'), y.get('retire')), filter(lambda x: x.get('flush') or x.get('retire'), results)):
         if _flush: service.tx({'info': '_flush : {}'.format(_flush)})
         if _retire: service.tx({'info': '_retire : {}'.format(_retire)})
@@ -27,6 +28,7 @@ def do_tick(service, state, results, events):
         assert state.get('issued')[0].get('iid') == _commit.get('iid')
         state.get('issued').pop(0)
     for _dec in map(lambda y: y.get('decode'), filter(lambda x: x.get('decode'), events)):
+        state.update({'bytes_fetched' : state.get('bytes_fetched') + _dec.get('size')})
         service.tx({'info': '_dec                  : {}'.format(_dec)})
         if state.get('drop_until'):
             if _dec.get('addr') != state.get('drop_until'): continue
@@ -34,10 +36,19 @@ def do_tick(service, state, results, events):
             state.update({'%pc': _dec.get('addr')})
         state.get('buffer').extend(_dec.get('data'))
         service.tx({'info': 'state.get(drop_until) : {}'.format(state.get('drop_until'))})
-    service.tx({'result': {
-        'arrival': 1 + state.get('cycle'),
-        'decode.buffer_available': remaining_buffer_availability(),
-    }})
+    if state.get('bytes_fetched') == state.get('config').get('buffer_capacity') and not len(state.get('buffer')): # HACK: this is crude, but works for now
+        state.update({'reset_buffer_available': True})
+    if state.get('reset_buffer_available'):
+        service.tx({'result': {
+            'arrival': 1 + state.get('cycle'),
+            'decode.buffer_status': {
+                'available': state.get('config').get('buffer_capacity'),
+                'cycle': state.get('cycle'),
+            },
+        }})
+        state.update({'bytes_fetched': 0})
+        state.update({'reset_buffer_available': False})
+    service.tx({'info': 'state.bytes_fetched : {}'.format(state.get('bytes_fetched'))})
     service.tx({'info': 'state.issued        : {}'.format(state.get('issued'))})
     service.tx({'info': 'state.buffer        : {}'.format(state.get('buffer'))})
     for _insn in riscv.decode.do_decode(state.get('buffer'), state.get('max_instructions_to_decode')):
@@ -99,6 +110,8 @@ if '__main__' == __name__:
         '%pc': None,
         'ack': True,
         'buffer': [],
+        'bytes_fetched': 0,
+        'reset_buffer_available': False,
         'drop_until': None,
         'issued': [],
         'iid': 0,
@@ -120,6 +133,13 @@ if '__main__' == __name__:
             elif {'text': 'run'} == {k: v}:
                 state.update({'running': True})
                 state.update({'ack': False})
+                _service.tx({'result': {
+                    'arrival': 2 + state.get('cycle'), # current-cycle + 2 b/c when this executes cycle is 0; +1 would double-count cycle 1
+                    'decode.buffer_status': {
+                        'available': state.get('config').get('buffer_capacity'),
+                        'cycle': state.get('cycle'),
+                    },
+                }})
             elif 'config' == k:
                 logging.debug('config : {}'.format(v))
                 if state.get('service') != v.get('service'): continue

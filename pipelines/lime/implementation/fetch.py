@@ -50,6 +50,7 @@ def do_l1ic(service, state):
         #       Like: No effort AT ALL.
         _data = _ante + _post
         assert len(_data) == state.get('fetch_size')
+    if state.get('decode.buffer_available') < state.get('fetch_size'): return
     service.tx({'event': {
         'arrival': 1 + state.get('cycle'),
         'decode': {
@@ -58,6 +59,8 @@ def do_l1ic(service, state):
             'data': _data,
         },
     }})
+    state.update({'decode.bytes_sent': state.get('cycle')})
+    state.update({'decode.buffer_available': state.get('decode.buffer_available') - state.get('fetch_size')})
     state.update({'%jp': riscv.constants.integer_to_list_of_bytes(4 + _jp, 64, 'little')})
     toolbox.report_stats(service, state, 'flat', 'l1ic.accesses')
 def do_tick(service, state, results, events):
@@ -68,8 +71,13 @@ def do_tick(service, state, results, events):
             service.tx({'info': 'Jump to @0x00000000... graceful shutdown'})
             service.tx({'shutdown': None})
         state.update({'%jp': _pc})
-    for _decode_buffer_available in map(lambda y: y.get('decode.buffer_available'), filter(lambda x: x.get('decode.buffer_available'), results)):
-        state.update({'decode.buffer_available': _decode_buffer_available})
+    for _decode_buffer_status in map(lambda y: y.get('decode.buffer_status'), filter(lambda x: x.get('decode.buffer_status'), results)):
+        service.tx({'info': 'decode.buffer_status : {}'.format(_decode_buffer_status)})
+        _availability_discount = (state.get('fetch_size') if state.get('decode.bytes_sent') == _decode_buffer_status.get('cycle') else 0)
+        state.update({
+#            'decode.buffer_avaiable': _decode_buffer_status.get('available') - (0 if state.get('decode.bytes_sent') != _decode_buffer_status.get('cycle') else state.get('fetch_size'))
+            'decode.buffer_available': _decode_buffer_status.get('available') - _availability_discount
+        })
     for _l2 in map(lambda y: y.get('l2'), filter(lambda x: x.get('l2'), results)):
         _addr = _l2.get('addr')
         if _addr not in state.get('pending_fetch'): continue
@@ -78,8 +86,6 @@ def do_tick(service, state, results, events):
         state.get('l1ic').poke(_addr, _l2.get('data'))
     service.tx({'info': 'decode.buffer_available : {}'.format(state.get('decode.buffer_available'))})
     service.tx({'info': 'fetch_size              : {}'.format(state.get('fetch_size'))})
-    if state.get('decode.buffer_available') <= state.get('fetch_size'): return
-    if state.get('stall_until') > state.get('cycle'): return
     if not state.get('%jp'): return
     do_l1ic(service, state)
     
@@ -104,12 +110,12 @@ if '__main__' == __name__:
     state = {
         'service': 'fetch',
         'cycle': 0,
-        'stall_until': 0,
         'l1ic': None,
         'pending_fetch': [],
         'active': True,
         'running': False,
-        'decode.buffer_available': 4,
+        'decode.bytes_sent': None,
+        'decode.buffer_available': 0,
         'fetch_size': 4, # HACK: hard-coded number of bytes to fetch
         '%jp': None, # This is the fetch pointer. Why %jp? Who knows?
         'ack': True,
