@@ -126,6 +126,8 @@ Once passwordless SSH has been set up, to quickly run, execute:
     mkdir -p /tmp/bergamot/sum
     python3 ../../launcher.py \
         --log /tmp/bergamot/sum \
+        --mainmem /tmp/bergamot/sum/mainmem.raw:$((2**32)) \
+        --config stats:output_filename:/tmp/bergamot/sum/stats.json \
         --max_cycles 32000 \
         --snapshots 1000 \
         --break_on_undefined \
