@@ -36,18 +36,8 @@ def do_tick(service, state, results, events):
             state.update({'%pc': _dec.get('addr')})
         state.get('buffer').extend(_dec.get('data'))
         service.tx({'info': 'state.get(drop_until) : {}'.format(state.get('drop_until'))})
-    if state.get('bytes_fetched') == state.get('config').get('buffer_capacity') and not len(state.get('buffer')): # HACK: this is crude, but works for now
+    if state.get('bytes_fetched') == state.get('config').get('buffer_capacity') and len(state.get('buffer')) <= (state.get('config').get('buffer_capacity') >> 1):
         state.update({'reset_buffer_available': True})
-    if state.get('reset_buffer_available'):
-        service.tx({'result': {
-            'arrival': 1 + state.get('cycle'),
-            'decode.buffer_status': {
-                'available': state.get('config').get('buffer_capacity'),
-                'cycle': state.get('cycle'),
-            },
-        }})
-        state.update({'bytes_fetched': 0})
-        state.update({'reset_buffer_available': False})
     service.tx({'info': 'state.bytes_fetched : {}'.format(state.get('bytes_fetched'))})
     service.tx({'info': 'state.issued        : {}'.format(state.get('issued'))})
     service.tx({'info': 'state.buffer        : {}'.format(state.get('buffer'))})
@@ -84,6 +74,16 @@ def do_tick(service, state, results, events):
         state.get('issued').append(_insn)
         for _ in range(_insn.get('size')): state.get('buffer').pop(0)
         toolbox.report_stats(service, state, 'histo', 'issued.insn', _insn.get('cmd'))
+    if state.get('reset_buffer_available'):
+        service.tx({'result': {
+            'arrival': 1 + state.get('cycle'),
+            'decode.buffer_status': {
+                'available': remaining_buffer_availability(),
+                'cycle': state.get('cycle'),
+            },
+        }})
+        state.update({'bytes_fetched': max(0, state.get('bytes_fetched') - remaining_buffer_availability())})
+        state.update({'reset_buffer_available': False})
 
 if '__main__' == __name__:
     parser = argparse.ArgumentParser(description='μService-SIMulator: Instruction Decode')
