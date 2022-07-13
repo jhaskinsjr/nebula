@@ -12,6 +12,32 @@ def remaining_buffer_availability():
     return state.get('config').get('buffer_capacity') - len(state.get('buffer')) - sum(map(lambda x: x.get('size'), state.get('pending_fetch')))
 def hazard(p, c):
     return 'rd' in p.keys() and (('rs1' in c.keys() and p.get('rd') == c.get('rs1')) or ('rs2' in c.keys() and p.get('rd') == c.get('rs2')))
+def do_issue(service, state):
+    for _insn in state.get('decoded'):
+        if any(map(lambda x: hazard(x, _insn), state.get('issued'))): break
+        if _insn.get('rs1'): service.tx({'event': {
+            'arrival': 1 + state.get('cycle'),
+            'register': {
+                'cmd': 'get',
+                'name': _insn.get('rs1'),
+            }
+        }})
+        if _insn.get('rs2'): service.tx({'event': {
+            'arrival': 1 + state.get('cycle'),
+            'register': {
+                'cmd': 'get',
+                'name': _insn.get('rs2'),
+            }
+        }})
+        service.tx({'event': {
+            'arrival': 2 + state.get('cycle'),
+            'alu': {
+                'insn': _insn,
+            },
+        }})
+        state.get('issued').append(_insn)
+        for _ in range(_insn.get('size')): state.get('buffer').pop(0)
+        toolbox.report_stats(service, state, 'histo', 'issued.insn', _insn.get('cmd'))
 def do_tick(service, state, results, events):
     for _reg in map(lambda y: y.get('register'), filter(lambda x: x.get('register'), results)):
         if '%pc' != _reg.get('name'): continue
@@ -46,46 +72,23 @@ def do_tick(service, state, results, events):
         state.update({'purge_pending_fetch': False})
     service.tx({'info': 'pending_fetch : {}'.format(state.get('pending_fetch'))})
     service.tx({'info': 'max - len(decoded)  : {}'.format(state.get('max_instructions_to_decode') - len(state.get('decoded')))})
-    for _insn in riscv.decode.do_decode(state.get('buffer'), state.get('max_instructions_to_decode') - len(state.get('decoded'))):
-        state.get('decoded').append({
-            **_insn,
-            **{'iid': state.get('iid')},
-            **{'%pc': state.get('%pc')},
-        })
-        state.update({'iid': 1 + state.get('iid')})
-        state.update({'%pc': riscv.constants.integer_to_list_of_bytes(_insn.get('size') + int.from_bytes(state.get('%pc'), 'little'), 64, 'little')})
-    service.tx({'result': {
-        'arrival': 1 + state.get('cycle'),
-        'decode.buffer_available': remaining_buffer_availability(),
-    }})
+    if state.get('max_instructions_to_decode') > len(state.get('decoded')):
+        for _insn in riscv.decode.do_decode(state.get('buffer'), state.get('max_instructions_to_decode') - len(state.get('decoded'))):
+            toolbox.report_stats(service, state, 'histo', 'decoded.insn', _insn.get('cmd'))
+            state.get('decoded').append({
+                **_insn,
+                **{'iid': state.get('iid')},
+                **{'%pc': state.get('%pc')},
+            })
+            state.update({'iid': 1 + state.get('iid')})
+            state.update({'%pc': riscv.constants.integer_to_list_of_bytes(_insn.get('size') + int.from_bytes(state.get('%pc'), 'little'), 64, 'little')})
+        service.tx({'result': {
+            'arrival': 1 + state.get('cycle'),
+            'decode.buffer_available': remaining_buffer_availability(),
+        }})
     service.tx({'info': 'state.decoded       : {}'.format(state.get('decoded'))})
     if not len(state.get('decoded')): return
-    for _insn in state.get('decoded'):
-        toolbox.report_stats(service, state, 'histo', 'decoded.insn', _insn.get('cmd'))
-        if any(map(lambda x: hazard(x, _insn), state.get('issued'))): break
-        if _insn.get('rs1'): service.tx({'event': {
-            'arrival': 1 + state.get('cycle'),
-            'register': {
-                'cmd': 'get',
-                'name': _insn.get('rs1'),
-            }
-        }})
-        if _insn.get('rs2'): service.tx({'event': {
-            'arrival': 1 + state.get('cycle'),
-            'register': {
-                'cmd': 'get',
-                'name': _insn.get('rs2'),
-            }
-        }})
-        service.tx({'event': {
-            'arrival': 2 + state.get('cycle'),
-            'alu': {
-                'insn': _insn,
-            },
-        }})
-        state.get('issued').append(_insn)
-        for _ in range(_insn.get('size')): state.get('buffer').pop(0)
-        toolbox.report_stats(service, state, 'histo', 'issued.insn', _insn.get('cmd'))
+    do_issue(service, state)
     service.tx({'info': 'state.decoded       : {}'.format(state.get('decoded'))})
     service.tx({'info': 'state.issued        : {}'.format(state.get('issued'))})
     for _insn in filter(lambda x: x in state.get('decoded'), state.get('issued')):
