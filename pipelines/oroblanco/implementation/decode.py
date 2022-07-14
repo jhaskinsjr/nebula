@@ -49,7 +49,6 @@ def do_tick(service, state, results, events):
             for _ in range(_insn.get('size')): state.get('buffer').pop(0)
     service.tx({'info': 'state.decoded       : {}'.format(state.get('decoded'))})
     for _insn in state.get('decoded'):
-#        toolbox.report_stats(service, state, 'histo', 'decoded.insn', _insn.get('cmd'))
         if any(map(lambda x: hazard(x, _insn), state.get('issued'))): break
         state.get('remove_from_decoded').append(_insn)
         if _insn.get('rs1'): service.tx({'event': {
@@ -80,7 +79,6 @@ def do_tick(service, state, results, events):
             },
         }})
         state.get('issued').append(_insn)
-#        for _ in range(_insn.get('size')): state.get('buffer').pop(0)
         toolbox.report_stats(service, state, 'histo', 'issued.insn', _insn.get('cmd'))
     service.tx({'info': 'state.remove_from_decoded       : {}'.format(state.get('remove_from_decoded'))})
     for _insn in state.get('remove_from_decoded'):
