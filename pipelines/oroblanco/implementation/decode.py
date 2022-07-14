@@ -52,6 +52,9 @@ def do_tick(service, state, results, events):
     for _reg in map(lambda y: y.get('register'), filter(lambda x: x.get('register'), results)):
         if '%pc' != _reg.get('name'): continue
         _pc = _reg.get('data')
+        if 0 == int.from_bytes(_pc, 'little'):
+            service.tx({'info': 'Jump to @0x00000000... graceful shutdown'})
+            service.tx({'shutdown': None})
         state.get('buffer').clear()
         state.get('decoded').clear()
         state.update({'drop_until': _pc})
@@ -90,6 +93,7 @@ def do_tick(service, state, results, events):
         service.tx({'result': {
             'arrival': 1 + state.get('cycle'),
             'decode.buffer_status': {
+                '%pc': state.get('%pc'),
                 'available': remaining_buffer_availability(),
                 'cycle': state.get('cycle'),
             },
@@ -150,6 +154,7 @@ if '__main__' == __name__:
                 _service.tx({'result': {
                     'arrival': 2 + state.get('cycle'), # current-cycle + 2 b/c when this executes cycle is 0; +1 would double-count cycle 1
                     'decode.buffer_status': {
+                        '%pc': state.get('%pc'),
                         'available': state.get('config').get('buffer_capacity'),
                         'cycle': state.get('cycle'),
                     },

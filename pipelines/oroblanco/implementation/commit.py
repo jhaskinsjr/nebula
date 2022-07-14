@@ -28,7 +28,9 @@ def do_commit(service, state):
             service.tx({'result': {
                 'arrival': 1 + state.get('cycle'),
                 'flush': {
+                    'cmd': _insn.get('cmd'),
                     'iid': _insn.get('iid'),
+                    '%pc': _insn.get('%pc'),
                 },
             }})
             toolbox.report_stats(service, state, 'flat', 'flushes')

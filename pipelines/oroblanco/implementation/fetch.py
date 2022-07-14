@@ -67,17 +67,14 @@ def do_tick(service, state, results, events):
     for _reg in map(lambda y: y.get('register'), filter(lambda x: x.get('register'), results)):
         if '%pc' != _reg.get('name'): continue
         _pc = _reg.get('data')
-        if 0 == int.from_bytes(_pc, 'little'):
-            service.tx({'info': 'Jump to @0x00000000... graceful shutdown'})
-            service.tx({'shutdown': None})
         state.update({'%jp': _pc})
     for _decode_buffer_status in map(lambda y: y.get('decode.buffer_status'), filter(lambda x: x.get('decode.buffer_status'), results)):
         service.tx({'info': 'decode.buffer_status : {}'.format(_decode_buffer_status)})
         _availability_discount = (state.get('fetch_size') if state.get('decode.bytes_sent') == _decode_buffer_status.get('cycle') else 0)
         state.update({
-#            'decode.buffer_avaiable': _decode_buffer_status.get('available') - (0 if state.get('decode.bytes_sent') != _decode_buffer_status.get('cycle') else state.get('fetch_size'))
             'decode.buffer_available': _decode_buffer_status.get('available') - _availability_discount
         })
+#        state.update({'%jp': _decode_buffer_status.get('%pc')})
     for _l2 in map(lambda y: y.get('l2'), filter(lambda x: x.get('l2'), results)):
         _addr = _l2.get('addr')
         if _addr not in state.get('pending_fetch'): continue
