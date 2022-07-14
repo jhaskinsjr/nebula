@@ -16,6 +16,7 @@ def do_tick(service, state, results, events):
         if '%pc' != _reg.get('name'): continue
         _pc = _reg.get('data')
         state.get('buffer').clear()
+        state.get('decoded').clear()
         state.update({'drop_until': _pc})
         service.tx({'info': '_pc                   : {}'.format(_pc)})
         service.tx({'info': 'state.get(pc)         : {}'.format(state.get('%pc'))})
@@ -41,9 +42,16 @@ def do_tick(service, state, results, events):
     service.tx({'info': 'state.bytes_fetched : {}'.format(state.get('bytes_fetched'))})
     service.tx({'info': 'state.issued        : {}'.format(state.get('issued'))})
     service.tx({'info': 'state.buffer        : {}'.format(state.get('buffer'))})
-    for _insn in riscv.decode.do_decode(state.get('buffer'), state.get('max_instructions_to_decode')):
-        toolbox.report_stats(service, state, 'histo', 'decoded.insn', _insn.get('cmd'))
+    if state.get('max_instructions_to_decode') > len(state.get('decoded')):
+        for _insn in riscv.decode.do_decode(state.get('buffer'), state.get('max_instructions_to_decode') - len(state.get('decoded'))):
+            state.get('decoded').append(_insn)
+            toolbox.report_stats(service, state, 'histo', 'decoded.insn', _insn.get('cmd'))
+            for _ in range(_insn.get('size')): state.get('buffer').pop(0)
+    service.tx({'info': 'state.decoded       : {}'.format(state.get('decoded'))})
+    for _insn in state.get('decoded'):
+#        toolbox.report_stats(service, state, 'histo', 'decoded.insn', _insn.get('cmd'))
         if any(map(lambda x: hazard(x, _insn), state.get('issued'))): break
+        state.get('remove_from_decoded').append(_insn)
         if _insn.get('rs1'): service.tx({'event': {
             'arrival': 1 + state.get('cycle'),
             'register': {
@@ -72,8 +80,12 @@ def do_tick(service, state, results, events):
             },
         }})
         state.get('issued').append(_insn)
-        for _ in range(_insn.get('size')): state.get('buffer').pop(0)
+#        for _ in range(_insn.get('size')): state.get('buffer').pop(0)
         toolbox.report_stats(service, state, 'histo', 'issued.insn', _insn.get('cmd'))
+    service.tx({'info': 'state.remove_from_decoded       : {}'.format(state.get('remove_from_decoded'))})
+    for _insn in state.get('remove_from_decoded'):
+        state.get('decoded').remove(_insn)
+    state.get('remove_from_decoded').clear()
     if state.get('reset_buffer_available'):
         service.tx({'result': {
             'arrival': 1 + state.get('cycle'),
@@ -113,6 +125,8 @@ if '__main__' == __name__:
         'bytes_fetched': 0,
         'reset_buffer_available': False,
         'drop_until': None,
+        'decoded': [],
+        'remove_from_decoded': [],
         'issued': [],
         'iid': 0,
         'max_instructions_to_decode': 1, # HACK: hard-coded max-instructions-to-decode of 1
