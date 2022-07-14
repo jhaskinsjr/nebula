@@ -19,10 +19,10 @@ def do_commit(service, state):
         ),
         state.get('pending_commit')
     )))})
-    _retire = []
+    _commit = []
     for _insn in state.get('pending_commit'):
         if not any(map(lambda x: x in _insn.keys(), ['next_pc', 'ret_pc', 'result'])): break
-        _retire.append(_insn)
+        _commit.append(_insn)
         if state.get('flush_until') and state.get('flush_until') != _insn.get('%pc'):
             service.tx({'info': 'flushing {}'.format(_insn)})
             service.tx({'result': {
@@ -65,11 +65,19 @@ def do_commit(service, state):
         service.tx({'result': {
             'arrival': 1 + state.get('cycle'),
             'retire': {
-                'iid': _insn.get('iid'),
+                'cmd': _insn.get('cmd'),
+                'iid': _insn.get('iid'), # NOTE: all the extra fields below support branch prediction for now, value prediction later
+                '%pc': _insn.get('%pc'),
+                'word': _insn.get('word'),
+                'size': _insn.get('size'),
+                **({'next_pc': _insn.get('next_pc')} if 'next_pc' in _insn.keys() else {}),
+                **({'ret_pc': _insn.get('ret_pc')} if 'ret_pc' in _insn.keys() else {}),
+                **({'taken': _insn.get('taken')} if 'taken' in _insn.keys() else {}),
+                **({'result': _insn.get('result')} if 'result' in _insn.keys() else {}),
             },
         }})
         toolbox.report_stats(service, state, 'flat', 'retires')
-    for _insn in _retire: state.get('pending_commit').remove(_insn)
+    for _insn in _commit: state.get('pending_commit').remove(_insn)
 
 def do_tick(service, state, results, events):
     for _l1dc in map(lambda y: y.get('l1dc'), filter(lambda x: x.get('l1dc'), results)):
