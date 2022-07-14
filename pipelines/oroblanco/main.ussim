@@ -1,0 +1,37 @@
+# Sample μService-SIMulator script
+service implementation/regfile.py:localhost
+service implementation/mainmem.py:localhost
+service implementation/fetch.py:localhost
+service implementation/decode.py:localhost
+service implementation/alu.py:localhost
+service implementation/lsu.py:localhost
+service implementation/commit.py:localhost
+service implementation/l2.py:localhost
+service ../../toolbox/stats.py:localhost
+spawn
+config mainmem peek_latency_in_cycles 25
+config fetch l1ic.nsets 16
+config fetch l1ic.nways 1
+config fetch l1ic.nbytesperblock 8
+config decode buffer_capacity 32
+config lsu l1dc.nsets 32
+config lsu l1dc.nways 4
+config lsu l1dc.nbytesperblock 16
+config l2 l2.nsets 64
+config l2 l2.nways 8
+config l2 l2.nbytesperblock 32
+config l2 l2.hitlatency 5
+config stats output_filename /tmp/stats.json
+# Memory hierarhchy peek latencies...
+# - L1 peek-hit latency: 5**0 cycles
+# - L2 peek-hit latency: 5**1 cycles
+# - MM peek     latency: 5**2 cycles
+cycle
+loadbin 0x80000000 0x40000000 main  # set x2 to 0x80000000 and %pc to 0x40000000, then
+                                    # load binary (e.g., ../../examples/bin/sum), and
+                                    # execute beginning from the "main" symbol in the
+                                    # binary's .text section
+run
+cycle
+state
+shutdown
