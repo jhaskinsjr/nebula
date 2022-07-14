@@ -11,6 +11,43 @@ import riscv.decode
 def remaining_buffer_availability(): return state.get('config').get('buffer_capacity') - len(state.get('buffer'))
 def hazard(p, c):
     return 'rd' in p.keys() and (('rs1' in c.keys() and p.get('rd') == c.get('rs1')) or ('rs2' in c.keys() and p.get('rd') == c.get('rs2')))
+def do_issue(service, state):
+    for _insn in state.get('decoded'):
+        if any(map(lambda x: hazard(x, _insn), state.get('issued'))): break
+        state.get('remove_from_decoded').append(_insn)
+        if _insn.get('rs1'): service.tx({'event': {
+            'arrival': 1 + state.get('cycle'),
+            'register': {
+                'cmd': 'get',
+                'name': _insn.get('rs1'),
+            }
+        }})
+        if _insn.get('rs2'): service.tx({'event': {
+            'arrival': 1 + state.get('cycle'),
+            'register': {
+                'cmd': 'get',
+                'name': _insn.get('rs2'),
+            }
+        }})
+        _insn = {
+            **_insn,
+            **{'iid': state.get('iid')},
+            **{'%pc': state.get('%pc')},
+        }
+        state.update({'iid': 1 + state.get('iid')})
+        state.update({'%pc': riscv.constants.integer_to_list_of_bytes(_insn.get('size') + int.from_bytes(state.get('%pc'), 'little'), 64, 'little')})
+        service.tx({'event': {
+            'arrival': 2 + state.get('cycle'),
+            'alu': {
+                'insn': _insn,
+            },
+        }})
+        state.get('issued').append(_insn)
+        toolbox.report_stats(service, state, 'histo', 'issued.insn', _insn.get('cmd'))
+    service.tx({'info': 'state.remove_from_decoded       : {}'.format(state.get('remove_from_decoded'))})
+    for _insn in state.get('remove_from_decoded'):
+        state.get('decoded').remove(_insn)
+    state.get('remove_from_decoded').clear()
 def do_tick(service, state, results, events):
     for _reg in map(lambda y: y.get('register'), filter(lambda x: x.get('register'), results)):
         if '%pc' != _reg.get('name'): continue
@@ -48,42 +85,7 @@ def do_tick(service, state, results, events):
             toolbox.report_stats(service, state, 'histo', 'decoded.insn', _insn.get('cmd'))
             for _ in range(_insn.get('size')): state.get('buffer').pop(0)
     service.tx({'info': 'state.decoded       : {}'.format(state.get('decoded'))})
-    for _insn in state.get('decoded'):
-        if any(map(lambda x: hazard(x, _insn), state.get('issued'))): break
-        state.get('remove_from_decoded').append(_insn)
-        if _insn.get('rs1'): service.tx({'event': {
-            'arrival': 1 + state.get('cycle'),
-            'register': {
-                'cmd': 'get',
-                'name': _insn.get('rs1'),
-            }
-        }})
-        if _insn.get('rs2'): service.tx({'event': {
-            'arrival': 1 + state.get('cycle'),
-            'register': {
-                'cmd': 'get',
-                'name': _insn.get('rs2'),
-            }
-        }})
-        _insn = {
-            **_insn,
-            **{'iid': state.get('iid')},
-            **{'%pc': state.get('%pc')},
-        }
-        state.update({'iid': 1 + state.get('iid')})
-        state.update({'%pc': riscv.constants.integer_to_list_of_bytes(_insn.get('size') + int.from_bytes(state.get('%pc'), 'little'), 64, 'little')})
-        service.tx({'event': {
-            'arrival': 2 + state.get('cycle'),
-            'alu': {
-                'insn': _insn,
-            },
-        }})
-        state.get('issued').append(_insn)
-        toolbox.report_stats(service, state, 'histo', 'issued.insn', _insn.get('cmd'))
-    service.tx({'info': 'state.remove_from_decoded       : {}'.format(state.get('remove_from_decoded'))})
-    for _insn in state.get('remove_from_decoded'):
-        state.get('decoded').remove(_insn)
-    state.get('remove_from_decoded').clear()
+    do_issue(service, state)
     if state.get('reset_buffer_available'):
         service.tx({'result': {
             'arrival': 1 + state.get('cycle'),
