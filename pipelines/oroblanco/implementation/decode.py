@@ -8,13 +8,14 @@ import toolbox
 import riscv.constants
 import riscv.decode
 
-def remaining_buffer_availability(): return state.get('config').get('buffer_capacity') - len(state.get('buffer'))
 def hazard(p, c):
     return 'rd' in p.keys() and (('rs1' in c.keys() and p.get('rd') == c.get('rs1')) or ('rs2' in c.keys() and p.get('rd') == c.get('rs2')))
 def do_issue(service, state):
-    for _insn in state.get('decoded'):
+    for _dec in state.get('decoded'):
+        _insn = _dec.get('insn')
+        _pc = _dec.get('%pc')
         if any(map(lambda x: hazard(x, _insn), state.get('issued'))): break
-        state.get('remove_from_decoded').append(_insn)
+        state.get('remove_from_decoded').append(_dec)
         if _insn.get('rs1'): service.tx({'event': {
             'arrival': 1 + state.get('cycle'),
             'register': {
@@ -32,10 +33,9 @@ def do_issue(service, state):
         _insn = {
             **_insn,
             **{'iid': state.get('iid')},
-            **{'%pc': state.get('%pc')},
+            **{'%pc': _pc},
         }
         state.update({'iid': 1 + state.get('iid')})
-        state.update({'%pc': riscv.constants.integer_to_list_of_bytes(_insn.get('size') + int.from_bytes(state.get('%pc'), 'little'), 64, 'little')})
         service.tx({'event': {
             'arrival': 2 + state.get('cycle'),
             'alu': {
@@ -45,8 +45,8 @@ def do_issue(service, state):
         state.get('issued').append(_insn)
         toolbox.report_stats(service, state, 'histo', 'issued.insn', _insn.get('cmd'))
     service.tx({'info': 'state.remove_from_decoded       : {}'.format(state.get('remove_from_decoded'))})
-    for _insn in state.get('remove_from_decoded'):
-        state.get('decoded').remove(_insn)
+    for _dec in state.get('remove_from_decoded'):
+        state.get('decoded').remove(_dec)
     state.get('remove_from_decoded').clear()
 def do_tick(service, state, results, events):
     for _reg in map(lambda y: y.get('register'), filter(lambda x: x.get('register'), results)):
@@ -57,11 +57,10 @@ def do_tick(service, state, results, events):
             service.tx({'shutdown': None})
         state.get('buffer').clear()
         state.get('decoded').clear()
-        state.update({'drop_until': _pc})
+        state.get('next_%pc').clear()
+        state.get('next_%pc').append(_pc)
+        state.update({'drop_until': state.get('next_%pc')[0]})
         service.tx({'info': '_pc                   : {}'.format(_pc)})
-        service.tx({'info': 'state.get(pc)         : {}'.format(state.get('%pc'))})
-        service.tx({'info': 'state.get(drop_until) : {}'.format(state.get('drop_until'))})
-        state.update({'reset_buffer_available': True})
     for _flush, _retire in map(lambda y: (y.get('flush'), y.get('retire')), filter(lambda x: x.get('flush') or x.get('retire'), results)):
         if _flush: service.tx({'info': '_flush : {}'.format(_flush)})
         if _retire: service.tx({'info': '_retire : {}'.format(_retire)})
@@ -69,37 +68,48 @@ def do_tick(service, state, results, events):
         assert state.get('issued')[0].get('iid') == _commit.get('iid')
         state.get('issued').pop(0)
     for _dec in map(lambda y: y.get('decode'), filter(lambda x: x.get('decode'), events)):
-        state.update({'bytes_fetched' : state.get('bytes_fetched') + _dec.get('size')})
+        state.get('decode.request').update({'nbytes_received_so_far': state.get('decode.request').get('nbytes_received_so_far') + len(_dec.get('data'))})
+        if state.get('decode.request').get('nbytes_received_so_far') == state.get('decode.request').get('nbytes_requested'):
+            state.update({'decode.request': None})
         service.tx({'info': '_dec                  : {}'.format(_dec)})
         if state.get('drop_until'):
             if _dec.get('addr') != state.get('drop_until'): continue
             state.update({'drop_until': None})
             state.update({'%pc': _dec.get('addr')})
         state.get('buffer').extend(_dec.get('data'))
-        service.tx({'info': 'state.get(drop_until) : {}'.format(state.get('drop_until'))})
-    if state.get('bytes_fetched') == state.get('config').get('buffer_capacity') and len(state.get('buffer')) <= (state.get('config').get('buffer_capacity') >> 1):
-        state.update({'reset_buffer_available': True})
-    service.tx({'info': 'state.bytes_fetched : {}'.format(state.get('bytes_fetched'))})
-    service.tx({'info': 'state.issued        : {}'.format(state.get('issued'))})
-    service.tx({'info': 'state.buffer        : {}'.format(state.get('buffer'))})
+    if len(state.get('next_%pc')) < 2: # NOTE: try to keep 2 next_%pc at a time
+        _next_pc  = int.from_bytes(state.get('next_%pc')[-1], 'little')
+#        _next_pc += state.get('config').get('buffer_capacity') >> 1
+        _next_pc += 4
+        _next_pc  = riscv.constants.integer_to_list_of_bytes(_next_pc, 64, 'little')
+        state.get('next_%pc').append(_next_pc)
+    if not state.get('decode.request') and len(state.get('buffer')) < state.get('config').get('buffer_capacity') >> 1:
+        state.update({'decode.request': {
+            'addr': state.get('next_%pc').pop(0),
+#            'nbytes_requested': state.get('config').get('buffer_capacity') >> 1,
+            'nbytes_requested': 4,
+            'nbytes_received_so_far': 0,
+        }})
+        _service.tx({'event': {
+            **{'arrival': 1 + state.get('cycle')},
+            **{'decode.request': {k:v for k, v in state.get('decode.request').items() if 'nbytes_received_so_far' != k}},
+        }})
     if state.get('max_instructions_to_decode') > len(state.get('decoded')):
         for _insn in riscv.decode.do_decode(state.get('buffer'), state.get('max_instructions_to_decode') - len(state.get('decoded'))):
-            state.get('decoded').append(_insn)
+            state.get('decoded').append({
+                'insn': _insn,
+                '%pc': state.get('%pc'),
+            })
             toolbox.report_stats(service, state, 'histo', 'decoded.insn', _insn.get('cmd'))
             for _ in range(_insn.get('size')): state.get('buffer').pop(0)
-    service.tx({'info': 'state.decoded       : {}'.format(state.get('decoded'))})
+            state.update({'%pc': riscv.constants.integer_to_list_of_bytes(_insn.get('size') + int.from_bytes(state.get('%pc'), 'little'), 64, 'little')})
+    service.tx({'info': 'state.issued           : {}'.format(state.get('issued'))})
+    service.tx({'info': 'state.buffer           : {} ({})'.format(state.get('buffer'), len(state.get('buffer')))})
+    service.tx({'info': 'state.next_%pc         : {}'.format(state.get('next_%pc'))})
+    service.tx({'info': 'state.decoded          : {}'.format(state.get('decoded'))})
+    service.tx({'info': 'state.decode.request   : {}'.format(state.get('decode.request'))})
+    service.tx({'info': 'state.drop_until       : {}'.format(state.get('drop_until'))})
     do_issue(service, state)
-    if state.get('reset_buffer_available'):
-        service.tx({'result': {
-            'arrival': 1 + state.get('cycle'),
-            'decode.buffer_status': {
-                '%pc': state.get('%pc'),
-                'available': remaining_buffer_availability(),
-                'cycle': state.get('cycle'),
-            },
-        }})
-        state.update({'bytes_fetched': max(0, state.get('bytes_fetched') - remaining_buffer_availability())})
-        state.update({'reset_buffer_available': False})
 
 if '__main__' == __name__:
     parser = argparse.ArgumentParser(description='μService-SIMulator: Instruction Decode')
@@ -124,10 +134,10 @@ if '__main__' == __name__:
         'active': True,
         'running': False,
         '%pc': None,
+        'next_%pc': [],
         'ack': True,
         'buffer': [],
-        'bytes_fetched': 0,
-        'reset_buffer_available': False,
+        'decode.request': None,
         'drop_until': None,
         'decoded': [],
         'remove_from_decoded': [],
@@ -151,13 +161,19 @@ if '__main__' == __name__:
             elif {'text': 'run'} == {k: v}:
                 state.update({'running': True})
                 state.update({'ack': False})
-                _service.tx({'result': {
-                    'arrival': 2 + state.get('cycle'), # current-cycle + 2 b/c when this executes cycle is 0; +1 would double-count cycle 1
-                    'decode.buffer_status': {
-                        '%pc': state.get('%pc'),
-                        'available': state.get('config').get('buffer_capacity'),
-                        'cycle': state.get('cycle'),
-                    },
+                state.update({'decode.request': {
+                    'addr': state.get('%pc'),
+#                    'nbytes_requested': state.get('config').get('buffer_capacity') >> 1,
+                    'nbytes_requested': 4,
+                    'nbytes_received_so_far': 0,
+                }})
+                _next_pc  = int.from_bytes(state.get('decode.request').get('addr'), 'little')
+                _next_pc += state.get('decode.request').get('nbytes_requested')
+                _next_pc  = riscv.constants.integer_to_list_of_bytes(_next_pc, 64, 'little')
+                state.get('next_%pc').append(_next_pc)
+                _service.tx({'event': {
+                    **{'arrival': 2 + state.get('cycle')},
+                    **{'decode.request': {k:v for k, v in state.get('decode.request').items() if 'nbytes_received_so_far' != k}},
                 }})
             elif 'config' == k:
                 logging.debug('config : {}'.format(v))
