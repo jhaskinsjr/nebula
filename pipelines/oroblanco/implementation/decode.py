@@ -79,14 +79,12 @@ def do_tick(service, state, results, events):
         state.get('buffer').extend(_dec.get('data'))
     if len(state.get('next_%pc')) < 2: # NOTE: try to keep 2 next_%pc at a time
         _next_pc  = int.from_bytes(state.get('next_%pc')[-1], 'little')
-#        _next_pc += state.get('config').get('buffer_capacity') >> 1
         _next_pc += 4
         _next_pc  = riscv.constants.integer_to_list_of_bytes(_next_pc, 64, 'little')
         state.get('next_%pc').append(_next_pc)
     if not state.get('decode.request') and len(state.get('buffer')) < state.get('config').get('buffer_capacity') >> 1:
         state.update({'decode.request': {
             'addr': state.get('next_%pc').pop(0),
-#            'nbytes_requested': state.get('config').get('buffer_capacity') >> 1,
             'nbytes_requested': 4,
             'nbytes_received_so_far': 0,
         }})
@@ -163,7 +161,6 @@ if '__main__' == __name__:
                 state.update({'ack': False})
                 state.update({'decode.request': {
                     'addr': state.get('%pc'),
-#                    'nbytes_requested': state.get('config').get('buffer_capacity') >> 1,
                     'nbytes_requested': 4,
                     'nbytes_received_so_far': 0,
                 }})
