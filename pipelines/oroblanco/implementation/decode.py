@@ -5,6 +5,8 @@ import logging
 
 import service
 import toolbox
+import components.simplebtb
+import components.simplepredictor
 import riscv.constants
 import riscv.decode
 
@@ -34,6 +36,7 @@ def do_issue(service, state):
             **_insn,
             **{'iid': state.get('iid')},
             **{'%pc': _pc},
+#            **{'speculative': any(map(lambda x: x.get('cmd') in riscv.constants.BRANCHES, state.get('issued')))},
         }
         state.update({'iid': 1 + state.get('iid')})
         service.tx({'event': {
@@ -42,11 +45,20 @@ def do_issue(service, state):
                 'insn': _insn,
             },
         }})
+        if state.get('btb'):
+            if _insn.get('cmd') in riscv.constants.JUMPS and (_insn.get('cmd') == 'JAL' or _insn.get('rs1') == 0):
+                _pc = int.from_bytes(_insn.get('%pc'), 'little')
+                _btb_entry = state.get('btb').peek(_pc)
+                if _btb_entry:
+                    service.tx({'info': '_btb_entry : {}'.format(_btb_entry)})
+                    state.get('buffer').clear()
+                    state.get('buffer').extend(_btb_entry.data)
+                    state.get('next_%pc').clear()
+                    state.get('next_%pc').append(riscv.constants.integer_to_list_of_bytes(_btb_entry.next_pc + len(_btb_entry.data), 64, 'little'))
         state.get('issued').append(_insn)
         toolbox.report_stats(service, state, 'histo', 'issued.insn', _insn.get('cmd'))
     service.tx({'info': 'state.remove_from_decoded       : {}'.format(state.get('remove_from_decoded'))})
-    for _dec in state.get('remove_from_decoded'):
-        state.get('decoded').remove(_dec)
+    for _dec in state.get('remove_from_decoded'): state.get('decoded').remove(_dec)
     state.get('remove_from_decoded').clear()
 def do_tick(service, state, results, events):
     for _reg in map(lambda y: y.get('register'), filter(lambda x: x.get('register'), results)):
@@ -67,7 +79,13 @@ def do_tick(service, state, results, events):
         _commit = (_flush if _flush else _retire)
         assert state.get('issued')[0].get('iid') == _commit.get('iid')
         state.get('issued').pop(0)
+        if _retire and _retire.get('cmd') in riscv.constants.JUMPS:
+            _pc = int.from_bytes(_retire.get('%pc'), 'little')
+            _next_pc = int.from_bytes(_retire.get('next_pc'), 'little')
+            if state.get('btb'): state.get('btb').poke(_pc, _next_pc)
     for _dec in map(lambda y: y.get('decode'), filter(lambda x: x.get('decode'), events)):
+        _addr = int.from_bytes(_dec.get('addr'), 'little')
+        if state.get('btb'): state.get('btb').update(_addr, _dec.get('data'))
         state.get('decode.request').update({'nbytes_received_so_far': state.get('decode.request').get('nbytes_received_so_far') + len(_dec.get('data'))})
         if state.get('decode.request').get('nbytes_received_so_far') == state.get('decode.request').get('nbytes_requested'):
             state.update({'decode.request': None})
@@ -129,6 +147,7 @@ if '__main__' == __name__:
     state = {
         'service': 'decode',
         'cycle': 0,
+        'btb': None,
         'active': True,
         'running': False,
         '%pc': None,
@@ -145,8 +164,14 @@ if '__main__' == __name__:
         'max_instructions_to_decode': 1, # HACK: hard-coded max-instructions-to-decode of 1
         'config': {
             'buffer_capacity': 16,
+            'btb.nentries': 0,
+            'btb.nbytesperentry': 0,
         },
     }
+    if state.get('config').get('btb.nentries'): state.update({'btb': components.simplebtb.SimpleBTB(
+        state.get('config').get('btb.nentries'),
+        state.get('config').get('btb.nbytesperentry'),
+    )})
     _service = service.Service(state.get('service'), _launcher.get('host'), _launcher.get('port'))
     while state.get('active'):
         state.update({'ack': True})
