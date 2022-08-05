@@ -48,7 +48,6 @@ def do_issue(service, state):
         }})
         state.get('issued').append(_insn)
         toolbox.report_stats(service, state, 'histo', 'issued.insn', _insn.get('cmd'))
-#        if _btb_entry and _insn.get('cmd') in riscv.constants.JUMPS and (_insn.get('cmd') == 'JAL' or _insn.get('rs1') == 0):
         if _btb_entry:
             service.tx({'info': '_btb_entry : {}'.format(_btb_entry)})
             state.get('buffer').clear()
@@ -58,18 +57,6 @@ def do_issue(service, state):
             state.update({'%pc': riscv.constants.integer_to_list_of_bytes(_btb_entry.next_pc, 64, 'little')})
             state.update({'drop_until': state.get('next_%pc')[0]})
             break
-#        if state.get('btb'):
-#            if _insn.get('cmd') in riscv.constants.JUMPS and (_insn.get('cmd') == 'JAL' or _insn.get('rs1') == 0):
-#                _pc = int.from_bytes(_insn.get('%pc'), 'little')
-#                _btb_entry = state.get('btb').peek(_pc)
-#                if _btb_entry:
-#                    service.tx({'info': '_btb_entry : {}'.format(_btb_entry)})
-#                    state.get('buffer').clear()
-#                    state.get('buffer').extend(_btb_entry.data)
-#                    state.get('next_%pc').clear()
-#                    state.get('next_%pc').append(riscv.constants.integer_to_list_of_bytes(_btb_entry.next_pc + len(_btb_entry.data), 64, 'little'))
-#                    state.update({'%pc': riscv.constants.integer_to_list_of_bytes(_btb_entry.next_pc, 64, 'little')})
-#                    break
     service.tx({'info': 'state.remove_from_decoded       : {}'.format(state.get('remove_from_decoded'))})
     for _dec in state.get('remove_from_decoded'): state.get('decoded').remove(_dec)
     state.get('remove_from_decoded').clear()
@@ -80,12 +67,6 @@ def do_tick(service, state, results, events):
         if 0 == int.from_bytes(_pc, 'little'):
             service.tx({'info': 'Jump to @0x00000000... graceful shutdown'})
             service.tx({'shutdown': None})
-#        state.get('buffer').clear()
-#        state.get('decoded').clear()
-#        state.get('next_%pc').clear()
-#        state.get('next_%pc').append(_pc)
-#        state.update({'drop_until': state.get('next_%pc')[0]})
-#        service.tx({'info': '_pc                   : {}'.format(_pc)})
     for _flush, _retire in map(lambda y: (y.get('flush'), y.get('retire')), filter(lambda x: x.get('flush') or x.get('retire'), results)):
         if _flush: service.tx({'info': '_flush : {}'.format(_flush)})
         if _retire: service.tx({'info': '_retire : {}'.format(_retire)})
@@ -103,7 +84,6 @@ def do_tick(service, state, results, events):
             state.get('next_%pc').clear()
             state.get('next_%pc').append(_retire.get('next_pc'))
             state.update({'drop_until': state.get('next_%pc')[0]})
-#            service.tx({'info': '_pc                   : {}'.format(_retire.get('next_pc'))})
     for _dec in map(lambda y: y.get('decode'), filter(lambda x: x.get('decode'), events)):
         _addr = int.from_bytes(_dec.get('addr'), 'little')
         if state.get('btb'): state.get('btb').update(_addr, _dec.get('data'))
