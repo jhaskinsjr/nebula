@@ -73,10 +73,19 @@ def do_tick(service, state, results, events):
         _commit = (_flush if _flush else _retire)
         assert state.get('issued')[0].get('iid') == _commit.get('iid')
         state.get('issued').pop(0)
-        if _retire and _retire.get('taken'):
+        if not state.get('btb'): continue
+        if _retire and 'taken' in _retire.keys():
             _pc = int.from_bytes(_retire.get('%pc'), 'little')
             _next_pc = int.from_bytes(_retire.get('next_pc'), 'little')
-            if state.get('btb'): state.get('btb').poke(_pc, _next_pc)
+            if _retire.get('taken'):
+                state.get('btb').poke(_pc, _next_pc)
+                _btb_entry = state.get('btb').peek(_pc)
+                _btb_entry.inc()
+            else:
+                _btb_entry = state.get('btb').peek(_pc)
+                if not _btb_entry: continue
+                _btb_entry.dec()
+                if not _btb_entry.counter: state.get('btb').evict(_pc) # if strongly not-taken, why keep it around?
         if _retire and _retire.get('next_pc'):
             if _retire.get('speculative_next_pc') == _retire.get('next_pc'): continue
             if len(state.get('issued')) and state.get('issued')[0].get('%pc') == _retire.get('next_pc'): continue

@@ -1,12 +1,16 @@
 import random
 
 class BTBEntry:
-    def __init__(self, next_pc):
+    def __init__(self, next_pc, counter_nbits=2):
         self.next_pc = next_pc
         self.addr = next_pc
+        self.counter = (1 << (counter_nbits - 1)) - 1 # intially weakly not-taken
+        self.counter_max = (1 << counter_nbits) - 1
         self.data = []
+    def inc(self): self.counter += (1 if self.counter < self.counter_max else 0)
+    def dec(self): self.counter -= (1 if self.counter > 0 else 1)
     def __repr__(self):
-        return '[{} ; {} ; {}]'.format(list((self.next_pc).to_bytes(8, 'little')), self.addr, self.data)
+        return '[{} ; {} ; 0b{:04b}; {}]'.format(list((self.next_pc).to_bytes(8, 'little')), self.addr, self.counter, self.data)
 class SimpleBTB:
     def __init__(self, nentries, nbytesperentry):
         self.nentries = nentries
@@ -31,3 +35,5 @@ class SimpleBTB:
         self.entries.get(_k).data.extend(data)
         self.entries.get(_k).addr += len(data)
         if len(self.entries.get(_k).data) == self.nbytesperentry: self.entries.get(_k).addr = None
+    def evict(self, pc):
+        if pc in self.entries.keys(): self.entries.pop(pc)
