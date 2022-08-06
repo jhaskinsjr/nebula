@@ -37,7 +37,8 @@ def do_commit(service, state):
             continue
         state.update({'flush_until': None})
         service.tx({'info': 'retiring {}'.format(_insn)})
-        if _insn.get('next_pc') and _insn.get('taken'):
+#        if _insn.get('next_pc') and _insn.get('taken'):
+        if _insn.get('next_pc'):
             service.tx({'result': {
                 'arrival': 1 + state.get('cycle'),
                 'register': {
