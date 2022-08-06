@@ -6,7 +6,6 @@ import logging
 import service
 import toolbox
 import components.simplebtb
-import components.simplepredictor
 import riscv.constants
 import riscv.decode
 
