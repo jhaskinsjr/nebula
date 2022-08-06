@@ -5,18 +5,22 @@ microprocessor simulators. At present, Python libraries for decoding and
 executing one instruction set, RISC-V's RV64I, are included. (Most of the
 RV64I instruction set is
 implemented: both compressed and uncompressed versions of opcodes).
-Additionally, this software package comes with two sample simulators:
-Bergamot and Clementine. Bergamot
-implements a very simple single-stage pipeline; Clementine
+Additionally, this software package comes with four sample simulated
+pipelines: Bergamot, Clementine, Lime, and Oroblanco.
+Bergamot implements a very simple single-stage pipeline; Clementine
 implements a slightly more sophisticated 6-stage pipeline
-with automatic data- and control-hazard detection and handling.
+with automatic data- and control-hazard detection and handling; Lime
+augments Clementine with an L1 instruction cache, L2 data cache, and a
+unified L2 cache; and Oroblanco augments Lime with branch prediction and
+branch target buffering.
 
 ## Software Architecture
 
 ### Philosophy: Simplicity And Flexibility Through Independence
 
 The central design feature of ussim is an army of microservices...
-independent processes running on the same machine or different machines...
+independent processes running on the same machine (and soon, different
+machines...
 shouting out whatever they need, whatever information they wish to
 communicate, whatever matters to them into the network where all other
 microservices will receive it. If something shouted into the network
@@ -41,7 +45,7 @@ of executing an instruction (e.g., decode, register access, execute)
 is handled by its own process, all the code for each step is
 self-contained, making it easier to reason about.
 
-Bergamot is comprised of five Python files
+Bergamot, for instance, is comprised of five Python files
 (see: pipelines/bergamot/implementation/), four of which contain fewer than
 150 lines of code. The lone standout is execute
 (see: pipelines/bergamot/implementation/execute.py) which, despite handling
@@ -58,7 +62,7 @@ isolated from one another, making each easier to reason about, easier to
 understand, and, as necessary for implementing novel design concepts,
 easier to modify. Consider, for instance, that a change to a function
 in the register file logic will almost certainly not alter functionality
-implemented in the decoder logic; this reduced the amount of the system
+implemented in the decoder logic; this reduces the amount of the system
 that a developer has to be familiar with in order to be productive.
 
 Furthermore, because the units communicate among themselves, it is easy
@@ -115,7 +119,7 @@ If you have not already done so, you will need to install pyelftools; see:
 
 https://github.com/eliben/pyelftools
 
-If you have not already done so, you will need to set up passwordless SSH
+You will also need to set up passwordless SSH
 access to your host machine; see:
 
 https://www.ibm.com/support/pages/configuring-ssh-login-without-password
@@ -158,13 +162,14 @@ simulation.
 
 ## Pipeline Designs
 
-At present, there are three pipeline implementations: Bergamot, Clementine, and
-Lime.
+At present, there are four pipeline implementations: Bergamot, Clementine,
+Lime, and Oroblanco.
 
 The Running section above shows how to execute the examples/bin/sum program
 using the Bergamot implementation; to use the Clementine implementation, "cd" into
 the pipelines/clementine subdirectory (instead of pipelines/bergamot); to use the
-Lime implementation, "cd" into the pipelines/lime subdirectory.
+Lime implementation, "cd" into the pipelines/lime subdirectory; to use the 
+Oroblanco implementation, "cd" into the pipelines/oroblanco subdirectory.
 
 ### Bergamot
 
@@ -209,12 +214,13 @@ the consumer instruction until the producer instruction either retires or is
 flushed by the commit
 stage. Control-flow hazards are handled by the commit stage when a
 jump (JAL, JALR) or a taken branch (BEQ, BNE, BGE, BLT, BGEU, BLTU)
-instruction retires; when this happens, the new PC is reported, which is
+instruction retires; when this happens, the target PC is remembered and all
+subsequent instructions will be flushed until the instruction at the target
+PC arrives in the commit stage. Also, as soon at the jump/branch commits
+the target PC is transmitted on the results channel where it is
 sensed by the instruction fetch stage and the decode stage. The instruction
 fetcher responds by beginning to fetch instruction bytes from the new PC;
 the decoder responds by flushing all previously-decoded instructions.
-Finally, the commit stage will flush all instructions following
-the jump/taken branch until it receives an instruction with the target PC.
 
 ### Lime
 
@@ -238,6 +244,24 @@ poke data into the caches, with write-through semantics.
 
 The cache functionality is implemented in the `SimpleCache` module (see:
 components/simplecache/).
+
+### Oroblanco
+
+See: https://en.wikipedia.org/wiki/Oroblanco.
+
+The Oroblanco implementation uses a six-stage design that is similar to the
+Lime pipeline. In addition to an L1 instruction cache, an L1 data cache,
+and a unified L2 cache, Oroblanco includes branch prediction and branch target
+buffering. Whenever a new taken branch is encountered, an entry is created for
+it in the branch target buffer (BTB). In subsequent executions, if a branch
+is taken its counter is incremented (saturating at 3) and the target
+instructions are buffered into the BTB entry; if a branch is not taken its
+counter is decremented; when a branch's counter is 0, it is evicted from the
+BTB since it is occupying space that could be used by a branch that would
+benefit from the BTB.
+
+The branch target buffer functionality is implemented in the
+`SimpleBTB` module (see: components/simplebtb/).
 
 ## Simulator Scripts
 
