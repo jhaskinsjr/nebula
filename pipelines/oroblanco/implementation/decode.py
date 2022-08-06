@@ -79,6 +79,7 @@ def do_tick(service, state, results, events):
             if state.get('btb'): state.get('btb').poke(_pc, _next_pc)
         if _retire and _retire.get('next_pc'):
             if _retire.get('speculative_next_pc') == _retire.get('next_pc'): continue
+            if len(state.get('issued')) and state.get('issued')[0].get('%pc') == _retire.get('next_pc'): continue
             state.get('buffer').clear()
             state.get('decoded').clear()
             state.get('next_%pc').clear()
