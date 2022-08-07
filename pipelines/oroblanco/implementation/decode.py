@@ -72,8 +72,7 @@ def do_tick(service, state, results, events):
         _commit = (_flush if _flush else _retire)
         assert state.get('issued')[0].get('iid') == _commit.get('iid')
         state.get('issued').pop(0)
-        if not state.get('btb'): continue
-        if _retire and 'taken' in _retire.keys():
+        if _retire and 'taken' in _retire.keys() and state.get('btb'):
             _pc = int.from_bytes(_retire.get('%pc'), 'little')
             _next_pc = int.from_bytes(_retire.get('next_pc'), 'little')
             if _retire.get('taken'):
