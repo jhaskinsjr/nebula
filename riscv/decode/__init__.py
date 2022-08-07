@@ -1138,12 +1138,15 @@ def uncomprssed_b_type_imm13(word, **kwargs):
 
 def do_decode(buffer, max_insns):
     _retval = []
-    while max_insns > len(_retval) and len(buffer):
-        _word = int.from_bytes(buffer[:4], 'little')
+    x = 0
+    while max_insns > len(_retval) and len(buffer[x:4 + x]):
+        _word = int.from_bytes(buffer[x:4 + x], 'little')
         if 0x3 == _word & 0x3:
             if 4 > len(buffer): break
             _retval.append(decode_uncompressed(_word))
+            x += 4
         else:
             _word &= 0xffff
             _retval.append(decode_compressed(_word))
+            x += 2
     return _retval
