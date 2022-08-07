@@ -113,11 +113,6 @@ if '__main__' == __name__:
             'l1ic.nbytesperblock': 2**4,
         },
     }
-    state.update({'l1ic': components.simplecache.SimpleCache(
-        state.get('config').get('l1ic.nsets'),
-        state.get('config').get('l1ic.nways'),
-        state.get('config').get('l1ic.nbytesperblock'),
-    )})
     _service = service.Service(state.get('service'), _launcher.get('host'), _launcher.get('port'))
     while state.get('active'):
         state.update({'ack': True})
@@ -129,6 +124,11 @@ if '__main__' == __name__:
                 state.update({'active': False})
                 state.update({'running': False})
             elif {'text': 'run'} == {k: v}:
+                state.update({'l1ic': components.simplecache.SimpleCache(
+                    state.get('config').get('l1ic.nsets'),
+                    state.get('config').get('l1ic.nways'),
+                    state.get('config').get('l1ic.nbytesperblock'),
+                )})
                 state.update({'running': True})
                 state.update({'ack': False})
             elif 'config' == k:

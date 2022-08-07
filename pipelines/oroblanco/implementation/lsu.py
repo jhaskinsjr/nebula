@@ -200,6 +200,11 @@ if '__main__' == __name__:
                 state.update({'active': False})
                 state.update({'running': False})
             elif {'text': 'run'} == {k: v}:
+                state.update({'l1dc': components.simplecache.SimpleCache(
+                    state.get('config').get('l1dc.nsets'),
+                    state.get('config').get('l1dc.nways'),
+                    state.get('config').get('l1dc.nbytesperblock'),
+                )})
                 state.update({'running': True})
                 state.update({'ack': False})
             elif 'tick' == k:
