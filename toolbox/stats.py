@@ -47,6 +47,7 @@ if '__main__' == __name__:
         'ack': True,
         'stats': {
             'message_size': {},
+            'cycle': 0,
         },
         'config': {
             'output_filename': None,
@@ -58,6 +59,7 @@ if '__main__' == __name__:
         msg = _service.rx()
         _tmp = json.dumps(msg)
         state.get('stats').get('message_size').update({len(_tmp): 1 + state.get('stats').get('message_size').get(len(_tmp), 0)})
+        state.get('stats').update({'cycle': state.get('cycle')})
 #        _service.tx({'info': {'msg': msg, 'msg.size()': len(msg)}})
 #        print('msg : {}'.format(msg))
         for k, v in msg.items():
