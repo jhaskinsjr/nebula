@@ -156,9 +156,16 @@ simulated main memory and register file) every 1,000 simulated cycles, but
 will cease execution if it encounters an instruction that is not (yet)
 defined.
 
-Once the simulation completes, the directory /tmp/bergamot/sum will
+Once the simulation completes, the directory "/tmp/bergamot/sum" will
 contain one log file for each of the services that executed during the
-simulation.
+simulation, and a "stats.json" file, which contains statistics such as
+number of simulated cycles, counts of the number of times each register
+was fetched/written, counts of the number of committed instructions,
+number of times each instruction type (e.g., ADD, ADDI, SD, SW) was decoded,
+number of times each instruction type was executed, etc. The
+JSON output file of more sophisticated implementations such as Oroblanco
+contain additional statistics about caches and other elements of the
+pipeline.
 
 ## Pipeline Designs
 
