@@ -87,7 +87,11 @@ def do_tick(service, state, results, events):
         if _retire and _retire.get('next_pc'):
             if _retire.get('speculative_next_pc') == _retire.get('next_pc'): continue
             if len(state.get('issued')) and state.get('issued')[0].get('%pc') == _retire.get('next_pc'): continue
-            if state.get('decode.request') and state.get('decode.request').get('addr') == _retire.get('next_pc'): continue
+            if state.get('decode.request') and state.get('decode.request').get('addr') == _retire.get('next_pc'):
+                state.get('buffer').clear()
+                state.get('decoded').clear()
+                state.update({'%pc': state.get('decode.request').get('addr')})
+                continue
             if len(state.get('next_%pc')) and state.get('next_%pc') == _retire.get('next_pc'): continue
             if state.get('%pc') and state.get('%pc') == _retire.get('next_pc'): continue
             state.get('buffer').clear()
