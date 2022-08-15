@@ -113,6 +113,21 @@ gracefully exit, e.g.,
 
 For a complete list, see the handler() function in launcher.py.
 
+### Why Python
+
+Python is neat, clean, and offers an elegant array of tools to facilitate a
+functional programming style. (Consider: `map`, `functools`, `filter`,
+`any`, `all`, `itertools`.) Indeed, Python has an extensive array of tools
+for many tasks that allowed me to quickly develop the infrastructure that
+would underpin the simulator's design philosophy of loosely coupled, largely
+independent processes with network communication.
+
+These tools are so excellent, I was able to get the
+infrastructure developed in just a couple of weeks, allowing me to rapidly
+move on to the more interesting work of developing the actual toolkit for
+cycle-accurate simulation as well as the sample pipeline implementations
+themselves.
+
 ## Running
 
 If you have not already done so, you will need to install pyelftools; see:
@@ -162,10 +177,114 @@ simulation, and a "stats.json" file, which contains statistics such as
 number of simulated cycles, counts of the number of times each register
 was fetched/written, counts of the number of committed instructions,
 number of times each instruction type (e.g., ADD, ADDI, SD, SW) was decoded,
-number of times each instruction type was executed, etc. The
-JSON output file of more sophisticated implementations such as Oroblanco
+number of times each instruction type was executed, etc.
+
+The JSON output file of more sophisticated implementations such as Oroblanco
 contain additional statistics about caches and other elements of the
-pipeline.
+pipeline; e.g.:
+
+    {
+        "message_size": {
+            "19": 1,
+            "18": 1,
+            "150": 1,
+            ...
+            "972": 1,
+            "890": 1
+        },
+        "cycle": 14872,
+        "fetch": {
+            "l1ic.misses": 35,
+            "l1ic.accesses": 3929
+        },
+        "l2": {
+            "l2.misses": 55,
+            "l2.accesses": 385
+        },
+        "mainmem": {
+            "peek.size": {
+                "16": 55
+            },
+            "poke.size": {
+                "8": 57,
+                "4": 264
+            }
+        },
+        "decode": {
+            "decoded.insn": {
+                "ADDI": 759,
+                "SD": 85,
+                "SW": 264,
+                "JAL": 68,
+                "LW": 607,
+                "SLLI": 28,
+                ...
+                "SUBW": 27,
+                "JALR": 28
+            },
+            "issued.insn": {
+                "ADDI": 692,
+                "SD": 57,
+                "SW": 264,
+                "JAL": 68,
+                "LW": 607,
+                ...
+                "JALR": 28,
+                "SUBW": 13
+            }
+        },
+        "regfile": {
+            "get.register": {
+                "2": 170,
+                "1": 29,
+                "8": 1265,
+                "10": 82,
+                "11": 1,
+                "15": 1829,
+                "14": 626
+            },
+            "set.register": {
+                "2": 56,
+                "8": 56,
+                "15": 1829,
+                "0": 68,
+                "14": 575,
+                "10": 55,
+                "1": 28
+            }
+        },
+        "alu": {
+            "category": {
+                "do_itype": 1073,
+                "do_store": 321,
+                "do_jal": 68,
+                "do_load": 1235,
+                "do_branch": 184,
+                "do_shift": 129,
+                "do_rtype": 376,
+                "do_jalr": 28
+            }
+        },
+        "commit": {
+            "retires": 3173,
+            "flushes": 240,
+            "speculative_next_pc": 241,
+            "speculative_next_pc_correct": 180
+        },
+        "lsu": {
+            "l1dc.misses": 29,
+            "l1dc.accesses": 1556
+        }
+    }
+
+The JSON struct has 10 top-level keys: `message_size`, `cycle`, `fetch`,
+`l2`, `mainmem`, `decode`, `regfile`, `alu`, `commit` `lsu`. The
+`message_size` entry contains a histogram of the sizes of the messages
+passed between the various components, and `cycle` contains the count
+of simulated cycles when the simulator exited. The final eight keys
+correspond to pipeilne components of the same names, and offer statistcs
+about number of cache misses, cache accesses, number of times each
+register was read/written, number of instructions retired/flushed, etc.
 
 ## Pipeline Designs
 
@@ -326,10 +445,12 @@ loadbin command, instead features a restore command:
 The simulator places the state of the register file into an unused address
 inside the main memory snapshot.
 
-## Sample Binary
+## Sample Binaries
 
-The sample binary (examples/bin/sum) was created using the RISC-V cross
-compiler at https://github.com/riscv-collab/riscv-gnu-toolchain. The source:
+The sample binaries... examples/bin/sum, examples/bin/sort,
+examples/bin/negate, and examples/bin/test... were created using the RISC-V
+cross compiler at https://github.com/riscv-collab/riscv-gnu-toolchain.
+Consider the source for the sum program:
 
     /* examples/src/sum.c */
     #include <stdio.h>
@@ -377,7 +498,7 @@ _start() is a planned feature, but will require a great deal of
 additional work on syscall proxying; and (4) because syscall proxying
 is not yet complete, there is no printf(), thus, when execution
 completes, the sum of all the arguments passed is returned in register
-x10, which can be viewed in the simulator's output log.
+x10, which can be viewed in the regile.py output log.
 
 ## Tests
 
@@ -398,3 +519,23 @@ which gets assembled into an object file accordingly
 This is **not** a complete binary, but the simulator will nevertheless load
 it into memory, set the PC to the address of the _start label, and 
 begin execution.
+
+## Future Features
+
+Presented in no particular order, here are some additional features that will
+extend and enhance the simulator:
+
+1. pipeline implementation with value prediction
+1. syscall proxying
+1. launch from binary's `_start` label rather than `main` label
+1. tool for cataloging, indexing, and retrieval of simulator runs
+1. `clone`-based perfect branch predictor
+1. `clone`-based perfect value predictor
+1. accelerated `mmap`-based main memory implementation
+1. new eviction policies for SimpleCache
+1. pipeline implementation with decoupled fetch engine
+1. pipeline implementation with out-of-order execution
+1. multi-core support with shared cache
+
+That said, since this is a toolkit intended to facilitate microarchitecture
+research, some of these will be left as an exercise for researchers. :-)
