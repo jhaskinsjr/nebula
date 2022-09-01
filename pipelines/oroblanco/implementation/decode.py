@@ -86,7 +86,6 @@ def do_tick(service, state, results, events):
             service.tx({'shutdown': None})
     for _fwd in map(lambda y: y.get('forward'), filter(lambda x: x.get('forward'), results)):
         state.get('forward').update({_fwd.get('rd'): _fwd.get('result')})
-    state.get('forward').clear()
     for _flush, _retire in map(lambda y: (y.get('flush'), y.get('retire')), filter(lambda x: x.get('flush') or x.get('retire'), results)):
         if _flush: service.tx({'info': '_flush : {}'.format(_flush)})
         if _retire: service.tx({'info': '_retire : {}'.format(_retire)})
@@ -211,7 +210,7 @@ if '__main__' == __name__:
         'config': {
             'buffer_capacity': 16,
             'btb.nentries': 32,
-            'btb.nbytesperentry': 0,
+            'btb.nbytesperentry': 16,
         },
     }
     _service = service.Service(state.get('service'), _launcher.get('host'), _launcher.get('port'))
