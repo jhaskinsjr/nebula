@@ -455,15 +455,15 @@ def do_execute(service, state):
         if 'rd' in _insn.keys() and _insn.get('result'):
             service.tx({'result': {
                 'arrival': 1 + state.get('cycle'),
-                'register': {
-                    'name': _insn.get('rd'),
-                    'data': _insn.get('result'),
-                },
-#                'forward': {
-#                    'rd': _insn.get('rd'),
-#                    'result': _insn.get('result'),
-#                    'iid': _insn.get('iid'),
+#                'register': {
+#                    'name': _insn.get('rd'),
+#                    'data': _insn.get('result'),
 #                },
+                'forward': {
+                    'rd': _insn.get('rd'),
+                    'result': _insn.get('result'),
+                    'iid': _insn.get('iid'),
+                },
             }})
 
 def do_tick(service, state, results, events):

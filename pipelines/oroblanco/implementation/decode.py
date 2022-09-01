@@ -10,27 +10,60 @@ import riscv.constants
 import riscv.decode
 
 def hazard(p, c):
-    return 'rd' in p.keys() and (('rs1' in c.keys() and p.get('rd') == c.get('rs1')) or ('rs2' in c.keys() and p.get('rd') == c.get('rs2')))
+    if not 'rd' in p.keys(): return []
+    _conflict  = ([c.get('rs1')] if ('rs1' in c.keys() and p.get('rd') == c.get('rs1')) else  [])
+    _conflict += ([c.get('rs2')] if ('rs2' in c.keys() and p.get('rd') == c.get('rs2')) else  [])
+    return _conflict
 def do_issue(service, state):
     for _dec in state.get('decoded'):
         _insn = _dec.get('insn')
         _pc = _dec.get('%pc')
-        if any(map(lambda x: hazard(x, _insn), state.get('issued'))): break
+        _hazards = sum(map(lambda x: hazard(x, _insn), state.get('issued')), [])
+        service.tx({'info': '_hazards : {}'.format(_hazards)})
+        if not all(map(lambda y: y in state.get('forward').keys(), _hazards)): break
+#        if any(_hazards): break
+#        if any(map(lambda x: hazard(x, _insn), state.get('issued'))): break
+#        if _insn.get('rs1'): service.tx({'event': {
+#            'arrival': 1 + state.get('cycle'),
+#            'register': {
+#                'cmd': 'get',
+#                'name': _insn.get('rs1'),
+#            }
+#        }})
+#        if _insn.get('rs2'): service.tx({'event': {
+#            'arrival': 1 + state.get('cycle'),
+#            'register': {
+#                'cmd': 'get',
+#                'name': _insn.get('rs2'),
+#            }
+#        }})
         state.get('remove_from_decoded').append(_dec)
-        if _insn.get('rs1'): service.tx({'event': {
-            'arrival': 1 + state.get('cycle'),
-            'register': {
-                'cmd': 'get',
-                'name': _insn.get('rs1'),
-            }
-        }})
-        if _insn.get('rs2'): service.tx({'event': {
-            'arrival': 1 + state.get('cycle'),
-            'register': {
-                'cmd': 'get',
-                'name': _insn.get('rs2'),
-            }
-        }})
+        if 'rs1' in _insn.keys():
+            if _insn.get('rs1') in _hazards and _insn.get('rs1') in state.get('forward').keys():
+                if not 'operands' in _insn.keys(): _insn.update({'operands': {}})
+                _insn.get('operands').update({'rs1': state.get('forward').get(_insn.get('rs1'))})
+                service.tx({'info': 'forward operand {}'.format(_insn.get('rs1'))})
+            else:
+                service.tx({'event': {
+                    'arrival': 1 + state.get('cycle'),
+                    'register': {
+                        'cmd': 'get',
+                        'name': _insn.get('rs1'),
+                    },
+                }})
+        if 'rs2' in _insn.keys():
+            if _insn.get('rs2') in _hazards and _insn.get('rs2') in state.get('forward').keys():
+                if not 'operands' in _insn.keys(): _insn.update({'operands': {}})
+                _insn.get('operands').update({'rs2': state.get('forward').get(_insn.get('rs2'))})
+                service.tx({'info': 'forward operand {}'.format(_insn.get('rs2'))})
+            else:
+                service.tx({'event': {
+                    'arrival': 1 + state.get('cycle'),
+                    'register': {
+                        'cmd': 'get',
+                        'name': _insn.get('rs2'),
+                    },
+                }})
         _btb_entry = (state.get('btb').peek(int.from_bytes(_pc, 'little')) if state.get('btb') else None)
         _insn = {
             **_insn,
@@ -60,12 +93,25 @@ def do_issue(service, state):
     for _dec in state.get('remove_from_decoded'): state.get('decoded').remove(_dec)
     state.get('remove_from_decoded').clear()
 def do_tick(service, state, results, events):
+    state.get('forward').clear()
     for _reg in map(lambda y: y.get('register'), filter(lambda x: x.get('register'), results)):
         if '%pc' != _reg.get('name'): continue
         _pc = _reg.get('data')
         if 0 == int.from_bytes(_pc, 'little'):
             service.tx({'info': 'Jump to @0x00000000... graceful shutdown'})
             service.tx({'shutdown': None})
+    for _fwd in map(lambda y: y.get('forward'), filter(lambda x: x.get('forward'), results)):
+        state.get('forward').update({_fwd.get('rd'): _fwd.get('result')})
+#    for _reg in map(lambda y: y.get('register'), filter(lambda x: x.get('register'), results)):
+#        if '%pc' == _reg.get('name'):
+#            _pc = _reg.get('data')
+#            if 0 == int.from_bytes(_pc, 'little'):
+#                service.tx({'info': 'Jump to @0x00000000... graceful shutdown'})
+#                service.tx({'shutdown': None})
+#        else:
+#            assert _reg.get('name') not in state.get('forward').keys()
+#            state.get('forward').update({_reg.get('name'): _reg.get('data')})
+    state.get('forward').clear()
     for _flush, _retire in map(lambda y: (y.get('flush'), y.get('retire')), filter(lambda x: x.get('flush') or x.get('retire'), results)):
         if _flush: service.tx({'info': '_flush : {}'.format(_flush)})
         if _retire: service.tx({'info': '_retire : {}'.format(_retire)})
@@ -149,6 +195,7 @@ def do_tick(service, state, results, events):
     service.tx({'info': 'state.decoded          : {}'.format(state.get('decoded'))})
     service.tx({'info': 'state.decode.request   : {}'.format(state.get('decode.request'))})
     service.tx({'info': 'state.drop_until       : {}'.format(state.get('drop_until'))})
+    service.tx({'info': 'forward                : {}'.format(state.get('forward'))})
 
 if '__main__' == __name__:
     parser = argparse.ArgumentParser(description='μService-SIMulator: Instruction Decode')
@@ -183,6 +230,7 @@ if '__main__' == __name__:
         'remove_from_decoded': [],
         'fetch_size': 4, # HACK: hard-coded number of bytes to fetch
         'issued': [],
+        'forward': {},
         'iid': 0,
         'max_instructions_to_decode': 1, # HACK: hard-coded max-instructions-to-decode of 1
         'config': {
