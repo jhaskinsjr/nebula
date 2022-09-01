@@ -159,13 +159,14 @@ if '__main__' == __name__:
                 state.update({'active': False})
                 state.update({'running': False})
             elif {'text': 'run'} == {k: v}:
+                state.update({'running': True})
+                state.update({'ack': False})
+                _service.tx({'info': 'state.config : {}'.format(state.get('config'))})
                 state.update({'l2': components.simplecache.SimpleCache(
                     state.get('config').get('l2.nsets'),
                     state.get('config').get('l2.nways'),
                     state.get('config').get('l2.nbytesperblock'),
                 )})
-                state.update({'running': True})
-                state.update({'ack': False})
             elif 'config' == k:
                 logging.debug('config : {}'.format(v))
                 if state.get('service') != v.get('service'): continue

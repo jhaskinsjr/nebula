@@ -69,6 +69,7 @@ if '__main__' == __name__:
             elif {'text': 'run'} == {k: v}:
                 state.update({'running': True})
                 state.update({'ack': False})
+                _service.tx({'info': 'state.config : {}'.format(state.get('config'))})
             elif 'config' == k:
                 logging.debug('config : {}'.format(v))
                 if state.get('service') != v.get('service'): continue

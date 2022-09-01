@@ -520,13 +520,12 @@ if '__main__' == __name__:
             elif {'text': 'run'} == {k: v}:
                 state.update({'running': True})
                 state.update({'ack': False})
-                state.get('config').update(**{k:eval(v) for k, v in state.get('config').items()})
                 _service.tx({'info': 'state.config : {}'.format(state.get('config'))})
             elif 'config' == k:
                 logging.debug('config : {}'.format(v))
                 if state.get('service') != v.get('service'): continue
                 _field = v.get('field')
-                _val = v.get('val')
+                _val = eval(v.get('val'))
                 assert _field in state.get('config').keys(), 'No such config field, {}, in service {}!'.format(_field, state.get('service'))
                 state.get('config').update({_field: _val})
             elif 'tick' == k:

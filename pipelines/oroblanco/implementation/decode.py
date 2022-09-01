@@ -235,7 +235,7 @@ if '__main__' == __name__:
         'max_instructions_to_decode': 1, # HACK: hard-coded max-instructions-to-decode of 1
         'config': {
             'buffer_capacity': 16,
-            'btb.nentries':32,
+            'btb.nentries': 32,
             'btb.nbytesperentry': 0,
         },
     }
@@ -250,12 +250,13 @@ if '__main__' == __name__:
                 state.update({'active': False})
                 state.update({'running': False})
             elif {'text': 'run'} == {k: v}:
+                state.update({'running': True})
+                state.update({'ack': False})
+                _service.tx({'info': 'state.config : {}'.format(state.get('config'))})
                 if state.get('config').get('btb.nentries'): state.update({'btb': components.simplebtb.SimpleBTB(
                     state.get('config').get('btb.nentries'),
                     state.get('config').get('btb.nbytesperentry'),
                 )})
-                state.update({'running': True})
-                state.update({'ack': False})
                 state.update({'decode.request': {
                     'addr': state.get('%pc'),
                     'nbytes_requested': state.get('fetch_size'),

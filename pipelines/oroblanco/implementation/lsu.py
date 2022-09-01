@@ -200,13 +200,21 @@ if '__main__' == __name__:
                 state.update({'active': False})
                 state.update({'running': False})
             elif {'text': 'run'} == {k: v}:
+                state.update({'running': True})
+                state.update({'ack': False})
+                _service.tx({'info': 'state.config : {}'.format(state.get('config'))})
                 state.update({'l1dc': components.simplecache.SimpleCache(
                     state.get('config').get('l1dc.nsets'),
                     state.get('config').get('l1dc.nways'),
                     state.get('config').get('l1dc.nbytesperblock'),
                 )})
-                state.update({'running': True})
-                state.update({'ack': False})
+            elif 'config' == k:
+                logging.debug('config : {}'.format(v))
+                if state.get('service') != v.get('service'): continue
+                _field = v.get('field')
+                _val = v.get('val')
+                assert _field in state.get('config').keys(), 'No such config field, {}, in service {}!'.format(_field, state.get('service'))
+                state.get('config').update({_field: _val})
             elif 'tick' == k:
                 state.update({'cycle': v.get('cycle')})
                 _results = v.get('results')
