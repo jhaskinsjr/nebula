@@ -12,18 +12,25 @@ import riscv.syscall.linux
 
 def do_unimplemented(service, state, insn):
     logging.info('Unimplemented: {}'.format(state.get('pending_execute')))
-    service.tx({'undefined': insn})
+    insn = {
+        **insn,
+        **{
+            'result': None,
+        },
+    }
     service.tx({'event': {
         'arrival': 2 + state.get('cycle'),
         'commit': {
             'insn': {
                 **insn,
-                **{
-                    'result': None,
-                },
+#                **{
+#                    'result': None,
+#                },
             },
         }
     }})
+    service.tx({'undefined': insn})
+    return insn
 
 def do_lui(service, state, insn):
     _result = riscv.execute.lui(insn.get('imm'))
@@ -38,56 +45,88 @@ def do_lui(service, state, insn):
             },
         }
     }})
+    return insn
 def do_auipc(service, state, insn):
     _result = riscv.execute.auipc(insn.get('%pc'), insn.get('imm'))
+    insn = {
+        **insn,
+        **{
+            'result': _result,
+        },
+    }
     service.tx({'event': {
         'arrival': 2 + state.get('cycle'),
         'commit': {
             'insn': {
                 **insn,
-                **{
-                    'result': _result,
-                },
+#                **{
+#                    'result': _result,
+#                },
             },
         }
     }})
+    return insn
 def do_jal(service, state, insn):
     _next_pc, _ret_pc = riscv.execute.jal(insn.get('%pc'), insn.get('imm'), insn.get('size'))
+    insn = {
+        **insn,
+        **{
+            'taken': True,
+            'next_pc': _next_pc,
+            'ret_pc': _ret_pc,
+        },
+    }
     service.tx({'event': {
         'arrival': 2 + state.get('cycle'),
         'commit': {
             'insn': {
                 **insn,
-                **{
-                    'taken': True,
-                    'next_pc': _next_pc,
-                    'ret_pc': _ret_pc,
-                },
+#                **{
+#                    'taken': True,
+#                    'next_pc': _next_pc,
+#                    'ret_pc': _ret_pc,
+#                },
             },
         }
     }})
+    return insn
 def do_jalr(service, state, insn):
-    _rs1 = state.get('operands').get(insn.get('rs1'))
+#    _rs1 = state.get('operands').get(insn.get('rs1'))
+    _rs1 = (insn.get('operands').get('rs1') if ('operands' in insn.keys() and 'rs1' in insn.get('operands').keys()) else state.get('operands').get(insn.get('rs1')))
     _next_pc, _ret_pc = riscv.execute.jalr(insn.get('%pc'), insn.get('imm'), _rs1, insn.get('size'))
+    insn = {
+        **insn,
+        **{
+            'taken': True,
+            'next_pc': _next_pc,
+            'ret_pc': _ret_pc,
+            'operands': {
+                'rs1': _rs1,
+            },
+        },
+    }
     service.tx({'event': {
         'arrival': 2 + state.get('cycle'),
         'commit': {
             'insn': {
                 **insn,
-                **{
-                    'taken': True,
-                    'next_pc': _next_pc,
-                    'ret_pc': _ret_pc,
-                    'operands': {
-                        'rs1': _rs1,
-                    },
-                },
+#                **{
+#                    'taken': True,
+#                    'next_pc': _next_pc,
+#                    'ret_pc': _ret_pc,
+#                    'operands': {
+#                        'rs1': _rs1,
+#                    },
+#                },
             },
         }
     }})
+    return insn
 def do_branch(service, state, insn):
-    _rs1 = state.get('operands').get(insn.get('rs1'))
-    _rs2 = state.get('operands').get(insn.get('rs2'))
+#    _rs1 = state.get('operands').get(insn.get('rs1'))
+#    _rs2 = state.get('operands').get(insn.get('rs2'))
+    _rs1 = (insn.get('operands').get('rs1') if ('operands' in insn.keys() and 'rs1' in insn.get('operands').keys()) else state.get('operands').get(insn.get('rs1')))
+    _rs2 = (insn.get('operands').get('rs2') if ('operands' in insn.keys() and 'rs2' in insn.get('operands').keys()) else state.get('operands').get(insn.get('rs2')))
     _next_pc, _taken = {
         'BEQ': riscv.execute.beq,
         'BNE': riscv.execute.bne,
@@ -96,25 +135,38 @@ def do_branch(service, state, insn):
         'BLTU': riscv.execute.bltu,
         'BGEU': riscv.execute.bgeu,
     }.get(insn.get('cmd'))(insn.get('%pc'), _rs1, _rs2, insn.get('imm'), insn.get('size'))
-    insn.update({'taken': _taken})
+    insn = {
+        **insn,
+        **{
+            'taken': _taken,
+            'next_pc': _next_pc,
+            'operands': {
+                'rs1': _rs1,
+                'rs2': _rs2,
+            },
+        },
+    }
+#    insn.update({'taken': _taken})
     service.tx({'event': {
         'arrival': 2 + state.get('cycle'),
         'commit': {
             'insn': {
                 **insn,
-                **{
-                    'taken': _taken,
-                    'next_pc': _next_pc,
-                    'operands': {
-                        'rs1': _rs1,
-                        'rs2': _rs2,
-                    },
-                },
+#                **{
+#                    'taken': _taken,
+#                    'next_pc': _next_pc,
+#                    'operands': {
+#                        'rs1': _rs1,
+#                        'rs2': _rs2,
+#                    },
+#                },
             },
         }
     }})
+    return insn
 def do_itype(service, state, insn):
-    _rs1 = state.get('operands').get(insn.get('rs1'))
+#    _rs1 = state.get('operands').get(insn.get('rs1'))
+    _rs1 = (insn.get('operands').get('rs1') if ('operands' in insn.keys() and 'rs1' in insn.get('operands').keys()) else state.get('operands').get(insn.get('rs1')))
     _result = {
         'ADDI': riscv.execute.addi,
         'SLTI': riscv.execute.slti,
@@ -122,23 +174,35 @@ def do_itype(service, state, insn):
         'ADDIW': riscv.execute.addiw,
         'ANDI': riscv.execute.andi,
     }.get(insn.get('cmd'))(_rs1, insn.get('imm'))
+    insn = {
+        **insn,
+        **{
+            'result': _result,
+            'operands': {
+                'rs1': _rs1,
+            },
+        },
+    }
     service.tx({'event': {
         'arrival': 2 + state.get('cycle'),
         'commit': {
             'insn': {
                 **insn,
-                **{
-                    'result': _result,
-                    'operands': {
-                        'rs1': _rs1,
-                    },
-                },
+#                **{
+#                    'result': _result,
+#                    'operands': {
+#                        'rs1': _rs1,
+#                    },
+#                },
             },
         }
     }})
+    return insn
 def do_rtype(service, state, insn):
-    _rs1 = state.get('operands').get(insn.get('rs1'))
-    _rs2 = state.get('operands').get(insn.get('rs2'))
+#    _rs1 = state.get('operands').get(insn.get('rs1'))
+#    _rs2 = state.get('operands').get(insn.get('rs2'))
+    _rs1 = (insn.get('operands').get('rs1') if ('operands' in insn.keys() and 'rs1' in insn.get('operands').keys()) else state.get('operands').get(insn.get('rs1')))
+    _rs2 = (insn.get('operands').get('rs2') if ('operands' in insn.keys() and 'rs2' in insn.get('operands').keys()) else state.get('operands').get(insn.get('rs2')))
     _result = {
         'ADD': riscv.execute.add,
         'SUB': riscv.execute.sub,
@@ -161,69 +225,112 @@ def do_rtype(service, state, insn):
         'REMW': riscv.execute.remw,
         'REMUW': riscv.execute.remuw,
     }.get(insn.get('cmd'))(_rs1, _rs2)
+    insn = {
+        **insn,
+        **{
+            'result': _result,
+            'operands': {
+                'rs1': _rs1,
+                'rs2': _rs2,
+            },
+        },
+    }
     service.tx({'event': {
         'arrival': 2 + state.get('cycle'),
         'commit': {
             'insn': {
                 **insn,
-                **{
-                    'result': _result,
-                    'operands': {
-                        'rs1': _rs1,
-                        'rs2': _rs2,
-                    },
-                },
+#                **{
+#                    'result': _result,
+#                    'operands': {
+#                        'rs1': _rs1,
+#                        'rs2': _rs2,
+#                    },
+#                },
             },
         }
     }})
+    return insn
 def do_load(service, state, insn):
-    _rs1 = state.get('operands').get(insn.get('rs1'))
+#    _rs1 = state.get('operands').get(insn.get('rs1'))
+    _rs1 = (insn.get('operands').get('rs1') if ('operands' in insn.keys() and 'rs1' in insn.get('operands').keys()) else state.get('operands').get(insn.get('rs1')))
+    insn = {
+        **insn,
+        **{
+            'operands': {
+                'rs1': _rs1,
+                'addr': insn.get('imm') + int.from_bytes(_rs1, 'little'),
+            },
+        },
+    }
     service.tx({'event': {
         'arrival': 1 + state.get('cycle'),
         'lsu': {
             'insn': {
                 **insn,
-                **{
-                    'operands': {
-                        'rs1': _rs1,
-                        'addr': insn.get('imm') + int.from_bytes(_rs1, 'little'),
-                    },
-                },
+#                **{
+#                    'operands': {
+#                        'rs1': _rs1,
+#                        'addr': insn.get('imm') + int.from_bytes(_rs1, 'little'),
+#                    },
+#                },
             },
         }
     }})
+    return insn
 def do_store(service, state, insn):
-    _rs1 = state.get('operands').get(insn.get('rs1'))
-    _rs2 = state.get('operands').get(insn.get('rs2'))
+#    _rs1 = state.get('operands').get(insn.get('rs1'))
+#    _rs2 = state.get('operands').get(insn.get('rs2'))
+    _rs1 = (insn.get('operands').get('rs1') if ('operands' in insn.keys() and 'rs1' in insn.get('operands').keys()) else state.get('operands').get(insn.get('rs1')))
+    _rs2 = (insn.get('operands').get('rs2') if ('operands' in insn.keys() and 'rs2' in insn.get('operands').keys()) else state.get('operands').get(insn.get('rs2')))
+    insn = {
+        **insn,
+        **{
+            'operands': {
+                'rs1': _rs1,
+                'data': _rs2,
+                'addr': insn.get('imm') + int.from_bytes(_rs1, 'little'),
+            },
+        },
+    }
     service.tx({'event': {
         'arrival': 1 + state.get('cycle'),
         'lsu': {
             'insn': {
                 **insn,
-                **{
-                    'operands': {
-                        'rs1': _rs1,
-                        'data': _rs2,
-                        'addr': insn.get('imm') + int.from_bytes(_rs1, 'little'),
-                    },
-                },
+#                **{
+#                    'operands': {
+#                        'rs1': _rs1,
+#                        'data': _rs2,
+#                        'addr': insn.get('imm') + int.from_bytes(_rs1, 'little'),
+#                    },
+#                },
             },
         }
     }})
+    return insn
 def do_nop(service, state, insn):
+    insn = {
+        **insn,
+        **{
+            'result': None,
+        }
+    }
     service.tx({'event': {
         'arrival': 2 + state.get('cycle'),
         'commit': {
             'insn': {
                 **insn,
-                **{
-                    'result': None,
-                },
+#                **{
+#                    'result': None,
+#                },
             },
         }
     }})
+    return insn
 def do_shift(service, state, insn):
-    _rs1 = state.get('operands').get(insn.get('rs1'))
+#    _rs1 = state.get('operands').get(insn.get('rs1'))
+    _rs1 = (insn.get('operands').get('rs1') if ('operands' in insn.keys() and 'rs1' in insn.get('operands').keys()) else state.get('operands').get(insn.get('rs1')))
     _shamt = insn.get('shamt')
     _result = {
         'SLLI': riscv.execute.slli,
@@ -233,33 +340,50 @@ def do_shift(service, state, insn):
         'SRLIW': riscv.execute.srliw,
         'SRAIW': riscv.execute.sraiw,
     }.get(insn.get('cmd'))(_rs1, _shamt)
+    insn = {
+        **insn,
+        **{
+            'result': _result,
+            'operands': {
+                'rs1': _rs1,
+            },
+        },
+    }
     service.tx({'event': {
         'arrival': 2 + state.get('cycle'),
         'commit': {
             'insn': {
                 **insn,
-                **{
-                    'result': _result,
-                    'operands': {
-                        'rs1': _rs1,
-                    },
-                },
+#                **{
+#                    'result': _result,
+#                    'operands': {
+#                        'rs1': _rs1,
+#                    },
+#                },
             },
         }
     }})
+    return insn
 def do_fence(service, state, insn):
     # HACK: in a complex pipeline, this needs to be more than a NOP
+    insn = {
+        **insn,
+        **{
+            'result': None,
+        }
+    }
     service.tx({'event': {
         'arrival': 2 + state.get('cycle'),
         'commit': {
             'insn': {
                 **insn,
-                **{
-                    'result': None,
-                },
+#                **{
+#                    'result': None,
+#                },
             },
         }
     }})
+    return insn
 
 def do_execute(service, state):
     if not len(state.get('pending_execute')): return
@@ -326,8 +450,21 @@ def do_execute(service, state):
             'BGEU': do_branch,
             'FENCE': do_fence,
         }.get(_insn.get('cmd'), do_unimplemented)
-        _f(service, state, _insn)
+        _insn = _f(service, state, _insn)
         toolbox.report_stats(service, state, 'histo', 'category', _f.__name__)
+        if 'rd' in _insn.keys() and _insn.get('result'):
+            service.tx({'result': {
+                'arrival': 1 + state.get('cycle'),
+                'register': {
+                    'name': _insn.get('rd'),
+                    'data': _insn.get('result'),
+                },
+#                'forward': {
+#                    'rd': _insn.get('rd'),
+#                    'result': _insn.get('result'),
+#                    'iid': _insn.get('iid'),
+#                },
+            }})
 
 def do_tick(service, state, results, events):
     for _reg in filter(lambda x: x, map(lambda y: y.get('register'), results)):
