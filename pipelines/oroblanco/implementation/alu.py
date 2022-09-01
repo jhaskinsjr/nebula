@@ -23,9 +23,6 @@ def do_unimplemented(service, state, insn):
         'commit': {
             'insn': {
                 **insn,
-#                **{
-#                    'result': None,
-#                },
             },
         }
     }})
@@ -59,9 +56,6 @@ def do_auipc(service, state, insn):
         'commit': {
             'insn': {
                 **insn,
-#                **{
-#                    'result': _result,
-#                },
             },
         }
     }})
@@ -81,17 +75,11 @@ def do_jal(service, state, insn):
         'commit': {
             'insn': {
                 **insn,
-#                **{
-#                    'taken': True,
-#                    'next_pc': _next_pc,
-#                    'ret_pc': _ret_pc,
-#                },
             },
         }
     }})
     return insn
 def do_jalr(service, state, insn):
-#    _rs1 = state.get('operands').get(insn.get('rs1'))
     _rs1 = (insn.get('operands').get('rs1') if ('operands' in insn.keys() and 'rs1' in insn.get('operands').keys()) else state.get('operands').get(insn.get('rs1')))
     _next_pc, _ret_pc = riscv.execute.jalr(insn.get('%pc'), insn.get('imm'), _rs1, insn.get('size'))
     insn = {
@@ -110,21 +98,11 @@ def do_jalr(service, state, insn):
         'commit': {
             'insn': {
                 **insn,
-#                **{
-#                    'taken': True,
-#                    'next_pc': _next_pc,
-#                    'ret_pc': _ret_pc,
-#                    'operands': {
-#                        'rs1': _rs1,
-#                    },
-#                },
             },
         }
     }})
     return insn
 def do_branch(service, state, insn):
-#    _rs1 = state.get('operands').get(insn.get('rs1'))
-#    _rs2 = state.get('operands').get(insn.get('rs2'))
     _rs1 = (insn.get('operands').get('rs1') if ('operands' in insn.keys() and 'rs1' in insn.get('operands').keys()) else state.get('operands').get(insn.get('rs1')))
     _rs2 = (insn.get('operands').get('rs2') if ('operands' in insn.keys() and 'rs2' in insn.get('operands').keys()) else state.get('operands').get(insn.get('rs2')))
     _next_pc, _taken = {
@@ -146,26 +124,16 @@ def do_branch(service, state, insn):
             },
         },
     }
-#    insn.update({'taken': _taken})
     service.tx({'event': {
         'arrival': 2 + state.get('cycle'),
         'commit': {
             'insn': {
                 **insn,
-#                **{
-#                    'taken': _taken,
-#                    'next_pc': _next_pc,
-#                    'operands': {
-#                        'rs1': _rs1,
-#                        'rs2': _rs2,
-#                    },
-#                },
             },
         }
     }})
     return insn
 def do_itype(service, state, insn):
-#    _rs1 = state.get('operands').get(insn.get('rs1'))
     _rs1 = (insn.get('operands').get('rs1') if ('operands' in insn.keys() and 'rs1' in insn.get('operands').keys()) else state.get('operands').get(insn.get('rs1')))
     _result = {
         'ADDI': riscv.execute.addi,
@@ -188,19 +156,11 @@ def do_itype(service, state, insn):
         'commit': {
             'insn': {
                 **insn,
-#                **{
-#                    'result': _result,
-#                    'operands': {
-#                        'rs1': _rs1,
-#                    },
-#                },
             },
         }
     }})
     return insn
 def do_rtype(service, state, insn):
-#    _rs1 = state.get('operands').get(insn.get('rs1'))
-#    _rs2 = state.get('operands').get(insn.get('rs2'))
     _rs1 = (insn.get('operands').get('rs1') if ('operands' in insn.keys() and 'rs1' in insn.get('operands').keys()) else state.get('operands').get(insn.get('rs1')))
     _rs2 = (insn.get('operands').get('rs2') if ('operands' in insn.keys() and 'rs2' in insn.get('operands').keys()) else state.get('operands').get(insn.get('rs2')))
     _result = {
@@ -240,19 +200,11 @@ def do_rtype(service, state, insn):
         'commit': {
             'insn': {
                 **insn,
-#                **{
-#                    'result': _result,
-#                    'operands': {
-#                        'rs1': _rs1,
-#                        'rs2': _rs2,
-#                    },
-#                },
             },
         }
     }})
     return insn
 def do_load(service, state, insn):
-#    _rs1 = state.get('operands').get(insn.get('rs1'))
     _rs1 = (insn.get('operands').get('rs1') if ('operands' in insn.keys() and 'rs1' in insn.get('operands').keys()) else state.get('operands').get(insn.get('rs1')))
     insn = {
         **insn,
@@ -268,19 +220,11 @@ def do_load(service, state, insn):
         'lsu': {
             'insn': {
                 **insn,
-#                **{
-#                    'operands': {
-#                        'rs1': _rs1,
-#                        'addr': insn.get('imm') + int.from_bytes(_rs1, 'little'),
-#                    },
-#                },
             },
         }
     }})
     return insn
 def do_store(service, state, insn):
-#    _rs1 = state.get('operands').get(insn.get('rs1'))
-#    _rs2 = state.get('operands').get(insn.get('rs2'))
     _rs1 = (insn.get('operands').get('rs1') if ('operands' in insn.keys() and 'rs1' in insn.get('operands').keys()) else state.get('operands').get(insn.get('rs1')))
     _rs2 = (insn.get('operands').get('rs2') if ('operands' in insn.keys() and 'rs2' in insn.get('operands').keys()) else state.get('operands').get(insn.get('rs2')))
     insn = {
@@ -298,13 +242,6 @@ def do_store(service, state, insn):
         'lsu': {
             'insn': {
                 **insn,
-#                **{
-#                    'operands': {
-#                        'rs1': _rs1,
-#                        'data': _rs2,
-#                        'addr': insn.get('imm') + int.from_bytes(_rs1, 'little'),
-#                    },
-#                },
             },
         }
     }})
@@ -321,15 +258,11 @@ def do_nop(service, state, insn):
         'commit': {
             'insn': {
                 **insn,
-#                **{
-#                    'result': None,
-#                },
             },
         }
     }})
     return insn
 def do_shift(service, state, insn):
-#    _rs1 = state.get('operands').get(insn.get('rs1'))
     _rs1 = (insn.get('operands').get('rs1') if ('operands' in insn.keys() and 'rs1' in insn.get('operands').keys()) else state.get('operands').get(insn.get('rs1')))
     _shamt = insn.get('shamt')
     _result = {
@@ -354,12 +287,6 @@ def do_shift(service, state, insn):
         'commit': {
             'insn': {
                 **insn,
-#                **{
-#                    'result': _result,
-#                    'operands': {
-#                        'rs1': _rs1,
-#                    },
-#                },
             },
         }
     }})
@@ -377,9 +304,6 @@ def do_fence(service, state, insn):
         'commit': {
             'insn': {
                 **insn,
-#                **{
-#                    'result': None,
-#                },
             },
         }
     }})
@@ -455,10 +379,6 @@ def do_execute(service, state):
         if state.get('config').get('forwarding') and 'rd' in _insn.keys() and _insn.get('result'):
             service.tx({'result': {
                 'arrival': 1 + state.get('cycle'),
-#                'register': {
-#                    'name': _insn.get('rd'),
-#                    'data': _insn.get('result'),
-#                },
                 'forward': {
                     'rd': _insn.get('rd'),
                     'result': _insn.get('result'),

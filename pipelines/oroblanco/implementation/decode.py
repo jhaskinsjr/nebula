@@ -21,22 +21,6 @@ def do_issue(service, state):
         _hazards = sum(map(lambda x: hazard(x, _insn), state.get('issued')), [])
         service.tx({'info': '_hazards : {}'.format(_hazards)})
         if not all(map(lambda y: y in state.get('forward').keys(), _hazards)): break
-#        if any(_hazards): break
-#        if any(map(lambda x: hazard(x, _insn), state.get('issued'))): break
-#        if _insn.get('rs1'): service.tx({'event': {
-#            'arrival': 1 + state.get('cycle'),
-#            'register': {
-#                'cmd': 'get',
-#                'name': _insn.get('rs1'),
-#            }
-#        }})
-#        if _insn.get('rs2'): service.tx({'event': {
-#            'arrival': 1 + state.get('cycle'),
-#            'register': {
-#                'cmd': 'get',
-#                'name': _insn.get('rs2'),
-#            }
-#        }})
         state.get('remove_from_decoded').append(_dec)
         if 'rs1' in _insn.keys():
             if _insn.get('rs1') in _hazards and _insn.get('rs1') in state.get('forward').keys():
@@ -102,15 +86,6 @@ def do_tick(service, state, results, events):
             service.tx({'shutdown': None})
     for _fwd in map(lambda y: y.get('forward'), filter(lambda x: x.get('forward'), results)):
         state.get('forward').update({_fwd.get('rd'): _fwd.get('result')})
-#    for _reg in map(lambda y: y.get('register'), filter(lambda x: x.get('register'), results)):
-#        if '%pc' == _reg.get('name'):
-#            _pc = _reg.get('data')
-#            if 0 == int.from_bytes(_pc, 'little'):
-#                service.tx({'info': 'Jump to @0x00000000... graceful shutdown'})
-#                service.tx({'shutdown': None})
-#        else:
-#            assert _reg.get('name') not in state.get('forward').keys()
-#            state.get('forward').update({_reg.get('name'): _reg.get('data')})
     state.get('forward').clear()
     for _flush, _retire in map(lambda y: (y.get('flush'), y.get('retire')), filter(lambda x: x.get('flush') or x.get('retire'), results)):
         if _flush: service.tx({'info': '_flush : {}'.format(_flush)})
