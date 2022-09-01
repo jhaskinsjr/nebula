@@ -452,7 +452,7 @@ def do_execute(service, state):
         }.get(_insn.get('cmd'), do_unimplemented)
         _insn = _f(service, state, _insn)
         toolbox.report_stats(service, state, 'histo', 'category', _f.__name__)
-        if 'rd' in _insn.keys() and _insn.get('result'):
+        if state.get('config').get('forwarding') and 'rd' in _insn.keys() and _insn.get('result'):
             service.tx({'result': {
                 'arrival': 1 + state.get('cycle'),
 #                'register': {
@@ -503,6 +503,9 @@ if '__main__' == __name__:
         'operands': {
             **{x: riscv.constants.integer_to_list_of_bytes(0, 64, 'little') for x in range(32)},
         },
+        'config': {
+            'forwarding': True,
+        },
     }
     _service = service.Service(state.get('service'), _launcher.get('host'), _launcher.get('port'))
     while state.get('active'):
@@ -517,6 +520,15 @@ if '__main__' == __name__:
             elif {'text': 'run'} == {k: v}:
                 state.update({'running': True})
                 state.update({'ack': False})
+                state.get('config').update(**{k:eval(v) for k, v in state.get('config').items()})
+                _service.tx({'info': 'state.config : {}'.format(state.get('config'))})
+            elif 'config' == k:
+                logging.debug('config : {}'.format(v))
+                if state.get('service') != v.get('service'): continue
+                _field = v.get('field')
+                _val = v.get('val')
+                assert _field in state.get('config').keys(), 'No such config field, {}, in service {}!'.format(_field, state.get('service'))
+                state.get('config').update({_field: _val})
             elif 'tick' == k:
                 state.update({'cycle': v.get('cycle')})
                 _results = v.get('results')
