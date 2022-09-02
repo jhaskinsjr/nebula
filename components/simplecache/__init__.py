@@ -60,7 +60,10 @@ class SimpleCache:
         _set = self.sets[self.setnum(addr)]
         _w = self.waynum(addr, _set)
 #        print('  peek(): [{}:{}]'.format(_offset, (_offset + nbytes)))
-        _retval = (_set[_w].get('data')[_offset:(_offset + nbytes)] if isinstance(_w, int) else None)
+        _retval = None
+        if isinstance(_w, int):
+            _retval = _set[_w].get('data')[_offset:(_offset + nbytes)]
+            _set.insert(0, _set.pop(_w))
 #        print('  peek(): _w : {} ({}, {}, {}, {})'.format(_w, self.setnum(addr), _offset, nbytes, _retval))
         return _retval
     def poke(self, addr, data):
