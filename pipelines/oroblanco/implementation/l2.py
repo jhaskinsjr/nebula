@@ -145,6 +145,7 @@ if '__main__' == __name__:
             'l2.nsets': 2**5,
             'l2.nways': 2**4,
             'l2.nbytesperblock': 2**4,
+            'l2.evictionpolicy': 'lru',
             'l2.hitlatency': 5,
         },
     }
@@ -166,6 +167,7 @@ if '__main__' == __name__:
                     state.get('config').get('l2.nsets'),
                     state.get('config').get('l2.nways'),
                     state.get('config').get('l2.nbytesperblock'),
+                    state.get('config').get('l2.evictionpolicy'),
                 )})
             elif 'config' == k:
                 logging.debug('config : {}'.format(v))

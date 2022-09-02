@@ -9,21 +9,22 @@ def log2(A):
     )
 
 class SimpleCache:
-    def __init__(self, nsets, nways, nbytesperblock):
+    def __init__(self, nsets, nways, nbytesperblock, evictionpolicy):
         assert 0 == (nsets & (nsets - 1)), 'nset ({}) must be a power of 2'.format(nsets)
         assert 0 == (nbytesperblock & (nbytesperblock - 1)), 'nbyte ({}) must be a power of 2'.format(nbytesperblock)
         self.nsets = nsets
         self.nways = nways
         self.nbytesperblock = nbytesperblock
+        self.evictionpolicy = evictionpolicy
         self.sets = {
-            x: {
-                y: {
+            x: [
+                {
                     'tag': None,
                     'data': [0xff] * self.nbytesperblock,
                     'dirty': False,
                     'misc': {},
-                } for y in range(self.nways)
-            } for x in range(self.nsets)
+                } for _ in range(self.nways)
+             ] for x in range(self.nsets)
         }
     def tag(self, addr): return (addr >> (log2(self.nsets) + log2(self.nbytesperblock)))
     def setnum(self, addr): return (addr >> log2(self.nbytesperblock)) & ((1 << log2(self.nsets)) - 1)
@@ -40,6 +41,19 @@ class SimpleCache:
         return (_offset + nbytes - 1) < self.nbytesperblock
     def blockaddr(self, addr):
         return (addr >> log2(self.nbytesperblock)) << log2(self.nbytesperblock)
+    def victim(self, s):
+        if 'random' == self.evictionpolicy:
+            return random.choice(list(range(len(s))))
+        if 'lru' == self.evictionpolicy:
+            s.pop(-1)
+            s.insert(0, {
+                'tag': None,
+                'data': [0xff] * self.nbytesperblock,
+                'dirty': False,
+                'misc': {},
+            })
+            return 0
+        assert False, 'Unknown eviction policy'
     def peek(self, addr, nbytes):
         _offset = self.offset(addr)
         assert self.fits(addr, nbytes), 'request does not fit in block! ({:08x} {} {})'.format(addr, _offset, nbytes)
@@ -54,7 +68,7 @@ class SimpleCache:
         assert self.fits(addr, len(data)), 'request does not fit in block! ({:08x} {} {} {})'.format(addr, _offset, len(data))
         _set = self.sets[self.setnum(addr)]
         _w = self.waynum(addr, _set)
-        _w = (_w if isinstance(_w, int) else random.choice(list(_set.keys()))) # random replacement just b/c it's easy to do for now
+        _w = (_w if isinstance(_w, int) else self.victim(_set)) # random replacement just b/c it's easy to do for now
         _data = _set[_w].get('data')[:]
         _data = _data[:_offset] + data + _data[_offset + len(data):]
         _set[_w].update({

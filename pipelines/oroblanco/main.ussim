@@ -13,15 +13,18 @@ config mainmem peek_latency_in_cycles 25
 config fetch l1ic.nsets 16
 config fetch l1ic.nways 2
 config fetch l1ic.nbytesperblock 16
+config fetch l1ic.evictionpolicy lru # random
 config decode buffer_capacity 16
 config decode btb.nentries 8
 config decode btb.nbytesperentry 8
 config lsu l1dc.nsets 16
 config lsu l1dc.nways 2
 config lsu l1dc.nbytesperblock 16
+config lsu l1dc.evictionpolicy lru # random
 config l2 l2.nsets 32
 config l2 l2.nways 16
 config l2 l2.nbytesperblock 16
+config l2 l2.evictionpolicy lru # random
 config l2 l2.hitlatency 5
 config stats output_filename /tmp/stats.json
 # Memory hierarhchy peek latencies...

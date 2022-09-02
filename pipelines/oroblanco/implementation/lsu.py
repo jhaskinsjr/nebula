@@ -182,13 +182,9 @@ if '__main__' == __name__:
             'l1dc.nsets': 2**4,
             'l1dc.nways': 2**1,
             'l1dc.nbytesperblock': 2**4,
+            'l1dc.evictionpolicy': 'lru',
         },
     }
-    state.update({'l1dc': components.simplecache.SimpleCache(
-        state.get('config').get('l1dc.nsets'),
-        state.get('config').get('l1dc.nways'),
-        state.get('config').get('l1dc.nbytesperblock'),
-    )})
     _service = service.Service(state.get('service'), _launcher.get('host'), _launcher.get('port'))
     while state.get('active'):
         state.update({'ack': True})
@@ -207,6 +203,7 @@ if '__main__' == __name__:
                     state.get('config').get('l1dc.nsets'),
                     state.get('config').get('l1dc.nways'),
                     state.get('config').get('l1dc.nbytesperblock'),
+                    state.get('config').get('l1dc.evictionpolicy'),
                 )})
             elif 'config' == k:
                 logging.debug('config : {}'.format(v))
