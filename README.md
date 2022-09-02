@@ -369,7 +369,8 @@ the same manner, but additionally handle STORE instructions that explicitly
 poke data into the caches, with write-through semantics.
 
 The cache functionality is implemented in the `SimpleCache` module (see:
-components/simplecache/).
+components/simplecache/), which supports the least-recently used and
+random replacement policies.
 
 ### Oroblanco
 
@@ -377,7 +378,8 @@ See: https://en.wikipedia.org/wiki/Oroblanco.
 
 The Oroblanco implementation uses a six-stage design that is similar to the
 Lime pipeline. In addition to an L1 instruction cache, an L1 data cache,
-and a unified L2 cache, Oroblanco includes branch prediction and branch target
+and a unified L2 cache, Oroblanco includes result forwarding in addition to
+branch prediction and branch target
 buffering. Whenever a new taken branch is encountered, an entry is created for
 it in the branch target buffer (BTB). In subsequent executions, if a branch
 is taken its counter is incremented (saturating at 3) and the target
@@ -392,7 +394,7 @@ The branch target buffer functionality is implemented in the
 ## Simulator Scripts
 
 The simulator executes according to instructions in an execute script.
-Consider the script pipelines/lime/main.ussim:
+Consider the script pipelines/oroblanco/main.ussim:
 
     # Sample μService-SIMulator script
     service implementation/simplecore.py:localhost
@@ -401,14 +403,29 @@ Consider the script pipelines/lime/main.ussim:
     service implementation/decode.py:localhost
     service implementation/execute.py:localhost
     spawn
-    config mainmem peek_latency_in_cycles 5 # not super-realistic, but it makes the simulation end sooner
+    config mainmem peek_latency_in_cycles 25
     config fetch l1ic.nsets 16
-    config fetch l1ic.nways 1
-    config fetch l1ic.nbytesperblock 8
-    config decode buffer_capacity 32
-    config lsu l1dc.nsets 32
-    config lsu l1dc.nways 4
+    config fetch l1ic.nways 2
+    config fetch l1ic.nbytesperblock 16
+    config fetch l1ic.evictionpolicy lru # random
+    config decode buffer_capacity 16
+    config decode btb.nentries 8
+    config decode btb.nbytesperentry 8
+    config alu forwarding True
+    config lsu l1dc.nsets 16
+    config lsu l1dc.nways 2
     config lsu l1dc.nbytesperblock 16
+    config lsu l1dc.evictionpolicy lru # random
+    config l2 l2.nsets 32
+    config l2 l2.nways 16
+    config l2 l2.nbytesperblock 16
+    config l2 l2.evictionpolicy lru # random
+    config l2 l2.hitlatency 5
+    config stats output_filename /tmp/stats.json
+    # Memory hierarhchy peek latencies...
+    # - L1 peek-hit latency: 5**0 cycles
+    # - L2 peek-hit latency: 5**1 cycles
+    # - MM peek     latency: 5**2 cycles
     cycle
     loadbin /tmp/mainmem.raw 0x80000000 0x40000000 main # using /tmp/mainmem.raw as the main memory file,
                                                         # set x2 to 0x80000000 and %pc to 0x40000000, then
@@ -531,8 +548,9 @@ extend and enhance the simulator:
 1. tool for cataloging, indexing, and retrieval of simulator runs
 1. `clone`-based perfect branch predictor
 1. `clone`-based perfect value predictor
+1. return address stack
 1. accelerated `mmap`-based main memory implementation
-1. new eviction policies for SimpleCache
+1. new eviction policies (e.g., least frequently used) for SimpleCache
 1. pipeline implementation with decoupled fetch engine
 1. pipeline implementation with out-of-order execution
 1. multi-core support with shared cache
