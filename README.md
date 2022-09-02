@@ -10,7 +10,7 @@ pipelines: Bergamot, Clementine, Lime, and Oroblanco.
 Bergamot implements a very simple single-stage pipeline; Clementine
 implements a slightly more sophisticated 6-stage pipeline
 with automatic data- and control-hazard detection and handling; Lime
-augments Clementine with an L1 instruction cache, L2 data cache, and a
+augments Clementine with an L1 instruction cache, L1 data cache, and a
 unified L2 cache; and Oroblanco augments Lime with branch prediction and
 branch target buffering.
 
