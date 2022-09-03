@@ -570,8 +570,9 @@ extend and enhance the simulator:
 1. `clone`-based perfect value predictor
 1. return address stack
 1. accelerated `mmap`-based main memory implementation
-1. new eviction policies (e.g., least frequently used) for SimpleCache
+1. implement new eviction policies (e.g., least frequently used) for SimpleCache
 and SimpleBTB
+1. include additional example benchmarks
 1. pipeline implementation with decoupled fetch engine
 1. pipeline implementation with out-of-order execution
 1. multi-core support with cache sharing
