@@ -6,13 +6,14 @@ executing one instruction set, RISC-V's RV64I, are included. (Most of the
 RV64I instruction set is
 implemented: both compressed and uncompressed versions of opcodes).
 Additionally, this software package comes with four sample simulated
-pipelines: Bergamot, Clementine, Lime, and Oroblanco.
+pipelines, each bearing the codename of a citrus fruit: Bergamot,
+Clementine, Lime, and Oroblanco.
 Bergamot implements a very simple single-stage pipeline; Clementine
 implements a slightly more sophisticated 6-stage pipeline
 with automatic data- and control-hazard detection and handling; Lime
 augments Clementine with an L1 instruction cache, L1 data cache, and a
-unified L2 cache; and Oroblanco augments Lime with result forwarding, and branch prediction and
-branch target buffering.
+unified L2 cache; and Oroblanco augments Lime with result forwarding, and
+branch prediction and branch target buffering.
 
 ## Software Architecture
 
@@ -20,7 +21,7 @@ branch target buffering.
 
 The central design feature of ussim is an army of microservices...
 independent processes running on the same machine (and soon, different
-machines...
+machines)...
 shouting out whatever they need, whatever information they wish to
 communicate, whatever matters to them into the network where all other
 microservices will receive it. If something shouted into the network
@@ -35,17 +36,13 @@ them, this architecture would require every microservice to have detailed
 information about every other microservice. This rigidity is the antithesis
 of the flexibility that software is supposed to facilitate.
 
-There are no solutions, only tradeoffs. I have made this tradeoff knowingly,
-willingly, intentionally, fully aware of the performance ramifications.
-Notwithstanding this, I chose to trade away speed for flexibility.
-
 The benefit of this design choice is the incredible simplicity of the
 software that implements the pipeline logic. Since each step in the process
 of executing an instruction (e.g., decode, register access, execute)
 is handled by its own process, all the code for each step is
 self-contained, making it easier to reason about.
 
-Bergamot, for instance, is comprised of five Python files
+The Bergamot pipeline, for instance, is comprised of five Python files
 (see: pipelines/bergamot/implementation/), four of which contain fewer than
 150 lines of code. The lone standout is execute
 (see: pipelines/bergamot/implementation/execute.py) which, despite handling
@@ -59,8 +56,8 @@ still weighing in at under 400 lines of code.
 
 These bite-sized units allow chunks of functionality to be cleanly
 isolated from one another, making each easier to reason about, easier to
-understand, and, as necessary for implementing novel design concepts,
-easier to modify. Consider, for instance, that a change to a function
+understand, and easier to modify, which is indispensable for implementing
+novel design concepts. Consider, for instance, that a change to a function
 in the register file logic will almost certainly not alter functionality
 implemented in the decoder logic; this reduces the amount of the system
 that a developer has to be familiar with in order to be productive.
@@ -117,10 +114,10 @@ For a complete list, see the handler() function in launcher.py.
 
 Python is neat, clean, and offers an elegant array of tools to facilitate a
 functional programming style. (Consider: `map`, `functools`, `filter`,
-`any`, `all`, `itertools`.) Indeed, Python has an extensive array of tools
-for many tasks that allowed me to quickly develop the infrastructure that
-would underpin the simulator's design philosophy of loosely coupled, largely
-independent processes with network communication.
+`any`, `all`, `itertools`.) Indeed, Python's tools allowed me to quickly
+develop the infrastructure that underpins the simulator's design philosophy
+of loosely coupled, largely independent processes that communicate over a
+network.
 
 These tools are so excellent, I was able to get the
 infrastructure developed in just a couple of weeks, allowing me to rapidly
@@ -389,7 +386,8 @@ BTB since it is occupying space that could be used by a branch that would
 benefit from the BTB.
 
 The branch target buffer functionality is implemented in the
-`SimpleBTB` module (see: components/simplebtb/).
+`SimpleBTB` module (see: components/simplebtb/), which supports the
+least-recently used and random replacement policies.
 
 ## Simulator Scripts
 
@@ -411,6 +409,7 @@ Consider the script pipelines/oroblanco/main.ussim:
     config decode buffer_capacity 16
     config decode btb.nentries 8
     config decode btb.nbytesperentry 8
+    config decode btb.evictionpolicy lru # random
     config alu forwarding True
     config lsu l1dc.nsets 16
     config lsu l1dc.nways 2
@@ -492,9 +491,9 @@ Consider the source for the sum program:
     {
         int retval = 0;
         int x = 0;
-        while (s[x] >= 48 && s[x] <= 57) {
+        while (s[x] >= '0' && s[x] <= '9') {
             retval *= 10;
-            retval += s[x] - 48;
+            retval += s[x] - '0';
             x += 1;
         }
         return retval;
@@ -517,7 +516,28 @@ is not yet complete, there is no printf(), thus, when execution
 completes, the sum of all the arguments passed is returned in register
 x10, which can be viewed in the regile.py output log.
 
-## Tests
+## Simulator Speed
+
+On my laptop, a Lenovo ThinkPad with 32 GB of RAM and an Intel Core
+i7-8565U, running Ubuntu MATE 22.04, the Oroblanco pipeline executes at a
+rate of about 30 simulated cycles per real-world second at a steady state
+system load of less than 10%.
+
+While 30 cycles/second is not blazingly fast,
+as stated above (see: Software Architecture), I view the flexibilty
+enabeld by this software architecture as a more-than-worthwhile tradeoff.
+Also, consider that with the CPU utilization so low, I am able to execute
+many simulations simulatenously without saturating my CPU; this
+comports well with the fact that much of microarchitecture research
+requires large state-space searches, with many executions of the same
+benchmarks under different parameters (e.g., cache capacity, cache
+replacement algorithm, branch predictor).
+Finally, consider that I have made almost no effort to optimize the
+simulator, choosing instead at this early stage to focus primarily on
+correctness; future optimization efforts will doubtless increase the
+execution speed.
+
+## Instruction Implementation Tests
 
 The simulator is capable of loading full, statically-linked ELF binaries,
 and also capable of loading ELF-formatted object files. This allows
@@ -551,9 +571,19 @@ extend and enhance the simulator:
 1. return address stack
 1. accelerated `mmap`-based main memory implementation
 1. new eviction policies (e.g., least frequently used) for SimpleCache
+and SimpleBTB
 1. pipeline implementation with decoupled fetch engine
 1. pipeline implementation with out-of-order execution
-1. multi-core support with shared cache
+1. multi-core support with cache sharing
 
 That said, since this is a toolkit intended to facilitate microarchitecture
-research, some of these will be left as an exercise for researchers. :-)
+research, some of these, as my math textbooks used to say, "will be left as
+an exercise" for researchers.
+
+## Reaching The Author
+
+I can be reached at https://www.linkedin.com/in/john-haskins-jr-925235a1/
+and john.haskins.jr@gmail.com.
+
+If you use this simulator toolkit, please do reach out. I would love to
+hear from you!
