@@ -12,28 +12,53 @@ class BTBEntry:
     def __repr__(self):
         return '[{} ; {} ; 0b{:04b}; {}]'.format(list((self.next_pc).to_bytes(8, 'little')), self.addr, self.counter, self.data)
 class SimpleBTB:
-    def __init__(self, nentries, nbytesperentry):
+    def __init__(self, nentries, nbytesperentry, evictionpolicy):
         self.nentries = nentries
         self.nbytesperentry = nbytesperentry
-        self.entries = {}
+        self.evictionpolicy = evictionpolicy
+        self.entries = [{
+            'pc': None,
+            'entry': BTBEntry(0),
+        } for _ in range(self.nentries)]
+    def waynum(self, pc):
+        _way = list(filter(lambda x: pc == x.get('pc'), self.entries))
+        assert len(_way) < 2, 'Multiple matching blocks?!?\n\t{}\n\t{}'.format(_way, self.entries)
+        return (self.entries.index(_way.pop()) if len(_way) else None)
+    def victim(self):
+        if 'random' == self.evictionpolicy:
+            return random.choice(list(range(self.nentries)))
+        if 'lru' == self.evictionpolicy:
+            self.entries.pop(-1)
+            self.entries.insert(0, {
+                'pc': None,
+                'entry': BTBEntry(0),
+            })
+            return 0
+        assert False, 'Unknown eviction policy: {}'.format(self.evictionpolicy)
     def poke(self, pc, next_pc):
-        if not pc in self.entries.keys():
-            if len(self.entries.keys()) == self.nentries:
-                _victim = random.choice(list(self.entries.keys())) # HACK: random replacement good enough for now
-                self.entries.pop(_victim)
-            self.entries.update({pc: BTBEntry(next_pc)})
+        if isinstance(self.waynum(pc), int): return
+        self.entries[self.victim()] = {
+            'pc': pc,
+            'entry': BTBEntry(next_pc)
+        }
     def peek(self, pc):
-        if not pc in self.entries.keys(): return None
-        return self.entries.get(pc)
+        _w = self.waynum(pc)
+        return (self.entries[_w].get('entry') if isinstance(_w, int) else None)
     def update(self, next_pc, data):
-        _results = list(filter(lambda k: next_pc == self.entries.get(k).addr, self.entries.keys()))
-        if not len(_results): return
+        _w = list(filter(lambda x: next_pc == x.get('entry').addr, self.entries))
+        if not len(_w): return
+        _w = self.entries.index(_w.pop())
         # NOTE: It's theoretically possible, but unlikely, that more than one
         # BTB entry will have the same next_pc. I suppose I could extend both,
         # but not dealing with that now... for now, just update the 0th entry
-        _k = _results.pop(0)
-        self.entries.get(_k).data.extend(data)
-        self.entries.get(_k).addr += len(data)
-        if len(self.entries.get(_k).data) == self.nbytesperentry: self.entries.get(_k).addr = None
+        _entry = self.entries[_w].get('entry')
+        _entry.data.extend(data)
+        _entry.addr += len(data)
+        if len(_entry.data) == self.nbytesperentry: _entry.addr = None
     def evict(self, pc):
-        if pc in self.entries.keys(): self.entries.pop(pc)
+        _w = self.waynum(pc)
+        if isinstance(_w, int):
+            self.entries[_w] = {
+                'pc': None,
+                'entry': BTBEntry(0),
+            }

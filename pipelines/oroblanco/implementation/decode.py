@@ -211,6 +211,7 @@ if '__main__' == __name__:
             'buffer_capacity': 16,
             'btb.nentries': 32,
             'btb.nbytesperentry': 16,
+            'btb.evictionpolicy': 'lru',
         },
     }
     _service = service.Service(state.get('service'), _launcher.get('host'), _launcher.get('port'))
@@ -230,6 +231,7 @@ if '__main__' == __name__:
                 if state.get('config').get('btb.nentries'): state.update({'btb': components.simplebtb.SimpleBTB(
                     state.get('config').get('btb.nentries'),
                     state.get('config').get('btb.nbytesperentry'),
+                    state.get('config').get('btb.evictionpolicy'),
                 )})
                 state.update({'decode.request': {
                     'addr': state.get('%pc'),

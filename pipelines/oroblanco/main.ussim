@@ -17,6 +17,7 @@ config fetch l1ic.evictionpolicy lru # random
 config decode buffer_capacity 16
 config decode btb.nentries 8
 config decode btb.nbytesperentry 8
+config decode btb.evictionpolicy lru # random
 config alu forwarding True
 config lsu l1dc.nsets 16
 config lsu l1dc.nways 2
