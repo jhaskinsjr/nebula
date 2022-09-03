@@ -71,7 +71,7 @@ class SimpleCache:
         assert self.fits(addr, len(data)), 'request does not fit in block! ({:08x} {} {} {})'.format(addr, _offset, len(data))
         _set = self.sets[self.setnum(addr)]
         _w = self.waynum(addr, _set)
-        _w = (_w if isinstance(_w, int) else self.victim(_set)) # random replacement just b/c it's easy to do for now
+        _w = (_w if isinstance(_w, int) else self.victim(_set))
         _data = _set[_w].get('data')[:]
         _data = _data[:_offset] + data + _data[_offset + len(data):]
         _set[_w].update({
