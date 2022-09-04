@@ -119,11 +119,15 @@ develop the infrastructure that underpins the simulator's design philosophy
 of loosely coupled, largely independent processes that communicate over a
 network.
 
-These tools are so excellent, I was able to get the
-infrastructure developed in just a couple of weeks, allowing me to rapidly
-move on to the more interesting work of developing the actual toolkit for
-cycle-accurate simulation as well as the sample pipeline implementations
-themselves.
+With Python, I was able to get the infrastructure developed in just a
+couple of weeks, allowing me to rapidly move on to the more interesting work
+of developing the actual toolkit for cycle-accurate simulation as well as
+the sample pipeline implementations themselves.
+
+And on top of all that, Python is incredibly **portable**! I do development
+work on my Linux laptop, but have received reports from other users that it
+also runs seamlessly on MacOS. And I suspect it runs equally well on any
+Unix-like OS with a Python3 port.
 
 ## Running
 
