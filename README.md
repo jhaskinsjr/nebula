@@ -1,58 +1,44 @@
 # Welcome to μService-SIMulator!
 
 The μService-SIMulator (ussim) is a framework for developing cyce-accurate
-microprocessor simulators. At present, Python libraries for decoding and
-executing one instruction set, RISC-V's RV64I, are included. (Most of the
-RV64I instruction set is
-implemented: both compressed and uncompressed versions of opcodes).
-Additionally, this software package comes with four sample simulated
-pipelines, each bearing the codename of a citrus fruit: Bergamot,
-Clementine, Lime, and Oroblanco.
-Bergamot implements a very simple single-stage pipeline; Clementine
-implements a slightly more sophisticated 6-stage pipeline
-with automatic data- and control-hazard detection and handling; Lime
-augments Clementine with an L1 instruction cache, L1 data cache, and a
-unified L2 cache; and Oroblanco augments Lime with result forwarding, and
-branch prediction and branch target buffering.
+microprocessor simulators. Currently, Python libraries for decoding and
+executing RISC-V's RV64I instruction set are included. (Most of the
+RV64I instruction set, compressed and uncompressed versions of opcode, is
+implemented.) In the future, libraries for decoding and executing additional
+instruction sets may be added.
 
 ## Software Architecture
 
 ### Philosophy: Simplicity And Flexibility Through Independence
 
-The central design feature of ussim is an army of microservices...
-independent processes running on the same machine (and soon, different
-machines)...
-shouting out whatever they need, whatever information they wish to
-communicate, whatever matters to them into the network where all other
-microservices will receive it. If something shouted into the network
-matters to one or more microservices, those microservices are free to act
-upon it and, where appropriate, shout something back in response.
-
-THIS IS AN INTENTIONAL DESIGN CHOICE!
+The central design feature of ussim is that each simulator is
+comprised of an army of microservices... independent processes... transmit
+what resources that they require, what information they wish to communicate
+onto the network where all other microservices will receive it. If something
+tarnsmitted onto the network matters to one or more peer microservices,
+those microservices are free to act upon it and, where appropriate, transmit
+something back in response.
 
 While it would probably be faster to do point-to-point communication, where
-microservices communicate directly to the microservice(s) that matter to
+microservices connect directly to the microservice(s) that matter to
 them, this architecture would require every microservice to have detailed
 information about every other microservice. This rigidity is the antithesis
-of the flexibility that software is supposed to facilitate.
+of the flexibility that software is supposed to facilitate. In other words,
+I considered the tradeoff between speed and flexibility, and wilfully,
+intentionally chose flexibility.
 
-The benefit of this design choice is the incredible simplicity of the
-software that implements the pipeline logic. Since each step in the process
-of executing an instruction (e.g., decode, register access, execute)
-is handled by its own process, all the code for each step is
-self-contained, making it easier to reason about.
+In addition to flexibility, a significant additional benefit of this design
+choice is the incredible simplicity of the software that implements the
+pipeline logic. Since each step of executing an instruction (e.g., decode,
+register access) is handled by its own process, all the code for each step
+is self-contained, making it easier to understand and reason about.
 
-The Bergamot pipeline, for instance, is comprised of five Python files
-(see: pipelines/bergamot/implementation/), four of which contain fewer than
-150 lines of code. The lone standout is execute
+The Bergamot pipeline's implementation, for instance, is comprised of five
+Python files (see: pipelines/bergamot/implementation/), four of which
+contain fewer than 150 lines of code. The lone standout is the file that
+handles instruction execution
 (see: pipelines/bergamot/implementation/execute.py) which, despite handling
-dozens of RISC-V
-instructions, still occupies fewer than 700 lines of code.
-Similarly, Clementine is comprised of seven Python files
-(see: pipelines/clementine/implementation/),
-all but one of which is less than 150 lines of code, with the ALU
-logic (see: pipelines/clementine/implementation/alu.py)
-still weighing in at under 400 lines of code.
+dozens of RISC-V instructions, still contains fewer than 700 lines of code.
 
 These bite-sized units allow chunks of functionality to be cleanly
 isolated from one another, making each easier to reason about, easier to
@@ -64,9 +50,8 @@ that a developer has to be familiar with in order to be productive.
 
 Furthermore, because the units communicate among themselves, it is easy
 to construct a unit that monitors communications between the other
-units to
-count events (e.g., number of fetches, number of instructions flushed,
-number of instructions retired).
+units to count events (e.g., number of fetches, number of instructions
+flushed, number of instructions retired).
 
 ### Communication Channels
 
@@ -493,6 +478,9 @@ and SimpleBTB
 1. pipeline implementation with decoupled fetch engine
 1. pipeline implementation with out-of-order execution
 1. multi-core support with cache sharing
+1. MIPS instruction set support
+1. x86_64 instruction set support
+1. SPARC instruction set support
 
 That said, since this is a toolkit intended to facilitate microarchitecture
 research, some of these, as my math textbooks used to say, "will be left as
