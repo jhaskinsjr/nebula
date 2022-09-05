@@ -301,10 +301,10 @@ the pipelines/oroblanco subdirectory.
 
 For a brief overview of each pipeline implmentation, follow the links below:
 
-* (Bergamot) [pipelines/bergamot/README.md]
-* (Clementine) [pipelines/clementine/README.md]
-* (Lime) [pipelines/lime/README.md]
-* (Oroblanco) [pipelines/oroblanco/README.md]
+* [Bergamot] (pipelines/bergamot/README.md)
+* [Clementine] (pipelines/clementine/README.md)
+* [Lime] (pipelines/lime/README.md)
+* [Oroblanco] (pipelines/oroblanco/README.md)
 
 ## Simulator Scripts
 
