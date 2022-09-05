@@ -293,105 +293,18 @@ At present, there are four pipeline implementations: Bergamot, Clementine,
 Lime, and Oroblanco.
 
 The Running section above shows how to execute the examples/bin/sum program
-using the Bergamot implementation; to use the Clementine implementation, "cd" into
-the pipelines/clementine subdirectory (instead of pipelines/bergamot); to use the
-Lime implementation, "cd" into the pipelines/lime subdirectory; to use the 
-Oroblanco implementation, "cd" into the pipelines/oroblanco subdirectory.
+using the Bergamot implementation; to use the Clementine implementation,
+"cd" into the pipelines/clementine subdirectory (instead of
+pipelines/bergamot); to use the Lime implementation, "cd" into the
+pipelines/lime subdirectory; to use the Oroblanco implementation, "cd" into
+the pipelines/oroblanco subdirectory.
 
-### Bergamot
+For a brief overview of each pipeline implmentation, follow the links below:
 
-See: https://en.wikipedia.org/wiki/Bergamot_orange.
-
-The Bergamot implementation uses a very simple design wherein only one stage
-operates per cycle. The core (see: pipelines/bergamot/implementation/simplecore.py)
-orchestrates all operations...
-
-1. fetch PC from the register file (see: pipelines/bergamot/implementation/regfile.py)
-2. fetch instruction bytes from main memory (see: pipelines/bergamot/implementation/mainmem.py)
-3. decode instruction from raw bytes (see: pipelines/bergamot/implementation/decode.py)
-4. fetch source operands from register file
-5. execute instruction (see: pipelines/bergamot/implementation/execute.py)
-6. write back destination register
-7. update PC
-
-None of these operations overlap (meaning that this implementation, arguably,
-is not a pipeline). But this very simple design was instrumental in the early
-stages of development, as instruction implementations were being coded and
-debugged.
-
-### Clementine
-
-See: https://en.wikipedia.org/wiki/Clementine.
-
-The Clementine implementation uses a six-stage design that operates in a
-manner akin to the venerable MIPS R3000, with automatic read-after-write
-hazard and control-flow hazard detection and handling. Unlike Bergamot, there
-is no overarching control core. Rather, each stage operates more-or-less
-independently...
-
-1. fetch instruction bytes from main memory (see: pipelines/clementine/implementation/fetch.py)
-2. buffer and decode instruction bytes (see: pipelines/clementine/implementation/decode.py)
-3. register access (see: pipelines/clementine/implementation/regfile.py)
-4. execute arithmetic, logic, branch operation (see: pipelines/clementine/implementation/alu.py)
-5. execute load/store operation (see: pipelines/clementine/implementation/lsu.py)
-6. retire/flush instructions (see: pipelines/implementation/implementation/commit.py)
-
-Read-after-write hazard detection is done in the decode stage, which halts
-the consumer instruction until the producer instruction either retires or is
-flushed by the commit
-stage. Control-flow hazards are handled by the commit stage when a
-jump (JAL, JALR) or a taken branch (BEQ, BNE, BGE, BLT, BGEU, BLTU)
-instruction retires; when this happens, the target PC is remembered and all
-subsequent instructions will be flushed until the instruction at the target
-PC arrives in the commit stage. Also, as soon at the jump/branch commits
-the target PC is transmitted on the results channel where it is
-sensed by the instruction fetch stage and the decode stage. The instruction
-fetcher responds by beginning to fetch instruction bytes from the new PC;
-the decoder responds by flushing all previously-decoded instructions.
-
-### Lime
-
-See: https://en.wikipedia.org/wiki/Lime_(fruit).
-
-The Lime implementation uses a six-stage design that is essentially identical
-to the six-stage pipeline of Clementine, featuring automatic read-after-write
-hazard and control-flow hazard detection and handling, with each stage operating
-independently. The key distinguishing features of Lime are its L1 instruction cache,
-L1 data cache, and unified L2 cache.
-
-During instruction fetch, the L1 instruction cache is probed
-and if the requested address is present in the cache, those bytes are forwarded
-to the decode stage; if not, a request for those bytes is made to the L2.
-Bytes are fetched from the L2 at the granularity of the L1 instruction cache
-block size; when they arrive from the L2, they are installed into the cache,
-and then forwarded to the decode stage. The L1 data cache and unified L2 cache
-operate in essentially
-the same manner, but additionally handle STORE instructions that explicitly
-poke data into the caches, with write-through semantics.
-
-The cache functionality is implemented in the `SimpleCache` module (see:
-components/simplecache/), which supports the least-recently used and
-random replacement policies.
-
-### Oroblanco
-
-See: https://en.wikipedia.org/wiki/Oroblanco.
-
-The Oroblanco implementation uses a six-stage design that is similar to the
-Lime pipeline. In addition to an L1 instruction cache, an L1 data cache,
-and a unified L2 cache, Oroblanco includes result forwarding in addition to
-branch prediction and branch target
-buffering. Whenever a new taken branch is encountered, an entry is created for
-it in the branch target buffer (BTB). In subsequent executions, if a branch
-is taken its counter is incremented (saturating at 3) and the target
-instructions are buffered into the BTB entry; if a branch is not taken its
-counter is decremented; when a branch's counter is 0, it is evicted from the
-BTB since it is occupying space that could be used by a branch that would
-benefit from the BTB.
-
-The branch target buffer functionality is implemented in the
-`SimpleBTB` module (see: components/simplebtb/), which supports the
-least-recently used and random replacement policies.
+* (Bergamot) [pipelines/bergamot/README.md]
+* (Clementine) [pipelines/clementine/README.md]
+* (Lime) [pipelines/lime/README.md]
+* (Oroblanco) [pipelines/oroblanco/README.md]
 
 ## Simulator Scripts
 
