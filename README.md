@@ -370,6 +370,7 @@ examples/bin/negate, and examples/bin/test... were created using the RISC-V
 cross compiler at https://github.com/riscv-collab/riscv-gnu-toolchain.
 Consider the source for the sum program:
 
+```
     /* examples/src/sum.c */
     #include <stdio.h>
 
@@ -383,10 +384,12 @@ Consider the source for the sum program:
         for (; x < argc; x+= 1) retval += atoi(argv[x]);
         return retval;
     }
-
+```
+```
     /* examples/src/basics.h */
     int atoi(const char *);
-
+```
+```
     /* examples/src/basics.c */
     int
     atoi(const char * s)
@@ -400,6 +403,7 @@ Consider the source for the sum program:
         }
         return retval;
     }
+```
 
 which is compiled accordingly:
 
