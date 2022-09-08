@@ -297,11 +297,15 @@ The simulator executes according to instructions in an execute script.
 Consider the script pipelines/oroblanco/main.ussim:
 
     # Sample μService-SIMulator script
-    service implementation/simplecore.py:localhost
     service implementation/regfile.py:localhost
     service implementation/mainmem.py:localhost
+    service implementation/fetch.py:localhost
     service implementation/decode.py:localhost
-    service implementation/execute.py:localhost
+    service implementation/alu.py:localhost
+    service implementation/lsu.py:localhost
+    service implementation/commit.py:localhost
+    service implementation/l2.py:localhost
+    service ../../toolbox/stats.py:localhost
     spawn
     config mainmem peek_latency_in_cycles 25
     config fetch l1ic.nsets 16
