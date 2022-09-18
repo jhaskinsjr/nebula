@@ -146,12 +146,14 @@ if '__main__' == __name__:
             'l2.nways': 2**4,
             'l2.nbytesperblock': 2**4,
             'l2.hitlatency': 5,
+            'l2.evictionpolicy': 'lru',
         },
     }
     state.update({'l2': components.simplecache.SimpleCache(
         state.get('config').get('l2.nsets'),
         state.get('config').get('l2.nways'),
         state.get('config').get('l2.nbytesperblock'),
+        state.get('config').get('l2.evictionpolicy'),
     )})
     _service = service.Service(state.get('service'), _launcher.get('host'), _launcher.get('port'))
     while state.get('active'):

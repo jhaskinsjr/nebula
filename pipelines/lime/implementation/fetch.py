@@ -123,12 +123,14 @@ if '__main__' == __name__:
             'l1ic.nsets': 2**4,
             'l1ic.nways': 2**1,
             'l1ic.nbytesperblock': 2**4,
+            'l1ic.evictionpolicy': 'lru',
         },
     }
     state.update({'l1ic': components.simplecache.SimpleCache(
         state.get('config').get('l1ic.nsets'),
         state.get('config').get('l1ic.nways'),
         state.get('config').get('l1ic.nbytesperblock'),
+        state.get('config').get('l1ic.evictionpolicy'),
     )})
     _service = service.Service(state.get('service'), _launcher.get('host'), _launcher.get('port'))
     while state.get('active'):
