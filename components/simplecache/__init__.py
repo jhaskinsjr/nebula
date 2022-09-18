@@ -53,7 +53,7 @@ class SimpleCache:
                 'misc': {},
             })
             return 0
-        assert False, 'Unknown eviction policy'
+        assert False, 'Unknown eviction policy: {}'.format(self.evictionpolicy)
     def peek(self, addr, nbytes):
         _offset = self.offset(addr)
         assert self.fits(addr, nbytes), 'request does not fit in block! ({:08x} {} {})'.format(addr, _offset, nbytes)
