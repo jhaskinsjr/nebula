@@ -1,10 +1,8 @@
 import os
-import sys
 import json
 import argparse
 import uuid
 import itertools
-import pprint
 import psutil
 import multiprocessing
 import subprocess
@@ -19,9 +17,6 @@ def launch(cmd, runpath, pipeline, script):
     print('cmd      : {}'.format(cmd))
     os.mkdir(runpath)
     os.mkdir(os.path.join(runpath, 'log'))
-#    subprocess.run('cp {} {}'.format(script, os.path.join(runpath, 'script')).split())
-#    print(cmd, file=open(os.path.join(runpath, 'cmdline'), 'w'))
-#    print(pipeline, file=open(os.path.join(runpath, 'pipeline'), 'w'))
     with open(os.path.join(runpath, 'cwd'), 'w') as fp: print(os.path.join(os.getcwd(), pipeline), file=fp)
     with open(os.path.join(runpath, 'cmdline'), 'w') as fp: print(cmd, file=fp)
     with open(os.path.join(runpath, 'script'), 'w') as fp: print(''.join(open(script, 'r').readlines()), file=fp)
@@ -62,8 +57,6 @@ if '__main__' == __name__:
             for x in itertools.product(*_exec.get('pipelines/oroblanco').get('config').values())
         ] for p in _pipelines
     }
-#    pprint.pprint(_runs)
-#    sys.exit(0)
     _processes = []
     _port = 10000
     for _p in _runs.keys():
@@ -95,10 +88,8 @@ if '__main__' == __name__:
             _config = map(lambda x: ((x[0], True) if 'True' == x[1] else x), _config)
             _config = map(lambda x: ((x[0], False) if 'False' == x[1] else x), _config)
             _config = dict(_config)
-#            print(_config)
             f.close()
             while psutil.cpu_percent(1) > args.max_cpu_utilization: pass
-#            print(_cmdline)
             _processes.append({
                 'process': launch(_cmdline, _runpath, _p, _script),
                 'cmdline': _cmdline,
@@ -127,6 +118,3 @@ if '__main__' == __name__:
             'date': int(_now.strftime('%Y%m%d')),
             'time': int(_now.strftime('%H%M%S')),
         })
-#        if _mongodb: _mongodb.get('collection').insert_one()
-#        pprint.pprint(_document)
-#    [pr.join() for pr in _processes]

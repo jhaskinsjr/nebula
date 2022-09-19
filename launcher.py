@@ -48,7 +48,6 @@ def handler(conn, addr):
                 state.update({'running': False})
                 state.get('lock').release()
             elif 'undefined' == k:
-#                assert False
                 state.get('lock').acquire()
                 state.update({'undefined': v})
                 state.get('lock').release()
@@ -217,10 +216,8 @@ def restore(mainmem_filename, snapshot_filename):
     fd = os.open(mainmem_filename, os.O_RDWR)
     os.lseek(fd, 0x10000000, os.SEEK_SET)
     cycle = int.from_bytes(os.read(fd, 8), 'little')
-#    os.write(fd, (0).to_bytes(4096, 'little'))
     os.lseek(fd, 0x20000000, os.SEEK_SET)
     pc = int.from_bytes(os.read(fd, 8), 'little')
-#    os.write(fd, (0).to_bytes(4096, 'little'))
     os.close(fd)
     _res_evt = state.get('futures').get(cycle, {'results': [], 'events': []})
     _res_evt.get('events').append({
@@ -398,14 +395,11 @@ if __name__ == '__main__':
                 config(state.get('connections'), 'mainmem', 'main_memory_capacity', state.get('config').get('mainmem_capacity'))
             else:
                 {
-#                    'spawn': lambda: spawn(_services, args),
                     'service': lambda x: add_service(_services, args, x),
                     'register': lambda x, y, z=None: register(state.get('connections'), x, y, z),
                     'restore': lambda x, y: state.update({'cycle': restore(x, y)}),
                     'cycle': lambda: logging.info(state.get('cycle')),
                     'state': lambda: logging.info(state),
-#                    'config': lambda x, y, z: config(state.get('connections'), x, y, z),
-#                    'config': lambda x: config(state.get('connections'), *x.split(':')),
                     'config': lambda x, y: config(state.get('connections'), *x.split(':'), y),
                     'connections': lambda: logging.info(state.get('connections')),
                 }.get(cmd, lambda : logging.fatal('Unknown command!'))(*params)
