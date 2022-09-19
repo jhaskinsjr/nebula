@@ -404,7 +404,9 @@ if __name__ == '__main__':
                     'restore': lambda x, y: state.update({'cycle': restore(x, y)}),
                     'cycle': lambda: logging.info(state.get('cycle')),
                     'state': lambda: logging.info(state),
-                    'config': lambda x, y, z: config(state.get('connections'), x, y, z),
+#                    'config': lambda x, y, z: config(state.get('connections'), x, y, z),
+#                    'config': lambda x: config(state.get('connections'), *x.split(':')),
+                    'config': lambda x, y: config(state.get('connections'), *x.split(':'), y),
                     'connections': lambda: logging.info(state.get('connections')),
                 }.get(cmd, lambda : logging.fatal('Unknown command!'))(*params)
     tx(state.get('connections'), 'bye')
