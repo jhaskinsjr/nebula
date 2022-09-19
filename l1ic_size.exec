@@ -8,7 +8,7 @@
             "fetch:l1ic_evictionpolicy": ["random", "lru"],
             "l2:l2_nbytesperblock": [64]
         },
-        "max_cycles": 3200,
+        "max_cycles": 32000,
         "snapshots": 1000,
         "break_on_undefined": true,
         "script": "main.ussim",
@@ -23,7 +23,7 @@
             "fetch:l1ic_evictionpolicy": ["random", "lru"],
             "l2:l2_nbytesperblock": [64]
         },
-        "max_cycles": 3200,
+        "max_cycles": 32000,
         "snapshots": 1000,
         "break_on_undefined": true,
         "script": "main.ussim",
