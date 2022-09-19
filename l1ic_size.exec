@@ -1,0 +1,32 @@
+{
+    "pipelines/lime": {
+        "mainmem": 4297967296,
+        "config": {
+            "fetch:l1ic_nsets": [16, 64],
+            "fetch:l1ic_nways": [2, 4],
+            "fetch:l1ic_nbytesperblock": [16, 32],
+            "fetch:l1ic_evictionpolicy": ["random", "lru"],
+            "l2:l2_nbytesperblock": [64]
+        },
+        "max_cycles": 3200,
+        "snapshots": 1000,
+        "break_on_undefined": true,
+        "script": "main.ussim",
+        "command": "../../examples/bin/sum 2 3 -5 7"
+    },
+    "pipelines/oroblanco": {
+        "mainmem": 4297967296,
+        "config": {
+            "fetch:l1ic_nsets": [16, 64],
+            "fetch:l1ic_nways": [2, 4],
+            "fetch:l1ic_nbytesperblock": [16, 32],
+            "fetch:l1ic_evictionpolicy": ["random", "lru"],
+            "l2:l2_nbytesperblock": [64]
+        },
+        "max_cycles": 3200,
+        "snapshots": 1000,
+        "break_on_undefined": true,
+        "script": "main.ussim",
+        "command": "../../examples/bin/sum 2 3 -5 7"
+    }
+}
