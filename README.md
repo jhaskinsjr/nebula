@@ -180,12 +180,12 @@ pipeline; e.g.:
         },
         "cycle": 14872,
         "fetch": {
-            "l1ic.misses": 35,
-            "l1ic.accesses": 3929
+            "l1ic_misses": 35,
+            "l1ic_accesses": 3929
         },
         "l2": {
-            "l2.misses": 55,
-            "l2.accesses": 385
+            "l2_misses": 55,
+            "l2_accesses": 385
         },
         "mainmem": {
             "peek.size": {
@@ -258,8 +258,8 @@ pipeline; e.g.:
             "speculative_next_pc_correct": 180
         },
         "lsu": {
-            "l1dc.misses": 29,
-            "l1dc.accesses": 1556
+            "l1dc_misses": 29,
+            "l1dc_accesses": 1556
         }
     }
 
@@ -308,24 +308,24 @@ Consider the script pipelines/oroblanco/main.ussim:
     service ../../toolbox/stats.py:localhost
     spawn
     config mainmem peek_latency_in_cycles 25
-    config fetch l1ic.nsets 16
-    config fetch l1ic.nways 2
-    config fetch l1ic.nbytesperblock 16
-    config fetch l1ic.evictionpolicy lru # random
+    config fetch l1ic_nsets 16
+    config fetch l1ic_nways 2
+    config fetch l1ic_nbytesperblock 16
+    config fetch l1ic_evictionpolicy lru # random
     config decode buffer_capacity 16
-    config decode btb.nentries 8
-    config decode btb.nbytesperentry 8
-    config decode btb.evictionpolicy lru # random
+    config decode btb_nentries 8
+    config decode btb_nbytesperentry 8
+    config decode btb_evictionpolicy lru # random
     config alu forwarding True
-    config lsu l1dc.nsets 16
-    config lsu l1dc.nways 2
-    config lsu l1dc.nbytesperblock 16
-    config lsu l1dc.evictionpolicy lru # random
-    config l2 l2.nsets 32
-    config l2 l2.nways 16
-    config l2 l2.nbytesperblock 16
-    config l2 l2.evictionpolicy lru # random
-    config l2 l2.hitlatency 5
+    config lsu l1dc_nsets 16
+    config lsu l1dc_nways 2
+    config lsu l1dc_nbytesperblock 16
+    config lsu l1dc_evictionpolicy lru # random
+    config l2 l2_nsets 32
+    config l2 l2_nways 16
+    config l2 l2_nbytesperblock 16
+    config l2 l2_evictionpolicy lru # random
+    config l2 l2_hitlatency 5
     config stats output_filename /tmp/stats.json
     # Memory hierarhchy peek latencies...
     # - L1 peek-hit latency: 5**0 cycles

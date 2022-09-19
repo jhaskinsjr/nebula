@@ -20,7 +20,7 @@ def fetch_block(service, state, jp):
             'size': _blocksize,
         },
     }})
-    toolbox.report_stats(service, state, 'flat', 'l1ic.misses')
+    toolbox.report_stats(service, state, 'flat', 'l1ic_misses')
 def do_l1ic(service, state):
     _decode_request = state.get('decode.requests')[0]
     _jp = int.from_bytes(_decode_request.get('addr'), 'little') + _decode_request.get('nbytes_sent_so_far')
@@ -60,7 +60,7 @@ def do_l1ic(service, state):
     }})
     _decode_request.update({'nbytes_sent_so_far': state.get('fetch_size') + _decode_request.get('nbytes_sent_so_far')})
     if _decode_request.get('nbytes_sent_so_far') == _decode_request.get('nbytes_requested'): state.get('decode.requests').pop(0)
-    toolbox.report_stats(service, state, 'flat', 'l1ic.accesses')
+    toolbox.report_stats(service, state, 'flat', 'l1ic_accesses')
 def do_tick(service, state, results, events):
     for _l2 in map(lambda y: y.get('l2'), filter(lambda x: x.get('l2'), results)):
         _addr = _l2.get('addr')
@@ -108,10 +108,10 @@ if '__main__' == __name__:
         '%jp': None, # This is the fetch pointer. Why %jp? Who knows?
         'ack': True,
         'config': {
-            'l1ic.nsets': 2**4,
-            'l1ic.nways': 2**1,
-            'l1ic.nbytesperblock': 2**4,
-            'l1ic.evictionpolicy': 'lru',
+            'l1ic_nsets': 2**4,
+            'l1ic_nways': 2**1,
+            'l1ic_nbytesperblock': 2**4,
+            'l1ic_evictionpolicy': 'lru',
         },
     }
     _service = service.Service(state.get('service'), _launcher.get('host'), _launcher.get('port'))
@@ -129,10 +129,10 @@ if '__main__' == __name__:
                 state.update({'ack': False})
                 _service.tx({'info': 'state.config : {}'.format(state.get('config'))})
                 state.update({'l1ic': components.simplecache.SimpleCache(
-                    state.get('config').get('l1ic.nsets'),
-                    state.get('config').get('l1ic.nways'),
-                    state.get('config').get('l1ic.nbytesperblock'),
-                    state.get('config').get('l1ic.evictionpolicy'),
+                    state.get('config').get('l1ic_nsets'),
+                    state.get('config').get('l1ic_nways'),
+                    state.get('config').get('l1ic_nbytesperblock'),
+                    state.get('config').get('l1ic_evictionpolicy'),
                 )})
             elif 'config' == k:
                 logging.debug('config : {}'.format(v))

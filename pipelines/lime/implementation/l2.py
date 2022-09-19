@@ -23,7 +23,7 @@ def fetch_block(service, state, addr):
             'size': _blocksize,
         },
     }})
-    toolbox.report_stats(service, state, 'flat', 'l2.misses')
+    toolbox.report_stats(service, state, 'flat', 'l2_misses')
 def do_l2(service, state, addr, size, data=None):
     service.tx({'info': 'addr : {}'.format(addr)})
     _ante = None
@@ -59,7 +59,7 @@ def do_l2(service, state, addr, size, data=None):
     if data:
         # POKE
         service.tx({'result': {
-            'arrival': state.get('config').get('l2.hitlatency') + state.get('cycle'),
+            'arrival': state.get('config').get('l2_hitlatency') + state.get('cycle'),
             'l2': {
                 'addr': addr,
                 'size': size,
@@ -84,7 +84,7 @@ def do_l2(service, state, addr, size, data=None):
     else:
         # PEEK
         service.tx({'result': {
-            'arrival': state.get('config').get('l2.hitlatency') + state.get('cycle'), # must not arrive in commit the same cycle as the LOAD instruction
+            'arrival': state.get('config').get('l2_hitlatency') + state.get('cycle'), # must not arrive in commit the same cycle as the LOAD instruction
             'l2': {
                 'addr': addr,
                 'size': size,
@@ -93,7 +93,7 @@ def do_l2(service, state, addr, size, data=None):
         }})
     state.get('executing').pop(0)
     if len(state.get('pending_fetch')): state.get('pending_fetch').pop(0)
-    toolbox.report_stats(service, state, 'flat', 'l2.accesses')
+    toolbox.report_stats(service, state, 'flat', 'l2_accesses')
 
 def do_tick(service, state, results, events):
     for _mem in filter(lambda x: x, map(lambda y: y.get('mem'), results)):
@@ -142,18 +142,18 @@ if '__main__' == __name__:
         'executing': [],
         'operands': {},
         'config': {
-            'l2.nsets': 2**5,
-            'l2.nways': 2**4,
-            'l2.nbytesperblock': 2**4,
-            'l2.hitlatency': 5,
-            'l2.evictionpolicy': 'lru',
+            'l2_nsets': 2**5,
+            'l2_nways': 2**4,
+            'l2_nbytesperblock': 2**4,
+            'l2_hitlatency': 5,
+            'l2_evictionpolicy': 'lru',
         },
     }
     state.update({'l2': components.simplecache.SimpleCache(
-        state.get('config').get('l2.nsets'),
-        state.get('config').get('l2.nways'),
-        state.get('config').get('l2.nbytesperblock'),
-        state.get('config').get('l2.evictionpolicy'),
+        state.get('config').get('l2_nsets'),
+        state.get('config').get('l2_nways'),
+        state.get('config').get('l2_nbytesperblock'),
+        state.get('config').get('l2_evictionpolicy'),
     )})
     _service = service.Service(state.get('service'), _launcher.get('host'), _launcher.get('port'))
     while state.get('active'):

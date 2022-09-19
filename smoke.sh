@@ -64,9 +64,9 @@ function do_lime {
                                                                 --log ${LOGDIR} \
                                                                 --mainmem ${LOGDIR}/mainmem.raw:$((2**32)) \
                                                                 --config \
-                                                                    lsu:l1dc.nsets:${s} lsu:l1dc.nways:${w} lsu:l1dc.nbytesperblock:${n} \
-                                                                    fetch:l1ic.nsets:${x} fetch:l1ic.nways:${y} fetch:l1ic.nbytesperblock:${z} \
-                                                                    l2:l2.nsets:${a} l2:l2.nways:${b} l2:l2.nbytesperblock:${c} l2:l2.hitlatency:${d} \
+                                                                    lsu:l1dc_nsets:${s} lsu:l1dc_nways:${w} lsu:l1dc_nbytesperblock:${n} \
+                                                                    fetch:l1ic_nsets:${x} fetch:l1ic_nways:${y} fetch:l1ic_nbytesperblock:${z} \
+                                                                    l2:l2_nsets:${a} l2:l2_nways:${b} l2:l2_nbytesperblock:${c} l2:l2_hitlatency:${d} \
                                                                     mainmem:peek_latency_in_cycles:${l} \
                                                                     decode:buffer_capacity:${t} \
                                                                     stats:output_filename:${LOGDIR}/stats.json \

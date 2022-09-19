@@ -23,7 +23,7 @@ def fetch_block(service, state, addr):
             'size': _blocksize,
         },
     }})
-    toolbox.report_stats(service, state, 'flat', 'l1dc.misses')
+    toolbox.report_stats(service, state, 'flat', 'l1dc_misses')
 def do_l1dc(service, state, addr, size, data=None):
     service.tx({'info': 'addr : {}'.format(addr)})
     _ante = None
@@ -93,7 +93,7 @@ def do_l1dc(service, state, addr, size, data=None):
         }})
     state.get('executing').pop(0)
     if len(state.get('pending_fetch')): state.get('pending_fetch').pop(0)
-    toolbox.report_stats(service, state, 'flat', 'l1dc.accesses')
+    toolbox.report_stats(service, state, 'flat', 'l1dc_accesses')
 
 def do_unimplemented(service, state, insn):
     logging.info('Unimplemented: {}'.format(state.get('insn')))
@@ -179,17 +179,17 @@ if '__main__' == __name__:
         'executing': [],
         'operands': {},
         'config': {
-            'l1dc.nsets': 2**4,
-            'l1dc.nways': 2**1,
-            'l1dc.nbytesperblock': 2**4,
-            'l1dc.evictionpolicy': 'lru',
+            'l1dc_nsets': 2**4,
+            'l1dc_nways': 2**1,
+            'l1dc_nbytesperblock': 2**4,
+            'l1dc_evictionpolicy': 'lru',
         },
     }
     state.update({'l1dc': components.simplecache.SimpleCache(
-        state.get('config').get('l1dc.nsets'),
-        state.get('config').get('l1dc.nways'),
-        state.get('config').get('l1dc.nbytesperblock'),
-        state.get('config').get('l1dc.evictionpolicy'),
+        state.get('config').get('l1dc_nsets'),
+        state.get('config').get('l1dc_nways'),
+        state.get('config').get('l1dc_nbytesperblock'),
+        state.get('config').get('l1dc_evictionpolicy'),
     )})
     _service = service.Service(state.get('service'), _launcher.get('host'), _launcher.get('port'))
     while state.get('active'):

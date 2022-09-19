@@ -97,19 +97,19 @@ def do_tick(service, state, results, events):
             _next_pc = int.from_bytes(_retire.get('next_pc'), 'little')
             if _retire.get('taken'):
                 state.get('btb').poke(_pc, _next_pc)
-                toolbox.report_stats(service, state, 'flat', 'btb.pokes')
+                toolbox.report_stats(service, state, 'flat', 'btb_pokes')
                 _btb_entry = state.get('btb').peek(_pc)
                 _btb_entry.inc()
             else:
                 _btb_entry = state.get('btb').peek(_pc)
-                toolbox.report_stats(service, state, 'flat', 'btb.peeks')
+                toolbox.report_stats(service, state, 'flat', 'btb_peeks')
                 if not _btb_entry:
-                    toolbox.report_stats(service, state, 'flat', 'btb.peek_misses')
+                    toolbox.report_stats(service, state, 'flat', 'btb_peek_misses')
                     continue
                 _btb_entry.dec()
                 if not _btb_entry.counter:
                     state.get('btb').evict(_pc) # if strongly not-taken, why keep it around?
-                    toolbox.report_stats(service, state, 'flat', 'btb.strongly_not_taken')
+                    toolbox.report_stats(service, state, 'flat', 'btb_strongly_not_taken')
         if _retire and _retire.get('next_pc'):
             if _retire.get('speculative_next_pc') == _retire.get('next_pc'): continue
             if len(state.get('issued')) and state.get('issued')[0].get('%pc') == _retire.get('next_pc'): continue
@@ -209,9 +209,9 @@ if '__main__' == __name__:
         'max_instructions_to_decode': 1, # HACK: hard-coded max-instructions-to-decode of 1
         'config': {
             'buffer_capacity': 16,
-            'btb.nentries': 32,
-            'btb.nbytesperentry': 16,
-            'btb.evictionpolicy': 'lru',
+            'btb_nentries': 32,
+            'btb_nbytesperentry': 16,
+            'btb_evictionpolicy': 'lru',
         },
     }
     _service = service.Service(state.get('service'), _launcher.get('host'), _launcher.get('port'))
@@ -228,10 +228,10 @@ if '__main__' == __name__:
                 state.update({'running': True})
                 state.update({'ack': False})
                 _service.tx({'info': 'state.config : {}'.format(state.get('config'))})
-                if state.get('config').get('btb.nentries'): state.update({'btb': components.simplebtb.SimpleBTB(
-                    state.get('config').get('btb.nentries'),
-                    state.get('config').get('btb.nbytesperentry'),
-                    state.get('config').get('btb.evictionpolicy'),
+                if state.get('config').get('btb_nentries'): state.update({'btb': components.simplebtb.SimpleBTB(
+                    state.get('config').get('btb_nentries'),
+                    state.get('config').get('btb_nbytesperentry'),
+                    state.get('config').get('btb_evictionpolicy'),
                 )})
                 state.update({'decode.request': {
                     'addr': state.get('%pc'),

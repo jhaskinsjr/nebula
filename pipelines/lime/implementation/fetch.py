@@ -20,7 +20,7 @@ def fetch_block(service, state, jp):
             'size': _blocksize,
         },
     }})
-    toolbox.report_stats(service, state, 'flat', 'l1ic.misses')
+    toolbox.report_stats(service, state, 'flat', 'l1ic_misses')
 def do_l1ic(service, state):
     _jp = int.from_bytes(state.get('%jp'), 'little')
     service.tx({'info': '_jp : {}'.format(_jp)})
@@ -62,7 +62,7 @@ def do_l1ic(service, state):
     state.update({'decode.bytes_sent': state.get('cycle')})
     state.update({'decode.buffer_available': state.get('decode.buffer_available') - state.get('fetch_size')})
     state.update({'%jp': riscv.constants.integer_to_list_of_bytes(4 + _jp, 64, 'little')})
-    toolbox.report_stats(service, state, 'flat', 'l1ic.accesses')
+    toolbox.report_stats(service, state, 'flat', 'l1ic_accesses')
 def do_tick(service, state, results, events):
     for _reg in map(lambda y: y.get('register'), filter(lambda x: x.get('register'), results)):
         if '%pc' != _reg.get('name'): continue
@@ -120,17 +120,17 @@ if '__main__' == __name__:
         '%jp': None, # This is the fetch pointer. Why %jp? Who knows?
         'ack': True,
         'config': {
-            'l1ic.nsets': 2**4,
-            'l1ic.nways': 2**1,
-            'l1ic.nbytesperblock': 2**4,
-            'l1ic.evictionpolicy': 'lru',
+            'l1ic_nsets': 2**4,
+            'l1ic_nways': 2**1,
+            'l1ic_nbytesperblock': 2**4,
+            'l1ic_evictionpolicy': 'lru',
         },
     }
     state.update({'l1ic': components.simplecache.SimpleCache(
-        state.get('config').get('l1ic.nsets'),
-        state.get('config').get('l1ic.nways'),
-        state.get('config').get('l1ic.nbytesperblock'),
-        state.get('config').get('l1ic.evictionpolicy'),
+        state.get('config').get('l1ic_nsets'),
+        state.get('config').get('l1ic_nways'),
+        state.get('config').get('l1ic_nbytesperblock'),
+        state.get('config').get('l1ic_evictionpolicy'),
     )})
     _service = service.Service(state.get('service'), _launcher.get('host'), _launcher.get('port'))
     while state.get('active'):
