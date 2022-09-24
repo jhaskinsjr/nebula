@@ -6,8 +6,8 @@ service implementation/decode.py:localhost
 service implementation/execute.py:localhost
 service ../../toolbox/stats.py:localhost
 spawn
-config mainmem peek_latency_in_cycles 25
-config stats output_filename /tmp/stats.json
+config mainmem:peek_latency_in_cycles 25
+config stats:output_filename /tmp/stats.json
 cycle
 loadbin 0x80000000 0x40000000 main  # set x2 to 0x80000000 and %pc to 0x40000000, then
                                     # load binary (e.g., ../../examples/bin/sum), and,
