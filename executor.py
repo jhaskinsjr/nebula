@@ -111,8 +111,8 @@ if '__main__' == __name__:
             'exitcode': pr.get('process').exitcode,
             'stats': _stats,
             'log': {
-                f: open(os.path.join(_runpath, 'log', f)).read()
-                for f in {x:y for x, y, in zip(['root', 'directories', 'files'], *os.walk(os.path.join(_runpath, 'log')))}.get('files')
+                f: open(os.path.join(pr.get('runpath'), 'log', f)).read()
+                for f in {x:y for x, y, in zip(['root', 'directories', 'files'], *os.walk(os.path.join(pr.get('runpath'), 'log')))}.get('files')
             },
             'config': pr.get('config'),
             'runpath': pr.get('runpath'),
