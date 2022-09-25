@@ -33,6 +33,7 @@ if '__main__' == __name__:
     parser = argparse.ArgumentParser(description='μService-SIMulator: Executor')
     parser.add_argument('--debug', '-D', dest='debug', action='store_true', help='output debug messages')
     parser.add_argument('--quiet', '-Q', dest='quiet', action='store_true', help='suppress status messages')
+#    parser.add_argument('--purge_successful', '-P', dest='purge_successful', action='store_true', help='purge files of successful runs')
     parser.add_argument('--basepath', type=str, dest='basepath', default='/tmp', help='directory to hold runtime artifacts')
     parser.add_argument('--script', type=str, dest='script', default='main.ussim', help='script to be executed by μService-SIMulator')
     parser.add_argument('--max_cpu_utilization', type=int, dest='max_cpu_utilization', default=90, help='CPU utilization ceiling')
@@ -104,10 +105,12 @@ if '__main__' == __name__:
         with open(os.path.join(pr.get('runpath'), 'exitcode'), 'w') as fp: print('{}'.format(pr.get('process').exitcode), file=fp)
         with open(os.path.join(pr.get('runpath'), 'sha'), 'w') as fp: print(_sha, file=fp)
         with open(os.path.join(pr.get('runpath'), 'branch'), 'w') as fp: print(_branch, file=fp)
+        with open(os.path.join(pr.get('runpath'), 'exec_script'), 'w') as fp: print(args.exec_script, file=fp)
         with open(os.path.join(pr.get('runpath'), 'stats.json'), 'r') as fp: _stats = json.load(fp)
         if _mongodb: _mongodb.get('collection').insert_one({
             'sha': _sha,
             'branch': _branch,
+            'exec_script': args.exec_script,
             'exitcode': pr.get('process').exitcode,
             'stats': _stats,
             'log': {
