@@ -4,6 +4,7 @@ import argparse
 import uuid
 import itertools
 import psutil
+import shutil
 import multiprocessing
 import subprocess
 import datetime
@@ -29,7 +30,7 @@ def launch(cmd, runpath, pipeline, script):
     )
     _pr.start()
     return _pr
-def conclude(pr):
+def conclude(pr, purge):
     pr.get('process').join()
     with open(os.path.join(pr.get('runpath'), 'exitcode'), 'w') as fp: print('{}'.format(pr.get('process').exitcode), file=fp)
     with open(os.path.join(pr.get('runpath'), 'sha'), 'w') as fp: print(_sha, file=fp)
@@ -54,12 +55,13 @@ def conclude(pr):
         'date': int(_now.strftime('%Y%m%d')),
         'time': int(_now.strftime('%H%M%S')),
     })
+    if purge and 0 == pr.get('process').exitcode: shutil.rmtree(pr.get('runpath'))
 
 if '__main__' == __name__:
     parser = argparse.ArgumentParser(description='μService-SIMulator: Executor')
     parser.add_argument('--debug', '-D', dest='debug', action='store_true', help='output debug messages')
     parser.add_argument('--quiet', '-Q', dest='quiet', action='store_true', help='suppress status messages')
-#    parser.add_argument('--purge_successful', '-P', dest='purge_successful', action='store_true', help='purge files of successful runs')
+    parser.add_argument('--purge_successful', '-P', dest='purge_successful', action='store_true', help='purge files of successful runs')
     parser.add_argument('--basepath', type=str, dest='basepath', default='/tmp', help='directory to hold runtime artifacts')
     parser.add_argument('--script', type=str, dest='script', default='main.ussim', help='script to be executed by μService-SIMulator')
     parser.add_argument('--max_cpu_utilization', type=int, dest='max_cpu_utilization', default=90, help='CPU utilization ceiling')
@@ -137,7 +139,7 @@ if '__main__' == __name__:
             })
             _concluded_processes = []
             for pr in filter(lambda p: isinstance(p.get('process').exitcode, int), _processes):
-                conclude(pr)
+                conclude(pr, args.purge_successful)
                 _concluded_processes.append(pr)
             for pr in _concluded_processes: _processes.remove(pr)
-    for pr in _processes: conclude(pr)
+    for pr in _processes: conclude(pr, args.purge_successful)
