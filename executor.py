@@ -8,6 +8,7 @@ import multiprocessing
 import subprocess
 import datetime
 import pymongo
+import time
 
 def launch(cmd, runpath, pipeline, script):
     print('cwd      : {}'.format(os.getcwd()))
@@ -28,6 +29,31 @@ def launch(cmd, runpath, pipeline, script):
     )
     _pr.start()
     return _pr
+def conclude(pr):
+    pr.get('process').join()
+    with open(os.path.join(pr.get('runpath'), 'exitcode'), 'w') as fp: print('{}'.format(pr.get('process').exitcode), file=fp)
+    with open(os.path.join(pr.get('runpath'), 'sha'), 'w') as fp: print(_sha, file=fp)
+    with open(os.path.join(pr.get('runpath'), 'branch'), 'w') as fp: print(_branch, file=fp)
+    with open(os.path.join(pr.get('runpath'), 'exec_script'), 'w') as fp: print(args.exec_script, file=fp)
+    with open(os.path.join(pr.get('runpath'), 'stats.json'), 'r') as fp: _stats = json.load(fp)
+    if _mongodb: _mongodb.get('collection').insert_one({
+        'sha': _sha,
+        'branch': _branch,
+        'exec_script': args.exec_script,
+        'exitcode': pr.get('process').exitcode,
+        'stats': _stats,
+        'log': {
+            f: open(os.path.join(pr.get('runpath'), 'log', f)).read()
+            for f in {x:y for x, y, in zip(['root', 'directories', 'files'], *os.walk(os.path.join(pr.get('runpath'), 'log')))}.get('files')
+        },
+        'config': pr.get('config'),
+        'runpath': pr.get('runpath'),
+        'pipeline': pr.get('pipeline'),
+        'script': pr.get('script'),
+        'cmdline': pr.get('cmdline'),
+        'date': int(_now.strftime('%Y%m%d')),
+        'time': int(_now.strftime('%H%M%S')),
+    })
 
 if '__main__' == __name__:
     parser = argparse.ArgumentParser(description='μService-SIMulator: Executor')
@@ -62,6 +88,15 @@ if '__main__' == __name__:
     _port = 10000
     for _p in _runs.keys():
         for _run in _runs.get(_p):
+            _port += 1
+            _port %= 2**16
+            _port += (0 if _port else 10000) # NOTE: UNIX/Linux TCP ports range from 0 to 2**16
+                                             #       There are a bunch of important ports below
+                                             #       10000. I don't feel like learning them, so
+                                             #       I'll just start doling them out beginning
+                                             #       at 10000.
+            _still_running = filter(lambda p: not isinstance(p.get('process').exitcode, int), _processes)
+            while len(list(_still_running)) == 2**16 - 10000: time.sleep(1)
             _runpath = os.path.join(args.basepath, str(uuid.uuid4()))
             _script = os.path.join(os.getcwd(), _p, args.script)
             _cmdline = ' '.join([
@@ -98,30 +133,11 @@ if '__main__' == __name__:
                 'pipeline': _p,
                 'config': _config,
                 'script': _script,
+                'port': _port,
             })
-            _port += 1
-    for pr in _processes:
-        pr.get('process').join()
-        with open(os.path.join(pr.get('runpath'), 'exitcode'), 'w') as fp: print('{}'.format(pr.get('process').exitcode), file=fp)
-        with open(os.path.join(pr.get('runpath'), 'sha'), 'w') as fp: print(_sha, file=fp)
-        with open(os.path.join(pr.get('runpath'), 'branch'), 'w') as fp: print(_branch, file=fp)
-        with open(os.path.join(pr.get('runpath'), 'exec_script'), 'w') as fp: print(args.exec_script, file=fp)
-        with open(os.path.join(pr.get('runpath'), 'stats.json'), 'r') as fp: _stats = json.load(fp)
-        if _mongodb: _mongodb.get('collection').insert_one({
-            'sha': _sha,
-            'branch': _branch,
-            'exec_script': args.exec_script,
-            'exitcode': pr.get('process').exitcode,
-            'stats': _stats,
-            'log': {
-                f: open(os.path.join(pr.get('runpath'), 'log', f)).read()
-                for f in {x:y for x, y, in zip(['root', 'directories', 'files'], *os.walk(os.path.join(pr.get('runpath'), 'log')))}.get('files')
-            },
-            'config': pr.get('config'),
-            'runpath': pr.get('runpath'),
-            'pipeline': pr.get('pipeline'),
-            'script': pr.get('script'),
-            'cmdline': pr.get('cmdline'),
-            'date': int(_now.strftime('%Y%m%d')),
-            'time': int(_now.strftime('%H%M%S')),
-        })
+            _concluded_processes = []
+            for pr in filter(lambda p: isinstance(p.get('process').exitcode, int), _processes):
+                conclude(pr)
+                _concluded_processes.append(pr)
+            for pr in _concluded_processes: _processes.remove(pr)
+    for pr in _processes: conclude(pr)
