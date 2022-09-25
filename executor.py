@@ -82,8 +82,8 @@ if '__main__' == __name__:
     _pipelines = list(_exec.keys())
     _runs = {
         p: [
-            list(zip(_exec.get('pipelines/oroblanco').get('config').keys(), x))
-            for x in itertools.product(*_exec.get('pipelines/oroblanco').get('config').values())
+            list(zip(_exec.get(p).get('config').keys(), x))
+            for x in itertools.product(*_exec.get(p).get('config').values())
         ] for p in _pipelines
     }
     _processes = []
