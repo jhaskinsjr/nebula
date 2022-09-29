@@ -1,6 +1,7 @@
 import os
 import json
 import argparse
+import random
 import uuid
 import itertools
 import psutil
@@ -64,9 +65,12 @@ if '__main__' == __name__:
     parser.add_argument('--basepath', type=str, dest='basepath', default='/tmp', help='directory to hold runtime artifacts')
     parser.add_argument('--script', type=str, dest='script', default='main.ussim', help='script to be executed by μService-SIMulator')
     parser.add_argument('--max_cpu_utilization', type=int, dest='max_cpu_utilization', default=90, help='CPU utilization ceiling')
+    parser.add_argument('--stochastic', type=float, dest='stochastic', default=1, help='Fraction (0, 1] of runs to execute')
     parser.add_argument('--mongodb', type=str, nargs=3, dest='mongodb', default=None, help='MongoDB server, database, collection')
     parser.add_argument('exec_script', help='executor script')
     args = parser.parse_args()
+    assert args.stochastic > 0, '--stochastic must be greater than 0!'
+    assert args.stochastic <= 1, '--stochastic must be less than or equal to 1!'
     _mongodb = None
     if args.mongodb:
         _mongodb = {
@@ -89,6 +93,12 @@ if '__main__' == __name__:
     _port = 10000
     for _p in _runs.keys():
         for _run in _runs.get(_p):
+            _concluded_processes = []
+            for pr in filter(lambda p: isinstance(p.get('process').exitcode, int), _processes):
+                conclude(pr, args.purge_successful)
+                _concluded_processes.append(pr)
+            for pr in _concluded_processes: _processes.remove(pr)
+            if random.uniform(0, 1) > args.stochastic: continue
             _port += 1
             _port %= 2**16
             _port += (0 if _port else 10000) # NOTE: UNIX/Linux TCP ports range from 0 to 2**16
@@ -136,9 +146,4 @@ if '__main__' == __name__:
                 'script': _script,
                 'port': _port,
             })
-            _concluded_processes = []
-            for pr in filter(lambda p: isinstance(p.get('process').exitcode, int), _processes):
-                conclude(pr, args.purge_successful)
-                _concluded_processes.append(pr)
-            for pr in _concluded_processes: _processes.remove(pr)
     for pr in _processes: conclude(pr, args.purge_successful)
