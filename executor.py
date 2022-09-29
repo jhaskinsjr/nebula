@@ -60,7 +60,6 @@ def conclude(pr, purge):
 if '__main__' == __name__:
     parser = argparse.ArgumentParser(description='μService-SIMulator: Executor')
     parser.add_argument('--debug', '-D', dest='debug', action='store_true', help='output debug messages')
-    parser.add_argument('--quiet', '-Q', dest='quiet', action='store_true', help='suppress status messages')
     parser.add_argument('--purge_successful', '-P', dest='purge_successful', action='store_true', help='purge files of successful runs')
     parser.add_argument('--basepath', type=str, dest='basepath', default='/tmp', help='directory to hold runtime artifacts')
     parser.add_argument('--script', type=str, dest='script', default='main.ussim', help='script to be executed by μService-SIMulator')

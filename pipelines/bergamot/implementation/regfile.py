@@ -70,7 +70,6 @@ def getregister(registers, reg):
 if '__main__' == __name__:
     parser = argparse.ArgumentParser(description='μService-SIMulator: Register File')
     parser.add_argument('--debug', '-D', dest='debug', action='store_true', help='output debug messages')
-    parser.add_argument('--quiet', '-Q', dest='quiet', action='store_true', help='suppress status messages')
     parser.add_argument('--log', type=str, dest='log', default='/tmp', help='logging output directory (absolute path!)')
     parser.add_argument('launcher', help='host:port of μService-SIMulator launcher')
     args = parser.parse_args()
@@ -80,7 +79,6 @@ if '__main__' == __name__:
         level=(logging.DEBUG if args.debug else logging.INFO),
     )
     logging.debug('args : {}'.format(args))
-    if not args.quiet: print('Starting {}...'.format(sys.argv[0]))
     _launcher = {x:y for x, y in zip(['host', 'port'], args.launcher.split(':'))}
     _launcher['port'] = int(_launcher['port'])
     logging.debug('_launcher : {}'.format(_launcher))
@@ -122,6 +120,5 @@ if '__main__' == __name__:
                     _ret = getregister(state.get('registers'), _name)
                     _service.tx({'result': {'register': _ret}})
         if state.get('ack') and state.get('running'): _service.tx({'ack': {'cycle': state.get('cycle')}})
-    if not args.quiet: print('Shutting down {}...'.format(sys.argv[0]))
     for k, v in state.get('registers').items():
         logging.info('register {:2} : {}'.format(k, v))
