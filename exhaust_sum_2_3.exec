@@ -1,0 +1,77 @@
+{
+    "pipelines/bergamot": {
+        "mainmem": 4297967296,
+        "config": {
+            "mainmem:peek_latency_in_cycles": [1, 10, 100]
+        },
+        "max_cycles": 32000,
+        "snapshots": 1000,
+        "break_on_undefined": true,
+        "script": "main.ussim",
+        "command": "../../examples/bin/sum 2 3"
+    },
+    "pipelines/clementine": {
+        "mainmem": 4297967296,
+        "config": {
+            "mainmem:peek_latency_in_cycles": [1, 10, 100],
+            "decode:buffer_capacity": [16, 64]
+        },
+        "max_cycles": 32000,
+        "snapshots": 1000,
+        "break_on_undefined": true,
+        "script": "main.ussim",
+        "command": "../../examples/bin/sum 2 3"
+    },
+    "pipelines/lime": {
+        "mainmem": 4297967296,
+        "config": {
+            "mainmem:peek_latency_in_cycles": [1, 10, 100],
+            "fetch:l1ic_nsets": [16, 64],
+            "fetch:l1ic_nways": [1, 4],
+            "fetch:l1ic_nbytesperblock": [16, 32],
+            "fetch:l1ic_evictionpolicy": ["random", "lru"],
+            "decode:buffer_capacity": [16, 64],
+            "lsu:l1dc_nsets": [16, 64],
+            "lsu:l1dc_nways": [1, 4],
+            "lsu:l1dc_nbytesperblock": [16, 32],
+            "lsu:l1dc_evictionpolicy": ["random", "lru"],
+            "l2:l2_nsets": [16, 64],
+            "l2:l2_nways": [1, 8],
+            "l2:l2_nbytesperblock": [64, 128],
+            "l2:l2_evictionpolicy": ["random", "lru"]
+        },
+        "max_cycles": 32000,
+        "snapshots": 1000,
+        "break_on_undefined": true,
+        "script": "main.ussim",
+        "command": "../../examples/bin/sum 2 3"
+    },
+    "pipelines/oroblanco": {
+        "mainmem": 4297967296,
+        "config": {
+            "mainmem:peek_latency_in_cycles": [1, 10, 100],
+            "fetch:l1ic_nsets": [16, 64],
+            "fetch:l1ic_nways": [1, 4],
+            "fetch:l1ic_nbytesperblock": [16, 32],
+            "fetch:l1ic_evictionpolicy": ["random", "lru"],
+            "decode:buffer_capacity": [16, 64],
+            "decode:btb_nentries": [0, 8, 64],
+            "decode:btb_nbytesperentry": [8, 32],
+            "decode:btb_evictionpolicy": ["random", "lru"],
+            "alu:forwarding": [true, false],
+            "lsu:l1dc_nsets": [16, 64],
+            "lsu:l1dc_nways": [1, 4],
+            "lsu:l1dc_nbytesperblock": [16, 32],
+            "lsu:l1dc_evictionpolicy": ["random", "lru"],
+            "l2:l2_nsets": [16, 64],
+            "l2:l2_nways": [1, 8],
+            "l2:l2_nbytesperblock": [64, 128],
+            "l2:l2_evictionpolicy": ["random", "lru"]
+        },
+        "max_cycles": 32000,
+        "snapshots": 1000,
+        "break_on_undefined": true,
+        "script": "main.ussim",
+        "command": "../../examples/bin/sum 2 3"
+    }
+}
