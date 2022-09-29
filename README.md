@@ -116,9 +116,9 @@ Unix-like OS with a Python3 port.
 
 ## Running
 
-If you have not already done so, you will need to install pyelftools; see:
-
-https://github.com/eliben/pyelftools
+If you have not already done so, you will need to install pyelftools
+(see: https://github.com/eliben/pyelftools) and pymongo (see:
+https://pypi.org/project/pymongo/).
 
 You will also need to set up passwordless SSH
 access to your host machine; see:
