@@ -147,12 +147,6 @@ if '__main__' == __name__:
             'l2_evictionpolicy': 'lru',
         },
     }
-    state.update({'l2': components.simplecache.SimpleCache(
-        state.get('config').get('l2_nsets'),
-        state.get('config').get('l2_nways'),
-        state.get('config').get('l2_nbytesperblock'),
-        state.get('config').get('l2_evictionpolicy'),
-    )})
     _service = service.Service(state.get('service'), _launcher.get('host'), _launcher.get('port'))
     while state.get('active'):
         state.update({'ack': True})
@@ -166,6 +160,12 @@ if '__main__' == __name__:
             elif {'text': 'run'} == {k: v}:
                 state.update({'running': True})
                 state.update({'ack': False})
+                state.update({'l2': components.simplecache.SimpleCache(
+                    state.get('config').get('l2_nsets'),
+                    state.get('config').get('l2_nways'),
+                    state.get('config').get('l2_nbytesperblock'),
+                    state.get('config').get('l2_evictionpolicy'),
+                )})
             elif 'config' == k:
                 logging.debug('config : {}'.format(v))
                 if state.get('service') != v.get('service'): continue

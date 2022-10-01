@@ -183,12 +183,6 @@ if '__main__' == __name__:
             'l1dc_evictionpolicy': 'lru',
         },
     }
-    state.update({'l1dc': components.simplecache.SimpleCache(
-        state.get('config').get('l1dc_nsets'),
-        state.get('config').get('l1dc_nways'),
-        state.get('config').get('l1dc_nbytesperblock'),
-        state.get('config').get('l1dc_evictionpolicy'),
-    )})
     _service = service.Service(state.get('service'), _launcher.get('host'), _launcher.get('port'))
     while state.get('active'):
         state.update({'ack': True})
@@ -202,6 +196,12 @@ if '__main__' == __name__:
             elif {'text': 'run'} == {k: v}:
                 state.update({'running': True})
                 state.update({'ack': False})
+                state.update({'l1dc': components.simplecache.SimpleCache(
+                    state.get('config').get('l1dc_nsets'),
+                    state.get('config').get('l1dc_nways'),
+                    state.get('config').get('l1dc_nbytesperblock'),
+                    state.get('config').get('l1dc_evictionpolicy'),
+                )})
             elif 'tick' == k:
                 state.update({'cycle': v.get('cycle')})
                 _results = v.get('results')

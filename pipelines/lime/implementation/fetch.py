@@ -124,12 +124,6 @@ if '__main__' == __name__:
             'l1ic_evictionpolicy': 'lru',
         },
     }
-    state.update({'l1ic': components.simplecache.SimpleCache(
-        state.get('config').get('l1ic_nsets'),
-        state.get('config').get('l1ic_nways'),
-        state.get('config').get('l1ic_nbytesperblock'),
-        state.get('config').get('l1ic_evictionpolicy'),
-    )})
     _service = service.Service(state.get('service'), _launcher.get('host'), _launcher.get('port'))
     while state.get('active'):
         state.update({'ack': True})
@@ -143,6 +137,12 @@ if '__main__' == __name__:
             elif {'text': 'run'} == {k: v}:
                 state.update({'running': True})
                 state.update({'ack': False})
+                state.update({'l1ic': components.simplecache.SimpleCache(
+                    state.get('config').get('l1ic_nsets'),
+                    state.get('config').get('l1ic_nways'),
+                    state.get('config').get('l1ic_nbytesperblock'),
+                    state.get('config').get('l1ic_evictionpolicy'),
+                )})
             elif 'config' == k:
                 logging.debug('config : {}'.format(v))
                 if state.get('service') != v.get('service'): continue
