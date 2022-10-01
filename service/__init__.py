@@ -12,7 +12,7 @@ class Service:
     def __del__(self):
         self.s.close()
     def rx(self):
-        return json.loads(self.s.recv(self.MESSAGE_SIZE).decode('ascii'))
+        return json.loads(self.s.recv(self.MESSAGE_SIZE, socket.MSG_WAITALL).decode('ascii'))
     def tx(self, msg):
         # HACK: This pads all messages to be exactly self.MESSAGE_SIZE bytes.
         # HACK: It's dumb, but I want to focus on something else right now.

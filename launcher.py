@@ -30,8 +30,8 @@ def handler(conn, addr):
     tx([conn], {'ack': 'launcher'})
     while True:
         try:
-            msg = conn.recv(service.Service.MESSAGE_SIZE)
-            if not len(msg):
+            msg = conn.recv(service.Service.MESSAGE_SIZE, socket.MSG_WAITALL)
+            if not len(msg.strip()):
                 time.sleep(0.01)
                 continue
             msg = json.loads(msg.decode('ascii'))
@@ -98,7 +98,7 @@ def handler(conn, addr):
                     tx(filter(lambda c: c != conn, state.get('connections')), msg)
                     state.get('lock').release()
         except Exception as ex:
-            logging.fatal('Oopsie! {} ({} ({}:{}))'.format(ex, str(msg), type(msg), len(msg)))
+            logging.fatal('Oopsie! {} (msg : {} ({}:{}), conn : {})'.format(ex, str(msg), type(msg), len(msg), conn))
             conn.close()
 def acceptor():
     while True:
@@ -300,7 +300,6 @@ def add_service(services, arguments, s):
 def spawn(services, args):
     if args.services:
         for s in args.services: add_service(services, args, s)
-    threading.Thread(target=acceptor, daemon=True).start()
     [th.start() for th in services]
     while len(services) > len(state.get('connections')): time.sleep(1)
 
@@ -348,6 +347,7 @@ if __name__ == '__main__':
     _s.setsockopt(socket.SOL_SOCKET, socket.SO_REUSEADDR, 1)
     _s.bind(('0.0.0.0', args.port))
     _s.listen(5)
+    threading.Thread(target=acceptor, daemon=True).start()
     _services = []
     with open(args.script) as fp:
         for raw in map(lambda x: x.strip(), fp.readlines()):
