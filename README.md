@@ -1,9 +1,9 @@
-# Welcome to μService-SIMulator!
+# Welcome to μService-SIMulator: The World's First Cloud-Native Microarchitecture Simulation Framework!
 
-The μService-SIMulator (ussim) is a framework for developing cyce-accurate
+μService-SIMulator (ussim) is a framework for developing cyce-accurate
 microprocessor simulators. Currently, Python libraries for decoding and
 executing RISC-V's RV64I instruction set are included. (Most of the
-RV64I instruction set, compressed and uncompressed versions of opcode, is
+RV64I instruction set, compressed and uncompressed versions of opcodes, is
 implemented.) In the future, libraries for decoding and executing additional
 instruction sets may be added.
 
@@ -13,13 +13,13 @@ instruction sets may be added.
 
 The central design feature of ussim is that each simulator is
 comprised of an army of microservices... independent processes... transmit
-what resources that they require, what information they wish to communicate
+what resources that they require, what information they wish to communicate,
 onto the network where all other microservices will receive it. If something
 tarnsmitted onto the network matters to one or more peer microservices,
-those microservices are free to act upon it and, where appropriate, transmit
+those microservices are free to act upon it and transmit
 something back in response.
 
-While it would probably be faster to do point-to-point communication, where
+While it might be faster to do point-to-point communication, where
 microservices connect directly to the microservice(s) that matter to
 them, this architecture would require every microservice to have detailed
 information about every other microservice. This rigidity is the antithesis
@@ -30,10 +30,11 @@ intentionally chose flexibility.
 In addition to flexibility, a significant additional benefit of this design
 choice is the incredible simplicity of the software that implements the
 pipeline logic. Since each step of executing an instruction (e.g., decode,
-register access) is handled by its own process, all the code for each step
+register access) is handled by its own service, all the code for each step
 is self-contained, making it easier to understand and reason about.
 
-The Bergamot pipeline's implementation, for instance, is comprised of five
+The [Bergamot](pipelines/bergamot/README.md) pipeline's implementation,
+for instance, is comprised of five
 Python files (see: pipelines/bergamot/implementation/), four of which
 contain fewer than 150 lines of code. The lone standout is the file that
 handles instruction execution
@@ -48,7 +49,7 @@ in the register file logic will almost certainly not alter functionality
 implemented in the decoder logic; this reduces the amount of the system
 that a developer has to be familiar with in order to be productive.
 
-Furthermore, because the units communicate among themselves, it is easy
+Furthermore, because the units communicate among themselves, it was easy
 to construct a unit that monitors communications between the other
 units to count events (e.g., number of fetches, number of instructions
 flushed, number of instructions retired).
@@ -101,7 +102,7 @@ Python is neat, clean, and offers an elegant array of tools to facilitate a
 functional programming style. (Consider: `map`, `functools`, `filter`,
 `any`, `all`, `itertools`.) Indeed, Python's tools allowed me to quickly
 develop the infrastructure that underpins the simulator's design philosophy
-of loosely coupled, largely independent processes that communicate over a
+of loosely coupled, largely independent services that communicate over a
 network.
 
 With Python, I was able to get the infrastructure developed in just a
@@ -121,11 +122,13 @@ If you have not already done so, you will need to install pyelftools
 https://pypi.org/project/pymongo/).
 
 You will also need to set up passwordless SSH
-access to your host machine; see:
+access to your host machine and any other machines you intend services to
+run on; see:
 
 https://www.ibm.com/support/pages/configuring-ssh-login-without-password
 
-Once passwordless SSH has been set up, to quickly run, execute:
+Once passwordless SSH has been set up on localhost, to quickly run,
+execute:
 
     cd pipelines/bergamot
     mkdir -p /tmp/bergamot/sum
@@ -142,8 +145,8 @@ Once passwordless SSH has been set up, to quickly run, execute:
         ../../examples/bin/sum 2 3 5 7 11 13
 
 First, the "cd" command changes into the subdirectory with the
-very simple, very primitive μService-SIMulator pipeline implementation
-(codename: Bergamot).
+simplest μService-SIMulator pipeline implementation
+(codename: [Bergamot](pipelines/bergamot/README.md)).
 Then, the "mkdir" command creates a directory into which each of
 the service's log files will be deposited.
 The "python3" command then executes the launcher
@@ -165,7 +168,8 @@ was fetched/written, counts of the number of committed instructions,
 number of times each instruction type (e.g., ADD, ADDI, SD, SW) was decoded,
 number of times each instruction type was executed, etc.
 
-The JSON output file of more sophisticated implementations such as Oroblanco
+The JSON output file of more sophisticated implementations such as 
+[Oroblanco](pipelines/oroblanco/README.md)
 contain additional statistics about caches and other elements of the
 pipeline; e.g.:
 
@@ -358,7 +362,7 @@ The script is comprised of commands
 
 The script pipelines/bergamot/restore.ussim is very similar to
 pipelines/bergamot/main.ussim, but, rather than a
-loadbin command, instead features a restore command:
+`loadbin` command, instead features a `restore` command:
 
     ...
     restore /tmp/mainmem.raw /tmp/mainmem.raw.snapshot
@@ -366,6 +370,71 @@ loadbin command, instead features a restore command:
 
 The simulator places the state of the register file into an unused address
 inside the main memory snapshot.
+
+## Distributed Simulations
+
+Because the μService-SIMulator framework spawns multiple independent
+services that communicate over a TCP network, the services need not execute
+on the same machine. This is what makes μService-SIMulator
+**the world's first cloud-native microarchitecture simulation framework**!
+
+Consider the following modified main.ussim file that
+spawns just two services on the local machine, and the rest on several
+machines on my network:
+
+    # Sample μService-SIMulator script
+    service implementation/regfile.py:picard.local   # not run on localhost!
+    service implementation/mainmem.py:localhost
+    service implementation/fetch.py:riker.local      # not run on localhost!
+    service implementation/decode.py:laforge.local   # not run on localhost!
+    service implementation/alu.py:data.local         # not run on localhost!
+    service implementation/lsu.py:worf.local         # not run on localhost!
+    service implementation/commit.py:troi.local      # not run on localhost!
+    service implementation/l2.py:crusher.local       # not run on localhost!
+    service ../../toolbox/stats.py:localhost
+    spawn
+    config mainmem:peek_latency_in_cycles 25
+    config fetch:l1ic_nsets 16
+    config fetch:l1ic_nways 2
+    config fetch:l1ic_nbytesperblock 16
+    config fetch:l1ic_evictionpolicy lru # random
+    config decode:buffer_capacity 16
+    config decode:btb_nentries 8
+    config decode:btb_nbytesperentry 8
+    config decode:btb_evictionpolicy lru # random
+    config alu:forwarding True
+    config lsu:l1dc_nsets 16
+    config lsu:l1dc_nways 2
+    config lsu:l1dc_nbytesperblock 16
+    config lsu:l1dc_evictionpolicy lru # random
+    config l2:l2_nsets 32
+    config l2:l2_nways 16
+    config l2:l2_nbytesperblock 16
+    config l2:l2_evictionpolicy lru # random
+    config l2:l2_hitlatency 5
+    config stats:output_filename /tmp/stats.json
+    # Memory hierarhchy peek latencies...
+    # - L1 peek-hit latency: 5**0 cycles
+    # - L2 peek-hit latency: 5**1 cycles
+    # - MM peek     latency: 5**2 cycles
+    cycle
+    loadbin /tmp/mainmem.raw 0x80000000 0x40000000 main # using /tmp/mainmem.raw as the main memory file,
+                                                        # set x2 to 0x80000000 and %pc to 0x40000000, then
+                                                        # load binary (e.g., ../../examples/bin/sum), and
+                                                        # execute beginning from the "main" symbol in the
+                                                        # binary's .text section
+    run
+    cycle
+    state
+    shutdown
+
+Note that the mainmem.py and stats.py services both execute on the local
+machine. For now, mainmem.py, because of the way launcher.py manages
+snapshots, restores, and loading the binary and its parameters into the 
+simulated main memory, must execute on `localhost`; stats.py runs on
+`localhost` so that the output (`/tmp/stats.json`) will be output to the
+local machine. Otherwise, _all_ the other services are free to execute on
+any other machines on the network. 
 
 ## Sample Binaries
 
@@ -589,9 +658,11 @@ Presented in no particular order, here are some additional features that will
 extend and enhance the simulator:
 
 1. pipeline implementation with value prediction
+1. pipeline implementation with decoupled fetch engine
+1. pipeline implementation with out-of-order execution
 1. syscall proxying
 1. launch from binary's `_start` label rather than `main` label
-1. tool for cataloging, indexing, and retrieval of simulator runs
+1. Kubernetes deployment
 1. `clone`-based perfect branch predictor
 1. `clone`-based perfect value predictor
 1. return address stack
@@ -599,13 +670,12 @@ extend and enhance the simulator:
 1. implement new eviction policies (e.g., least frequently used) for SimpleCache
 and SimpleBTB
 1. include additional example benchmarks
-1. pipeline implementation with decoupled fetch engine
-1. pipeline implementation with out-of-order execution
 1. multi-core support with cache sharing
 1. MIPS instruction set support
 1. x86_64 instruction set support
-1. SPARC instruction set support
+1. SPARC v9 instruction set support
 1. sample Jupyter Notebook for fetching and processing data from MongoDB
+1. ~~tool for cataloging, indexing, and retrieving simulator runs~~
 
 That said, since this is a toolkit intended to facilitate microarchitecture
 research, some of these, as my math textbooks used to say, "will be left as
