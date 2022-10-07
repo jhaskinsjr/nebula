@@ -1,4 +1,4 @@
-# Welcome to μService-SIMulator: The World's First Cloud-Native Microarchitecture Simulation Framework!
+# μService-SIMulator: The Cloud-Native Microarchitecture Simulation Framework!
 
 μService-SIMulator (ussim) is a framework for developing cyce-accurate
 microprocessor simulators. Currently, Python libraries for decoding and
