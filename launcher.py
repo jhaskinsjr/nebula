@@ -1,3 +1,5 @@
+# Copyright (C) 2021, 2022 John Haskins Jr.
+
 import os
 import time
 import socket

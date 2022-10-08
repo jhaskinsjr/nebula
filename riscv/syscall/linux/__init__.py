@@ -1,3 +1,5 @@
+# Copyright (C) 2021, 2022 John Haskins Jr.
+
 import os
 
 # The syscall numbers were learned from

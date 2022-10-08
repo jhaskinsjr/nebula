@@ -1,3 +1,5 @@
+# Copyright (C) 2021, 2022 John Haskins Jr.
+
 JUMPS = ['JALR', 'JAL']
 BRANCHES = ['BEQ', 'BNE', 'BLT', 'BGE', 'BLTU', 'BGEU']
 LOADS = ['LD', 'LW', 'LH', 'LB', 'LWU', 'LHU', 'LBU']
