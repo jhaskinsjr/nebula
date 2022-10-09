@@ -524,21 +524,32 @@ class Harness:
             os.path.join(args.dir, 'src', '{}.s'.format(test))
         ).split())
         _script  = ['# μService-SIMulator test harness script']
-        _script += ['port 10000']
+#        _script += ['port 10000']
         _script += ['service pipelines/bergamot/implementation/{}:localhost'.format(s) for s in ('simplecore.py', 'regfile.py', 'mainmem.py', 'decode.py', 'execute.py')]
         _script += ['spawn']
-        _script += ['loadbin /tmp/mainmem.raw 0x{:08x} 0x{:08x} _start'.format(self._sp, self._start_pc, os.path.join(args.dir, 'obj'))]
-        _script += ['config max_instructions {}'.format(_n_instruction)]
+        _script += ['config mainmem:peek_latency_in_cycles 1']
+        _script += ['loadbin 0x{:08x} 0x{:08x} _start'.format(self._sp, self._start_pc, os.path.join(args.dir, 'obj'))]
+#        _script += ['config max_instructions {}'.format(_n_instruction)]
         _script += ['run']
         _script += ['shutdown']
         with open(os.path.join(args.dir, 'test.ussim'), 'w+') as fp: fp.write('\n'.join(_script))
+        _cmd = 'python3 launcher.py --log {} --max_instructions {} -- {} {} {}'.format(
+            args.dir,
+            _n_instruction,
+            args.port,
+            os.path.join(args.dir, 'test.ussim'),
+            os.path.join(args.dir, 'obj', '{}.o'.format(test))
+        )
+        if args.debug: print('_cmd : {}'.format(_cmd))
         _result = subprocess.run(
-            'python3 launcher.py -- {} {}'.format(os.path.join(args.dir, 'test.ussim'), os.path.join(args.dir, 'obj', '{}.o'.format(test))).split(),
+            _cmd.split(),
             capture_output=True,
         )
         _stdout = _result.stdout.decode('utf-8').split('\n')
-#        print('\n'.join(_stdout))
-        _x31 = next(iter(next(iter(filter(lambda x: re.search('register 31 : ', x), _stdout))).split(':')[1:]))
+        if args.debug: print('\n'.join(_stdout))
+        _regfile_py_log = None
+        with open(os.path.join(args.dir, 'regfile.py.log'), 'r') as fp: _regfile_py_log = fp.readlines()
+        _x31 = next(iter(next(iter(filter(lambda x: re.search('register 31 : ', x), _regfile_py_log))).split(':')[1:]))
         _x31 = eval(_x31)
         print('do_test(..., {}): {} ?= {} -> {}'.format(
             test,
@@ -552,6 +563,7 @@ class Harness:
 if __name__ == '__main__':
     parser = argparse.ArgumentParser(description='μService-SIMulator')
     parser.add_argument('--debug', '-D', dest='debug', action='store_true', help='print debug messages')
+    parser.add_argument('port', type=int, help='port for accepting connections')
     parser.add_argument('toolchain', type=str, help='directory containing RISC-V toolchain')
     parser.add_argument('dir', type=str, help='directory to put tests')
     args = parser.parse_args()
@@ -561,7 +573,7 @@ if __name__ == '__main__':
     if args.debug: print('args : {}'.format(args))
     _harness = Harness()
 #    [_harness.generate(args, n) for n in _harness.tests.keys()]
-#    _harness.generate(args, 'c.lui')
+    _harness.generate(args, 'c.lui')
 #    _harness.generate(args, 'c.add')
 #    _harness.generate(args, 'c.sub')
 #    _harness.generate(args, 'c.xor')
