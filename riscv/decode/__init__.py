@@ -804,7 +804,7 @@ def compressed_quadrant_01_opcode_011(word):
         if 0 == _imm:
             _impl = compressed_illegal_instruction
         else:
-            _imm <<= 12
+#            _imm <<= 12
             _imm = functools.reduce(lambda a, b: a | b, map(lambda x: _b17 << x, range(18 + 12, 32)), _imm)
             _imm = int.from_bytes(struct.Struct('<I').pack(_imm), 'little', signed=True)
             _impl = c_lui

@@ -55,7 +55,7 @@ class Harness:
 #        self._start_pc = int.from_bytes(struct.Struct('<Q').pack(self._start_pc), 'little', signed=True)
         self._sp = 0x80000000
     def c_lui(self):
-        _const = random.randint(1, 2**5 - 1)
+        _const = random.randint(1, 2**6 - 1)
         _assembly  = ['c.lui x15, {}'.format(_const)]
         _assembly += ['c.mv x31, x15']
         _const <<= 12
