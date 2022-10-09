@@ -406,8 +406,22 @@ class Harness:
         _correct_answer = list(_correct_answer.to_bytes(8, 'little', signed=True))
         return _correct_answer, _assembly
     def mulw(self):
-        # TODO: implement test
-        pass
+        _const_0 = random.randint(0, 2**20 - 1)
+        _const_1 = random.randint(0, 2**20 - 1)
+#        _const_0 = 2**20 - 1
+#        _const_1 = 8
+#        _const_0 = 2**16
+#        _const_1 = 1
+        _assembly  = ['lui x15, {}'.format(_const_0)]
+        _assembly += ['lui x14, {}'.format(_const_1)]
+        _assembly += ['mulw x31, x15, x14']
+        _const_0 = int.from_bytes(struct.Struct('<I').pack(_const_0 << 12), 'little', signed=True)
+        _const_1 = int.from_bytes(struct.Struct('<I').pack(_const_1 << 12), 'little', signed=True)
+        _correct_answer = (_const_0 * _const_1) & ((2**32) - 1)
+        _b31 = (_correct_answer >> 31) & 0b1
+        _correct_answer = functools.reduce(lambda a, b: a | b, map(lambda x: _b31 << x, range(32, 64)), _correct_answer)
+        _correct_answer = list(_correct_answer.to_bytes(8, 'little'))
+        return _correct_answer, _assembly
     def divw(self):
         # TODO: implement test
         pass
@@ -573,7 +587,7 @@ if __name__ == '__main__':
     if args.debug: print('args : {}'.format(args))
     _harness = Harness()
 #    [_harness.generate(args, n) for n in _harness.tests.keys()]
-    _harness.generate(args, 'c.lui')
+#    _harness.generate(args, 'c.lui')
 #    _harness.generate(args, 'c.add')
 #    _harness.generate(args, 'c.sub')
 #    _harness.generate(args, 'c.xor')
@@ -601,7 +615,7 @@ if __name__ == '__main__':
 #    _harness.generate(args, 'add')
 #    _harness.generate(args, 'sub')
 # TODO: actually implement MULW, DIVW, DIVUW, REMW, REMUW tests
-#    _harness.generate(args, 'mulw')
+    _harness.generate(args, 'mulw')
 #    _harness.generate(args, 'divw')
 #    _harness.generate(args, 'divuw')
 #    _harness.generate(args, 'remw')
