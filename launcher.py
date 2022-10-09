@@ -9,6 +9,7 @@ import threading
 import subprocess
 import itertools
 import logging
+import time
 
 import elftools.elf.elffile
 
@@ -320,6 +321,12 @@ if __name__ == '__main__':
     parser.add_argument('script', type=str, help='script to be executed by μService-SIMulator')
     parser.add_argument('cmdline', nargs='*', help='binary to be executed and parameters')
     args = parser.parse_args()
+    assert not os.path.isfile(args.log), '--log must point to directory, not file'
+    while not os.path.isdir(args.log):
+        try:
+            os.makedirs(args.log, exist_ok=True)
+        except:
+            time.sleep(0.1)
     logging.basicConfig(
         filename=os.path.join(args.log, '{}.log'.format(os.path.basename(__file__))),
         format='%(message)s',

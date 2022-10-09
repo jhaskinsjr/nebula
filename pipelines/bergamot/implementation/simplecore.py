@@ -4,6 +4,7 @@ import os
 import sys
 import argparse
 import logging
+import time
 
 import service
 import toolbox
@@ -102,6 +103,12 @@ if '__main__' == __name__:
     parser.add_argument('--log', type=str, dest='log', default='/tmp', help='logging output directory (absolute path!)')
     parser.add_argument('launcher', help='host:port of μService-SIMulator launcher')
     args = parser.parse_args()
+    assert not os.path.isfile(args.log), '--log must point to directory, not file'
+    while not os.path.isdir(args.log):
+        try:
+            os.makedirs(args.log, exist_ok=True)
+        except:
+            time.sleep(0.1)
     logging.basicConfig(
         filename=os.path.join(args.log, '{}.log'.format(os.path.basename(__file__))),
         format='%(message)s',

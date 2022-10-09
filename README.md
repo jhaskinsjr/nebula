@@ -131,7 +131,6 @@ Once passwordless SSH has been set up on localhost, to quickly run,
 execute:
 
     cd pipelines/bergamot
-    mkdir -p /tmp/bergamot/sum
     python3 ../../launcher.py \
         --log /tmp/bergamot/sum \
         --mainmem /tmp/bergamot/sum/mainmem.raw:$((2**32)) \
@@ -147,10 +146,8 @@ execute:
 First, the "cd" command changes into the subdirectory with the
 simplest μService-SIMulator pipeline implementation
 (codename: [Bergamot](pipelines/bergamot/README.md)).
-Then, the "mkdir" command creates a directory into which each of
-the service's log files will be deposited.
-The "python3" command then executes the launcher
-module (launcher.py). The launcher module will then begin by
+Then, the "python3" command then executes the launcher
+module (launcher.py). The launcher module begins by
 opening a socket and accepting connections on port 10,000, executing
 the script main.ussim, and
 loading the binary "../../examples/bin/sum" together with its command-line
