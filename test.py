@@ -7,6 +7,7 @@ import argparse
 import struct
 import subprocess
 import functools
+import pdb
 
 class Harness:
     def __init__(self):
@@ -423,17 +424,70 @@ class Harness:
         _correct_answer = list(_correct_answer.to_bytes(8, 'little'))
         return _correct_answer, _assembly
     def divw(self):
-        # TODO: implement test
-        pass
+        _const_0 = random.randint(0, 2**20 - 1)
+        _const_1 = random.randint(0, 2**20 - 1)
+#        _const_0 = 2**15 - 1
+#        _const_1 = 2**4 - 1
+#        _const_0 = 2**16
+#        _const_1 = 1
+        _assembly  = ['lui x15, {}'.format(_const_0)]
+        _assembly += ['lui x14, {}'.format(_const_1)]
+        _assembly += ['divw x31, x15, x14']
+        _correct_answer  = int.from_bytes(struct.Struct('<I').pack(_const_0 << 12), 'little', signed=True)
+        _correct_answer /= int.from_bytes(struct.Struct('<I').pack(_const_1 << 12), 'little', signed=True)
+        _correct_answer  = int(_correct_answer)
+#        _b31 = (1 if 0 > _correct_answer else 0)
+#        _correct_answer &= ((2**32) - 1)
+#        _correct_answer  = functools.reduce(lambda a, b: a | b, map(lambda x: _b31 << x, range(32, 64)), _correct_answer)
+        _correct_answer  = list(_correct_answer.to_bytes(8, 'little', signed=True))
+#        pdb.set_trace()
+        return _correct_answer, _assembly
     def divuw(self):
-        # TODO: implement test
-        pass
+        _const_0 = random.randint(0, 2**20 - 1)
+        _const_1 = random.randint(0, 2**20 - 1)
+#        _const_0 = 2**15 - 1
+#        _const_1 = 2**4 - 1
+#        _const_0 = 2**20 - 1
+#        _const_1 = 1
+        _assembly  = ['lui x15, {}'.format(_const_0)]
+        _assembly += ['lui x14, {}'.format(_const_1)]
+        _assembly += ['divuw x31, x15, x14']
+        _correct_answer  = _const_0 << 12
+        _correct_answer /= _const_1 << 12
+        _correct_answer  = int(_correct_answer)
+        _b31 = (_correct_answer >> 31) & 0b1
+        _correct_answer  = functools.reduce(lambda a, b: a | b, map(lambda x: _b31 << x, range(32, 64)), _correct_answer)
+        _correct_answer  = list(_correct_answer.to_bytes(8, 'little', signed=True))
+        return _correct_answer, _assembly
     def remw(self):
-        # TODO: implement test
-        pass
+        _const_0 = random.randint(0, 2**20 - 1)
+        _const_1 = random.randint(0, 2**20 - 1)
+#        _const_0 = 2**15 - 1
+#        _const_1 = 2**4 - 1
+#        _const_0 = 2**16
+#        _const_1 = 1
+        _assembly  = ['lui x15, {}'.format(_const_0)]
+        _assembly += ['lui x14, {}'.format(_const_1)]
+        _assembly += ['remw x31, x15, x14']
+        _correct_answer  = int.from_bytes(struct.Struct('<I').pack(_const_0 << 12), 'little', signed=True)
+        _correct_answer %= int.from_bytes(struct.Struct('<I').pack(_const_1 << 12), 'little', signed=True)
+        _correct_answer  = list(_correct_answer.to_bytes(8, 'little', signed=True))
+#        pdb.set_trace()
+        return _correct_answer, _assembly
     def remuw(self):
-        # TODO: implement test
-        pass
+        _const_0 = random.randint(0, 2**20 - 1)
+        _const_1 = random.randint(0, 2**20 - 1)
+#        _const_0 = 2**15 - 1
+#        _const_1 = 2**4 - 1
+#        _const_0 = 2**20 - 1
+#        _const_1 = 1
+        _assembly  = ['lui x15, {}'.format(_const_0)]
+        _assembly += ['lui x14, {}'.format(_const_1)]
+        _assembly += ['remuw x31, x15, x14']
+        _correct_answer  = _const_0 << 12
+        _correct_answer %= _const_1 << 12
+        _correct_answer  = list(int.from_bytes(_correct_answer.to_bytes(4, 'little'), 'little', signed=True).to_bytes(8, 'little', signed=True))
+        return _correct_answer, _assembly
     def test_and(self):
         _const_0 = random.randint(0, 2**20 - 1)
         _assembly  = ['lui x29, {}'.format(_const_0)]
@@ -505,11 +559,10 @@ class Harness:
         return _correct_answer, _assembly
     def lui(self):
         _const = random.randint(0, 2**20 - 1)
-#        _const = 2**3
+#        _const = 2**20 - 1
         _assembly = ['lui x31, {}'.format(_const)]
-        _correct_answer = _const << 12
-        _correct_answer = int.from_bytes(struct.Struct('<I').pack(_correct_answer), 'little', signed=True)
-        _correct_answer = list(_correct_answer.to_bytes(8, 'little', signed=True))
+        _correct_answer = int.from_bytes(struct.Struct('<I').pack(_const << 12), 'little', signed=True)
+        _correct_answer = list(struct.Struct('<q').pack(_correct_answer))
         return _correct_answer, _assembly
     def auipc(self):
         _const = random.randint(0, 2**20 - 1)
@@ -563,7 +616,7 @@ class Harness:
         if args.debug: print('\n'.join(_stdout))
         _regfile_py_log = None
         with open(os.path.join(args.dir, 'regfile.py.log'), 'r') as fp: _regfile_py_log = fp.readlines()
-        _x31 = next(iter(next(iter(filter(lambda x: re.search('register 31 : ', x), _regfile_py_log))).split(':')[1:]))
+        _x31 = list(filter(lambda x: re.search('register 31 : ', x), _regfile_py_log))[-1].split(':')[1]
         _x31 = eval(_x31)
         print('do_test(..., {}): {} ?= {} -> {}'.format(
             test,
@@ -614,12 +667,11 @@ if __name__ == '__main__':
 #    _harness.generate(args, 'addiw')
 #    _harness.generate(args, 'add')
 #    _harness.generate(args, 'sub')
-# TODO: actually implement MULW, DIVW, DIVUW, REMW, REMUW tests
-    _harness.generate(args, 'mulw')
+#    _harness.generate(args, 'mulw')
 #    _harness.generate(args, 'divw')
-#    _harness.generate(args, 'divuw')
+    _harness.generate(args, 'divuw')
 #    _harness.generate(args, 'remw')
-#    _harness.generate(args, 'remuw')
+    _harness.generate(args, 'remuw')
 #    _harness.generate(args, 'and')
 #    _harness.generate(args, 'or')
 #    _harness.generate(args, 'xor')
