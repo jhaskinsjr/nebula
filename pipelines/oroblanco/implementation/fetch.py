@@ -27,7 +27,7 @@ def fetch_block(service, state, jp):
 def do_l1ic(service, state):
     _decode_request = state.get('decode.requests')[0]
     _jp = int.from_bytes(_decode_request.get('addr'), 'little') + _decode_request.get('nbytes_sent_so_far')
-    service.tx({'info': '_jp : {}'.format(_jp)})
+    service.tx({'info': '_jp : {} ({})'.format(list(_jp.to_bytes(8, 'little')), _jp)})
     if state.get('l1ic').fits(_jp, state.get('fetch_size')):
         _data = state.get('l1ic').peek(_jp, state.get('fetch_size'))
         service.tx({'info': '_data : {}'.format(_data)})
