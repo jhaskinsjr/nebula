@@ -17,19 +17,39 @@ import os
 
 def do_syscall(syscall_num, a0, a1, a2, a3, a4, a5):
     return {
+#         17: do_getcwd,
+#         34: do_mkdirat,
+#         35: do_unlinkat,
+#         37: do_linkat,
+#         38: do_renameat,
+#         48: do_faccessat,
+#         49: do_chdir,
+#         56: do_openat,
+#         57: do_close,
+#         62: do_lseek,
+#         63: do_read,
+#         64: do_write,
+#         79: do_fstatat,
+#         80: do_fstat,
+#         93: do_exit,
         160: do_uname,
+#        169: do_gettimeofday,
+#        172: do_getpid,
+#        174: do_getuid,
+#        175: do_geteuid,
+#        176: do_getgid,
+#        177: do_getegid,
         214: do_brk,
-    }.get(int.from_bytes(syscall_num, 'little'))(a0, a1, a2, a3, a4, a5)
+    }.get(int.from_bytes(syscall_num, 'little'), null)(a0, a1, a2, a3, a4, a5)
 
+def null(a0, a1, a2, a3, a4, a5):
+    print('syscall not implemented')
+    return {}
 def do_uname(a0, a1, a2, a3, a4, a5):
-    # TODO: actually fill in a uname struct, pointed to by a0
-    print('do_uname(): a0       : {}'.format(a0))
-    print('do_uname(): a1       : {}'.format(a1))
-    print('do_uname(): a2       : {}'.format(a2))
-    print('do_uname(): a3       : {}'.format(a3))
-    print('do_uname(): a4       : {}'.format(a4))
-    print('do_uname(): a5       : {}'.format(a5))
-    print('do_uname(): os.uname : {}'.format(os.uname()))
-    return a0
-def do_brk(a0, a1, a2, a3, a4, a5):
-    return a5
+    return {
+        'poke': {
+            'addr': a0,
+            'data': list(bytes('\0'.join([os.uname()[x] for x in range(5)]) + '\0', encoding='ascii')),
+        },
+    }
+def do_brk(a0, a1, a2, a3, a4, a5): return {}

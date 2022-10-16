@@ -486,15 +486,19 @@ def do_ecall(service, state, insn):
     _syscall_a3 = state.get('operands').get('syscall_a3')
     _syscall_a4 = state.get('operands').get('syscall_a4')
     _syscall_a5 = state.get('operands').get('syscall_a5')
-    _result = riscv.syscall.linux.do_syscall(_syscall_num, _syscall_a0, _syscall_a1, _syscall_a2, _syscall_a3, _syscall_a4, _syscall_a5)
-    service.tx({'event': {
-        'arrival': 1 + state.get('cycle'),
-        'register': {
-            'cmd': 'set',
-            'name': _a0,
-            'data': _result,
-        }
-    }})
+    _side_effect = riscv.syscall.linux.do_syscall(_syscall_num, _syscall_a0, _syscall_a1, _syscall_a2, _syscall_a3, _syscall_a4, _syscall_a5)
+    if 'poke' in _side_effect.keys():
+        _data = _side_effect.get('poke').get('data')
+        service.tx({'info': '_data : {} ({})'.format(_data, type(_data))})
+        service.tx({'event': {
+            'arrival': 1 + state.get('cycle'),
+            'mem': {
+                'cmd': 'poke',
+                'addr': int.from_bytes(_side_effect.get('poke').get('addr'), 'little'),
+                'size': len(_data),
+                'data': _data,
+            }
+        }})
     do_complete(service, state, state.get('pending_execute'))
     do_confirm(service, state, state.get('pending_execute'))
     do_commit(service, state, state.get('pending_execute'))

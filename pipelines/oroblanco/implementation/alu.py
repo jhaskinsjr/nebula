@@ -294,6 +294,44 @@ def do_shift(service, state, insn):
         }
     }})
     return insn
+def do_ecall(service, stats, insn):
+    # TODO: acutally grab the registers and invoke
+    # riscv.syscall.linux.do_syscall()
+    _x17 = state.get('operands').get(17)
+    _x10 = state.get('operands').get(10)
+    _x11 = state.get('operands').get(11)
+    _x12 = state.get('operands').get(12)
+    _x13 = state.get('operands').get(13)
+    _x14 = state.get('operands').get(14)
+    _x15 = state.get('operands').get(15)
+    insn = {
+        **insn,
+        **{
+            'result': None,
+        }
+    }
+    _side_effect = riscv.syscall.linux.do_syscall(_x17, _x10, _x11, _x12, _x13, _x14, _x15)
+    if 'poke' in _side_effect.keys():
+        _data = _side_effect.get('poke').get('data')
+        service.tx({'info': '_data : {} ({})'.format(_data, type(_data))})
+        service.tx({'event': {
+            'arrival': 1 + state.get('cycle'),
+            'mem': {
+                'cmd': 'poke',
+                'addr': int.from_bytes(_side_effect.get('poke').get('addr'), 'little'),
+                'size': len(_data),
+                'data': _data,
+            }
+        }})
+    service.tx({'event': {
+        'arrival': 2 + state.get('cycle'),
+        'commit': {
+            'insn': {
+                **insn,
+            },
+        }
+    }})
+    return insn
 def do_fence(service, state, insn):
     # HACK: in a complex pipeline, this needs to be more than a NOP
     insn = {
@@ -375,6 +413,7 @@ def do_execute(service, state):
             'BGE': do_branch,
             'BLTU': do_branch,
             'BGEU': do_branch,
+            'ECALL': do_ecall,
             'FENCE': do_fence,
         }.get(_insn.get('cmd'), do_unimplemented)
         _insn = _f(service, state, _insn)

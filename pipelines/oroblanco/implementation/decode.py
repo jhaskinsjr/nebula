@@ -25,31 +25,48 @@ def do_issue(service, state):
         service.tx({'info': '_hazards : {}'.format(_hazards)})
         if not all(map(lambda y: y in state.get('forward').keys(), _hazards)): break
         state.get('remove_from_decoded').append(_dec)
-        if 'rs1' in _insn.keys():
-            if _insn.get('rs1') in _hazards and _insn.get('rs1') in state.get('forward').keys():
-                if not 'operands' in _insn.keys(): _insn.update({'operands': {}})
-                _insn.get('operands').update({'rs1': state.get('forward').get(_insn.get('rs1'))})
-                service.tx({'info': 'forward operand {}'.format(_insn.get('rs1'))})
-            else:
+        if 'ECALL' != _insn.get('cmd'):
+            if 'rs1' in _insn.keys():
+                if _insn.get('rs1') in _hazards and _insn.get('rs1') in state.get('forward').keys():
+                    if not 'operands' in _insn.keys(): _insn.update({'operands': {}})
+                    _insn.get('operands').update({'rs1': state.get('forward').get(_insn.get('rs1'))})
+                    service.tx({'info': 'forward operand {}'.format(_insn.get('rs1'))})
+                else:
+                    service.tx({'event': {
+                        'arrival': 1 + state.get('cycle'),
+                        'register': {
+                            'cmd': 'get',
+                            'name': _insn.get('rs1'),
+                        },
+                    }})
+            if 'rs2' in _insn.keys():
+                if _insn.get('rs2') in _hazards and _insn.get('rs2') in state.get('forward').keys():
+                    if not 'operands' in _insn.keys(): _insn.update({'operands': {}})
+                    _insn.get('operands').update({'rs2': state.get('forward').get(_insn.get('rs2'))})
+                    service.tx({'info': 'forward operand {}'.format(_insn.get('rs2'))})
+                else:
+                    service.tx({'event': {
+                        'arrival': 1 + state.get('cycle'),
+                        'register': {
+                            'cmd': 'get',
+                            'name': _insn.get('rs2'),
+                        },
+                    }})
+        else:
+            # FIXME: This is not super-realistic because it
+            # requests all seven of the registers used by a
+            # RISC-V Linux syscall all at once (see: https://git.kernel.org/pub/scm/docs/man-pages/man-pages.git/tree/man2/syscall.2?h=man-pages-5.04#n332;
+            # basically, the syscall number is in x17, and
+            # as many as six parameters are in x10 through
+            # x15). But I just now I prefer to focus on
+            # syscall proxying, rather than realism.
+            for _reg in [10, 11, 12, 13, 14, 15, 17]:
                 service.tx({'event': {
                     'arrival': 1 + state.get('cycle'),
                     'register': {
                         'cmd': 'get',
-                        'name': _insn.get('rs1'),
-                    },
-                }})
-        if 'rs2' in _insn.keys():
-            if _insn.get('rs2') in _hazards and _insn.get('rs2') in state.get('forward').keys():
-                if not 'operands' in _insn.keys(): _insn.update({'operands': {}})
-                _insn.get('operands').update({'rs2': state.get('forward').get(_insn.get('rs2'))})
-                service.tx({'info': 'forward operand {}'.format(_insn.get('rs2'))})
-            else:
-                service.tx({'event': {
-                    'arrival': 1 + state.get('cycle'),
-                    'register': {
-                        'cmd': 'get',
-                        'name': _insn.get('rs2'),
-                    },
+                        'name': _reg,
+                    }
                 }})
         _btb_entry = (state.get('btb').peek(int.from_bytes(_pc, 'little')) if state.get('btb') else None)
         _insn = {
