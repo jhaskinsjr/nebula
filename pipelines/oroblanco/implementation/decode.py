@@ -157,6 +157,12 @@ def do_tick(service, state, results, events):
         }})
     if state.get('max_instructions_to_decode') > len(state.get('decoded')):
         for _insn in riscv.decode.do_decode(state.get('buffer'), state.get('max_instructions_to_decode') - len(state.get('decoded'))):
+            # ECALL must execute alone, i.e., all issued instructions
+            # must retire before an ECALL instruction will issue and no
+            # further instructions will issue so long as an ECALL has
+            # yet to flush/retire
+            if 'ECALL' == _insn.get('cmd') and len(state.get('issued')): break
+            if len(state.get('issued')) and 'ECALL' == state.get('issued')[0].get('cmd'): break
             state.get('decoded').append({
                 'insn': _insn,
                 '%pc': state.get('%pc'),
