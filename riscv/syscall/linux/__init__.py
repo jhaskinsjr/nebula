@@ -40,10 +40,10 @@ def do_syscall(syscall_num, a0, a1, a2, a3, a4, a5, **kwargs):
 #        176: do_getgid,
 #        177: do_getegid,
         214: do_brk,
-    }.get(int.from_bytes(syscall_num, 'little'), null)(a0, a1, a2, a3, a4, a5, **kwargs)
+    }.get(int.from_bytes(syscall_num, 'little'), null)(a0, a1, a2, a3, a4, a5, **{**kwargs, **{'syscall_num': int.from_bytes(syscall_num, 'little')}})
 
 def null(a0, a1, a2, a3, a4, a5, **kwargs):
-    print('syscall not implemented')
+    print('syscall ({}) not implemented'.format(kwargs.get('syscall_num')))
     return {
         'done': True,
     }
@@ -84,6 +84,6 @@ def do_uname(a0, a1, a2, a3, a4, a5, **kwargs):
             'data': list(bytes('\0'.join([os.uname()[x] for x in range(5)]) + '\0', encoding='ascii')),
         },
     }
-def do_brk(a0, a1, a2, a3, a4, a5): return {
+def do_brk(a0, a1, a2, a3, a4, a5, **kwargs): return {
     'done': True,
 }

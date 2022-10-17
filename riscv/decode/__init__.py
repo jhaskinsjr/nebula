@@ -37,6 +37,20 @@ def c_jr(word):
         'word': word,
         'size': 2,
     }
+def c_jalr(word):
+    # C.JALR (jump and link register) performs the same operation as
+    # C.JR, but additionally writes the address of the instruction
+    # following the jump (pc+2) to the link register, x1. C.JALR expands
+    # to jalr x1, 0(rs1). C.JALR is only valid when rs1̸=x0; the code
+    # point with rs1=x0 corresponds to the C.EBREAK instruction.
+    return {
+        'cmd': 'JALR',
+        'imm': 0,
+        'rs1': compressed_rs1_or_rd(word),
+        'rd': 1,
+        'word': word,
+        'size': 2,
+    }
 def c_beqz(word, **kwargs):
     # BEQZ performs conditional control transfers. The offset is
     # sign-extended and added to the pc to form the branch target address.
@@ -400,6 +414,16 @@ def c_andi(word, **kwargs):
         'word': word,
         'size': 2,
     }
+def c_ebreak(word, **kwargs):
+    # Debuggers can use the C.EBREAK instruction, which expands to ebreak,
+    # to cause control to be transferred back to the debugging environment.
+    # C.EBREAK shares the opcode with the C.ADD instruction, but with rd
+    # and rs2 both zero, thus can also use the CR format.
+    return {
+        'cmd': 'EBREAK',
+        'word': word,
+        'size': 2,
+    }
 
 def lui(word):
     # LUI (load upper immediate) is used to build 32-bit constants and
@@ -579,6 +603,7 @@ def b_type(word):
 def system(word):
     _cmds = {
         0b0000_0000_0000: 'ECALL',
+        0b0000_0000_0001: 'EBREAK',
     }
     if not uncompressed_i_type_imm12(word) in _cmds.keys(): uncompressed_illegal_instruction(word)
     _cmd = _cmds.get(uncompressed_i_type_imm12(word))
@@ -936,19 +961,29 @@ def compressed_quadrant_10_opcode_011(word):
     return _impl(word)
 def compressed_quadrant_10_opcode_100(word):
 #    print('compressed_quadrant_10_opcode_100()')
+    # 100 0 rs1̸=0    0       10 C.JR (RES, rs1=0)
+    # 100 0 rd̸=0     rs2̸=0  10 C.MV (HINT, rd=0)
+    # 100 1 0         0       10 C.EBREAK
+    # 100 1 rs1̸=0    0       10 C.JALR
+    # 100 1 rs1/rd̸=0 rs2̸=0  10 C.ADD (HINT, rd=0)
+    #
+    # See: https://riscv.org/wp-content/uploads/2019/06/riscv-spec.pdf (p. 111)
     _impl = compressed_unimplemented_instruction
     _b12 = (word >> 12) & 0b1
     if 0 == _b12:
-        if 0 == compressed_rs2(word):
-            _impl = c_jr
-        else:
-            _impl = c_mv
+        if 0 != compressed_rs1_or_rd(word):
+            if 0 == compressed_rs2(word):
+                _impl = c_jr
+            else:
+                _impl = c_mv
     else:
-        # 100 1 rs1/rd̸=0 rs2̸=0 10 C.ADD (HINT, rd=0)
-        if 0 != compressed_rs1_or_rd(word) and 0 != compressed_rs2(word):
-            _impl = c_add
+        if 0 == compressed_rs1_or_rd(word):
+            _impl = c_ebreak
         else:
-            pass
+            if 0 != compressed_rs2(word):
+                _impl = c_add
+            else:
+                _impl = c_jalr
     return _impl(word)
 def compressed_quadrant_10_opcode_111(word):
     # 111 uimm[5:3|8:6] rs2 10 C.SDSP (RV64/128

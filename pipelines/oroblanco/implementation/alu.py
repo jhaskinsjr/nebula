@@ -351,6 +351,23 @@ def do_ecall(service, stats, insn):
             }
         }})
     return insn, _done
+def do_ebreak(service, state, insn):
+    # HACK: in a complex pipeline, this needs to be more than a NOP
+    insn = {
+        **insn,
+        **{
+            'result': None,
+        }
+    }
+    service.tx({'event': {
+        'arrival': 2 + state.get('cycle'),
+        'commit': {
+            'insn': {
+                **insn,
+            },
+        }
+    }})
+    return insn, True
 def do_fence(service, state, insn):
     # HACK: in a complex pipeline, this needs to be more than a NOP
     insn = {
@@ -433,6 +450,7 @@ def do_execute(service, state):
             'BLTU': do_branch,
             'BGEU': do_branch,
             'ECALL': do_ecall,
+            'EBREAK': do_ebreak,
             'FENCE': do_fence,
         }.get(_insn.get('cmd'), do_unimplemented)
         _insn, _done = _f(service, state, _insn)
