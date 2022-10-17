@@ -192,6 +192,7 @@ def loadbin(connections, mainmem_filename, mainmem_capacity, sp, pc, start_symbo
     os.write(fd, bytes(''.join(_args), 'ascii'))    # argv data
     os.close(fd)
     register(connections, 'set', 2, hex(sp))
+    register(connections, 'set', 4, '0xffff0000')
     register(connections, 'set', 10, hex(_argc))
     register(connections, 'set', 11, hex(8 + sp))
     register(connections, 'set', '%pc', hex(_start_pc))
