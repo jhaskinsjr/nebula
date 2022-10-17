@@ -8,7 +8,8 @@ main(int argc, char ** argv)
 {
     struct utsname buf;
 	int retval = uname(&buf);
-    put_string(buf.sysname);
+    puts(buf.sysname);
+//    put_string(buf.sysname);
 //    put_string(buf.nodename);
 //    put_string(buf.release);
 //    put_string(buf.version);
