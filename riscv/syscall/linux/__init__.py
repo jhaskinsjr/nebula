@@ -15,7 +15,7 @@ import os
 # optionally, the first and second parameters to the syscall are in
 # registers x10 (i.e., a0) and x11 (i.e., a1), respectively
 
-def do_syscall(syscall_num, a0, a1, a2, a3, a4, a5):
+def do_syscall(syscall_num, a0, a1, a2, a3, a4, a5, **kwargs):
     return {
 #         17: do_getcwd,
 #         34: do_mkdirat,
@@ -28,7 +28,7 @@ def do_syscall(syscall_num, a0, a1, a2, a3, a4, a5):
 #         57: do_close,
 #         62: do_lseek,
 #         63: do_read,
-#         64: do_write,
+         64: do_write,
 #         79: do_fstatat,
 #         80: do_fstat,
 #         93: do_exit,
@@ -40,16 +40,50 @@ def do_syscall(syscall_num, a0, a1, a2, a3, a4, a5):
 #        176: do_getgid,
 #        177: do_getegid,
         214: do_brk,
-    }.get(int.from_bytes(syscall_num, 'little'), null)(a0, a1, a2, a3, a4, a5)
+    }.get(int.from_bytes(syscall_num, 'little'), null)(a0, a1, a2, a3, a4, a5, **kwargs)
 
-def null(a0, a1, a2, a3, a4, a5):
+def null(a0, a1, a2, a3, a4, a5, **kwargs):
     print('syscall not implemented')
-    return {}
-def do_uname(a0, a1, a2, a3, a4, a5):
     return {
+        'done': True,
+    }
+def do_write(a0, a1, a2, a3, a4, a5, **kwargs):
+    _len = int.from_bytes(a2, 'little')
+    if 'buf' in kwargs.keys():
+        _fd = int.from_bytes(a0, 'little')
+        _buf = kwargs.get('buf')
+        try:
+            os.write(_fd, _buf[:_len])
+        except:
+            print('do_write(): a0   : {}'.format(a0))
+            print('do_write(): a1   : {}'.format(a1))
+            print('do_write(): a2   : {}'.format(a2))
+            print('do_write(): _fd  : {}'.format(_fd))
+            print('do_write(): _buf : {} ({})'.format(_buf, len(_buf)))
+        _retval = {
+            'done': True,
+        }
+    else:
+        _retval = {
+            'done': False,
+            'peek': {
+                'addr': int.from_bytes(a1, 'little'),
+                'size': _len,
+            },
+        }
+    return _retval
+def do_uname(a0, a1, a2, a3, a4, a5, **kwargs):
+    # FIXME: the fields are not packed into the struct utsname
+    # as is done in the poke.data field below... The exact layout
+    # is at /opt/riscv/sysroot/usr/include/bits/utsname.h (see:
+    # _UTSNAME_LENGTH)
+    return {
+        'done': True,
         'poke': {
             'addr': a0,
             'data': list(bytes('\0'.join([os.uname()[x] for x in range(5)]) + '\0', encoding='ascii')),
         },
     }
-def do_brk(a0, a1, a2, a3, a4, a5): return {}
+def do_brk(a0, a1, a2, a3, a4, a5): return {
+    'done': True,
+}

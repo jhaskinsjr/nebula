@@ -486,19 +486,39 @@ def do_ecall(service, state, insn):
     _syscall_a3 = state.get('operands').get('syscall_a3')
     _syscall_a4 = state.get('operands').get('syscall_a4')
     _syscall_a5 = state.get('operands').get('syscall_a5')
-    _side_effect = riscv.syscall.linux.do_syscall(_syscall_num, _syscall_a0, _syscall_a1, _syscall_a2, _syscall_a3, _syscall_a4, _syscall_a5)
+    _kwargs = {}
+    if 'mem' in state.get('operands').keys() and isinstance(state.get('operands').get('mem'), list):
+        _kwargs = {'buf': bytes(state.get('operands').get('mem'))}
+        state.get('operands').pop('mem')
+    _side_effect = riscv.syscall.linux.do_syscall(_syscall_num, _syscall_a0, _syscall_a1, _syscall_a2, _syscall_a3, _syscall_a4, _syscall_a5, **_kwargs)
+    _done = _side_effect.get('done')
     if 'poke' in _side_effect.keys():
+        _addr = int.from_bytes(_side_effect.get('poke').get('addr'), 'little')
         _data = _side_effect.get('poke').get('data')
         service.tx({'info': '_data : {} ({})'.format(_data, type(_data))})
         service.tx({'event': {
             'arrival': 1 + state.get('cycle'),
             'mem': {
                 'cmd': 'poke',
-                'addr': int.from_bytes(_side_effect.get('poke').get('addr'), 'little'),
+                'addr': _addr,
                 'size': len(_data),
                 'data': _data,
             }
         }})
+    if 'peek' in _side_effect.keys():
+        if not 'mem' in state.get('operands').keys():
+            _addr = _side_effect.get('peek').get('addr')
+            _size = _side_effect.get('peek').get('size')
+            service.tx({'event': {
+                'arrival': 1 + state.get('cycle'),
+                'mem': {
+                    'cmd': 'peek',
+                    'addr': _addr,
+                    'size': _size,
+                }
+            }})
+            state.get('operands').update({'mem': _addr})
+    if not _done: return
     do_complete(service, state, state.get('pending_execute'))
     do_confirm(service, state, state.get('pending_execute'))
     do_commit(service, state, state.get('pending_execute'))
