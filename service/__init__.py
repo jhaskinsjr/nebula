@@ -4,7 +4,7 @@ import socket
 import json
 
 class Service:
-    MESSAGE_SIZE = 2048
+    MESSAGE_SIZE = 8192
     def __init__(self, name, host, port):
         self.name = name
         self.s = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
