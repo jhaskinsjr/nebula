@@ -43,7 +43,7 @@ def do_syscall(syscall_num, a0, a1, a2, a3, a4, a5, **kwargs):
     }.get(int.from_bytes(syscall_num, 'little'), null)(a0, a1, a2, a3, a4, a5, **{**kwargs, **{'syscall_num': int.from_bytes(syscall_num, 'little')}})
 
 def null(a0, a1, a2, a3, a4, a5, **kwargs):
-    print('syscall ({}) not implemented'.format(kwargs.get('syscall_num')))
+    print('*** Syscall ({}) not implemented! ***'.format(kwargs.get('syscall_num')))
     return {
         'done': True,
     }
