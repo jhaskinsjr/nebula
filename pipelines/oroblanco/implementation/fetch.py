@@ -71,6 +71,9 @@ def do_tick(service, state, results, events):
         service.tx({'info': '_l2 : {}'.format(_l2)})
         state.get('pending_fetch').remove(_addr)
         state.get('l1ic').poke(_addr, _l2.get('data'))
+    for _fetch in map(lambda y: y.get('fetch'), filter(lambda x: x.get('fetch'), events)):
+        if 'cmd' in _fetch.keys() and 'purge' == _fetch.get('cmd'):
+            state.get('l1ic').purge()
     for _decode_request in map(lambda y: y.get('decode.request'), filter(lambda x: x.get('decode.request'), events)):
         state.get('decode.requests').append({
             **_decode_request,

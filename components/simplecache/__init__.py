@@ -18,6 +18,9 @@ class SimpleCache:
         self.nways = nways
         self.nbytesperblock = nbytesperblock
         self.evictionpolicy = evictionpolicy
+        self.sets = {}
+        self.purge()
+    def purge(self):
         self.sets = {
             x: [
                 {

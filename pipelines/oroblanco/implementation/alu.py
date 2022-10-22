@@ -328,6 +328,12 @@ def do_ecall(service, stats, insn):
                 'data': _data,
             }
         }})
+        insn = {
+            **insn,
+            **{
+                'poke': True,
+            }
+        }
     if 'peek' in _side_effect.keys():
         if not 'mem' in state.get('operands').keys():
             _addr = _side_effect.get('peek').get('addr')
@@ -341,6 +347,12 @@ def do_ecall(service, stats, insn):
                 }
             }})
             state.get('operands').update({'mem': _addr})
+        insn = {
+            **insn,
+            **{
+                'peek': True,
+            }
+        }
     if _done:
         service.tx({'event': {
             'arrival': 2 + state.get('cycle'),
@@ -350,6 +362,25 @@ def do_ecall(service, stats, insn):
                 },
             }
         }})
+        if 'poke' in insn.keys() or 'peek' in insn.keys():
+            service.tx({'event': {
+                'arrival': 1 + state.get('cycle'),
+                'fetch': {
+                    'cmd': 'purge',
+                }
+            }})
+            service.tx({'event': {
+                'arrival': 1 + state.get('cycle'),
+                'lsu': {
+                    'cmd': 'purge',
+                }
+            }})
+            service.tx({'event': {
+                'arrival': 1 + state.get('cycle'),
+                'l2': {
+                    'cmd': 'purge',
+                }
+            }})
     return insn, _done
 def do_ebreak(service, state, insn):
     # HACK: in a complex pipeline, this needs to be more than a NOP

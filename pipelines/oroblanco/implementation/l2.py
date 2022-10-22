@@ -107,6 +107,9 @@ def do_tick(service, state, results, events):
             service.tx({'info': '_mem : {}'.format(_mem)})
             state.get('l2').poke(_addr, _mem.get('data'))
     for ev in map(lambda y: y.get('l2'), filter(lambda x: x.get('l2'), events)):
+        if 'cmd' in ev.keys() and 'purge' == ev.get('cmd'):
+            state.get('l2').purge()
+            continue
         state.get('executing').append(ev)
     if len(state.get('executing')):
         _op = state.get('executing')[0] # forcing single outstanding operation for now

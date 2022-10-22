@@ -142,15 +142,19 @@ def do_tick(service, state, results, events):
         elif _addr in state.get('pending_fetch'):
             service.tx({'info': '_l2 : {}'.format(_l2)})
             state.get('l1dc').poke(_addr, _l2.get('data'))
-    for _insn in map(lambda y: y.get('lsu'), filter(lambda x: x.get('lsu'), events)):
-        state.get('pending_execute').append(_insn.get('insn'))
-        # TODO: should this commit event be done in alu like everything else?
-        service.tx({'event': {
-            'arrival': 1 + state.get('cycle'),
-            'commit': {
-                'insn': _insn.get('insn'),
-            }
-        }})
+    for _lsu in map(lambda y: y.get('lsu'), filter(lambda x: x.get('lsu'), events)):
+        if 'insn' in _lsu.keys():
+            _insn = _lsu.get('insn')
+            state.get('pending_execute').append(_insn)
+            # TODO: should this commit event be done in alu like everything else?
+            service.tx({'event': {
+                'arrival': 1 + state.get('cycle'),
+                'commit': {
+                    'insn': _insn,
+                }
+            }})
+        elif 'cmd' in _lsu.keys() and 'purge' == _lsu.get('cmd'):
+            state.get('l1dc').purge()
     do_execute(service, state)
 
 if '__main__' == __name__:
