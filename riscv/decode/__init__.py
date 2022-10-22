@@ -661,6 +661,29 @@ def store(word):
             'size': 4,
         },
     }
+def atomic(word):
+    # 00010 aq rl 00000 rs1 010 rd 0101111 LR.W
+    # 00010 aq rl 00000 rs1 011 rd 0101111 LR.D
+    # 00011 aq rl rs2   rs1 010 rd 0101111 SC.W
+    # 00011 aq rl rs2   rs1 011 rd 0101111 SC.D
+    # see: https://riscv.org/wp-content/uploads/2019/12/riscv-spec-20191213.pdf (p. 132)
+    _variety = {
+        (0b0_0010, 0b010): {'cmd': 'LR.W', 'nbytes': 4},
+        (0b0_0010, 0b011): {'cmd': 'LR.D', 'nbytes': 8},
+        (0b0_0011, 0b010): {'cmd': 'SC.W', 'nbytes': 4, 'rs2': uncompressed_rs2(word)},
+        (0b0_0011, 0b011): {'cmd': 'SC.D', 'nbytes': 8, 'rs2': uncompressed_rs2(word)},
+    }.get((uncompressed_funct5(word), uncompressed_funct3(word)))
+    return {
+        **_variety,
+        **{
+            'imm': 0,
+            'rs1': uncompressed_rs1(word),
+            'aq': (1 == (word >> 26) & 0b1),
+            'rl': (1 == (word >> 25) & 0b1),
+            'word': word,
+            'size': 4,
+        },
+    }
 def fence(word):
     return {
         'cmd': 'FENCE',
@@ -1081,6 +1104,7 @@ def decode_uncompressed(word):
         0b110_1111: jal,
         0b110_0111: jalr,
         0b010_0011: store,
+        0b010_1111: atomic,
         0b001_0011: i_type,
         0b001_1011: i_type,
         0b011_1011: r_type,
@@ -1132,6 +1156,9 @@ def uncompressed_imm32(word, **kwargs):
 def uncompressed_funct7(word):
     # https://riscv.org/wp-content/uploads/2019/06/riscv-spec.pdf (p. 16)
     return (word >> 25) & 0b111_1111
+def uncompressed_funct5(word):
+    # https://riscv.org/wp-content/uploads/2019/06/riscv-spec.pdf (p. 48)
+    return (word >> 27) & 0b1_1111
 def uncompressed_funct3(word):
     # https://riscv.org/wp-content/uploads/2019/06/riscv-spec.pdf (p. 16)
     return (word >> 12) & 0b111

@@ -111,6 +111,8 @@ def do_store(service, state, insn):
         'SW': _data[:4],
         'SH': _data[:2],
         'SB': _data[:1],
+        'SC.D': _data,
+        'SC.W': _data[:4],
     }.get(insn.get('cmd'))
     do_l1dc(service, state, insn.get('operands').get('addr'), insn.get('nbytes'), _data)
 
@@ -132,6 +134,10 @@ def do_execute(service, state):
         'SW': do_store,
         'SH': do_store,
         'SB': do_store,
+        'LR.W': do_load,
+        'LR.D': do_load,
+        'SC.W': do_store,
+        'SC.D': do_store,
     }.get(_insn.get('cmd'), do_unimplemented)(service, state, _insn)
 
 def do_tick(service, state, results, events):

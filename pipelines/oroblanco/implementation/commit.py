@@ -108,6 +108,8 @@ def do_tick(service, state, results, events):
                     'LWU': _peeked[:4] + [0] * 4,
                     'LHU': _peeked[:2] + [0] * 6,
                     'LBU': _peeked[:1] + [0] * 7,
+                    'LR.D': _peeked,
+                    'LR.W': _peeked[:4] + [(0xff if ((_peeked[3] >> 7) & 0b1) else 0)] * 4,
                 }.get(_insn.get('cmd'))
                 _index = state.get('pending_commit').index(_insn)
                 state.get('pending_commit')[_index] = {

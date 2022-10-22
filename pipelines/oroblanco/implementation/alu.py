@@ -249,6 +249,19 @@ def do_store(service, state, insn):
         }
     }})
     return insn, True
+def do_atomic(service, state, insn):
+    insn = {
+        **insn,
+        **{
+            'reservation': True, # TODO: add code to "do" reservations in lsu, l2, mainmem
+        },
+    }
+    return {
+        'LR.W': do_load,
+        'LR.D': do_load,
+        'SC.W': do_store,
+        'SC.D': do_store,
+    }.get(insn.get('cmd'), do_unimplemented)(service, state, insn)
 def do_nop(service, state, insn):
     insn = {
         **insn,
@@ -467,6 +480,10 @@ def do_execute(service, state):
             'SW': do_store,
             'SH': do_store,
             'SB': do_store,
+            'LR.W': do_atomic,
+            'LR.D': do_atomic,
+            'SC.W': do_atomic,
+            'SC.D': do_atomic,
             'NOP': do_nop,
             'SLLI': do_shift,
             'SRLI': do_shift,
