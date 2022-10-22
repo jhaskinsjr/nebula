@@ -73,15 +73,13 @@ def do_write(a0, a1, a2, a3, a4, a5, **kwargs):
         }
     return _retval
 def do_uname(a0, a1, a2, a3, a4, a5, **kwargs):
-    # FIXME: the fields are not packed into the struct utsname
-    # as is done in the poke.data field below... The exact layout
-    # is at /opt/riscv/sysroot/usr/include/bits/utsname.h (see:
-    # _UTSNAME_LENGTH)
+    # NOTE: The fields in a struct utsname are padded to 65 bytes;
+    # see: _UTSNAME_LENGTH in /opt/riscv/sysroot/usr/include/bits/utsname.h
     return {
         'done': True,
         'poke': {
             'addr': a0,
-            'data': list(bytes('\0'.join([os.uname()[x] for x in range(5)]) + '\0', encoding='ascii')),
+            'data': list(bytes(''.join(map(lambda x: x + ('\0' * (65 - len(x))), os.uname())), encoding='ascii')),
         },
     }
 def do_brk(a0, a1, a2, a3, a4, a5, **kwargs): return {
