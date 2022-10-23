@@ -405,11 +405,11 @@ def do_ecall(service, stats, insn):
             'result': None,
         }
     }
-    _kwargs = {}
     if 'mem' in state.get('operands').keys() and isinstance(state.get('operands').get('mem'), list):
-        _kwargs = {'buf': bytes(state.get('operands').get('mem'))}
+        _name = str(len(state.get('syscall_kwargs').keys()))
+        state.get('syscall_kwargs').update({_name: bytes(state.get('operands').get('mem'))})
         state.get('operands').pop('mem')
-    _side_effect = riscv.syscall.linux.do_syscall(_x17, _x10, _x11, _x12, _x13, _x14, _x15, **_kwargs)
+    _side_effect = riscv.syscall.linux.do_syscall(_x17, _x10, _x11, _x12, _x13, _x14, _x15, **state.get('syscall_kwargs'))
     _done = _side_effect.get('done')
     if 'poke' in _side_effect.keys():
         _addr = int.from_bytes(_side_effect.get('poke').get('addr'), 'little')
@@ -476,6 +476,7 @@ def do_ecall(service, stats, insn):
                     'cmd': 'purge',
                 }
             }})
+        state.update({'syscall_kwargs': {}})
     return insn, _done
 def do_ebreak(service, state, insn):
     # HACK: in a complex pipeline, this needs to be more than a NOP
@@ -514,7 +515,7 @@ def do_fence(service, state, insn):
 
 def do_execute(service, state):
     if not len(state.get('pending_execute')): return
-    for _insn in map(lambda x: x.get('insn'), state.get('pending_execute')):
+    for _insn in state.get('pending_execute'):
         service.tx({'info': '_insn : {}'.format(_insn)})
         if 0x3 == _insn.get('word') & 0x3:
             logging.info('do_execute(): @{:8} {:08x} : {}'.format(state.get('cycle'), _insn.get('word'), _insn.get('cmd')))
@@ -600,15 +601,15 @@ def do_execute(service, state):
             'EBREAK': do_ebreak,
             'FENCE': do_fence,
         }.get(_insn.get('cmd'), do_unimplemented)
-        _insn, _done = _f(service, state, _insn)
+        _insn_prime, _done = _f(service, state, _insn)
         toolbox.report_stats(service, state, 'histo', 'category', _f.__name__)
-        if state.get('config').get('forwarding') and 'rd' in _insn.keys() and _insn.get('result'):
+        if state.get('config').get('forwarding') and 'rd' in _insn_prime.keys() and _insn_prime.get('result'):
             service.tx({'result': {
                 'arrival': 1 + state.get('cycle'),
                 'forward': {
-                    'rd': _insn.get('rd'),
-                    'result': _insn.get('result'),
-                    'iid': _insn.get('iid'),
+                    'rd': _insn_prime.get('rd'),
+                    'result': _insn_prime.get('result'),
+                    'iid': _insn_prime.get('iid'),
                 },
             }})
         if _done:
@@ -625,10 +626,9 @@ def do_tick(service, state, results, events):
         _name = _reg.get('name')
         _data = _reg.get('data')
         state.get('operands').update({_name: _data})
-    for _insn in map(lambda y: y.get('alu'), filter(lambda x: x.get('alu'), events)):
-        state.get('pending_execute').append(_insn)
+    for _alu in map(lambda y: y.get('alu'), filter(lambda x: x.get('alu'), events)):
+        state.get('pending_execute').append(_alu.get('insn'))
     do_execute(service, state)
-    # TODO: properly handle ECALL instruction, which requires a LOT (!) of registers
 
 if '__main__' == __name__:
     parser = argparse.ArgumentParser(description='μService-SIMulator: Execute')
@@ -658,6 +658,7 @@ if '__main__' == __name__:
         'running': False,
         'ack': True,
         'pending_execute': [],
+        'syscall_kwargs': {},
         'operands': {
             **{x: riscv.constants.integer_to_list_of_bytes(0, 64, 'little') for x in range(32)},
         },

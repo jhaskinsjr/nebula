@@ -49,9 +49,9 @@ def null(a0, a1, a2, a3, a4, a5, **kwargs):
     }
 def do_write(a0, a1, a2, a3, a4, a5, **kwargs):
     _len = int.from_bytes(a2, 'little')
-    if 'buf' in kwargs.keys():
+    if '0' in kwargs.keys():
         _fd = int.from_bytes(a0, 'little')
-        _buf = kwargs.get('buf')
+        _buf = kwargs.get('0')
         try:
             os.write(_fd, _buf[:_len])
         except:
