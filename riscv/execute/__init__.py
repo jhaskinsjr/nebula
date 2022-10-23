@@ -325,6 +325,16 @@ def remuw(rs1, rs2):
         64,
         'little',
     )
+def swap(rs1, rs2):
+    return rs2
+def min(rs1, rs2):
+    return (rs1 if int.from_bytes(rs1, 'little', signed=True) < int.from_bytes(rs2, 'little', signed=True) else rs2)
+def max(rs1, rs2):
+    return (rs1 if int.from_bytes(rs1, 'little', signed=True) > int.from_bytes(rs2, 'little', signed=True) else rs2)
+def minu(rs1, rs2):
+    return (rs1 if int.from_bytes(rs1, 'little') < int.from_bytes(rs2, 'little') else rs2)
+def maxu(rs1, rs2):
+    return (rs1 if int.from_bytes(rs1, 'little') > int.from_bytes(rs2, 'little') else rs2)
 def beq(pc, rs1, rs2, imm, sz):
     return (
         (riscv.constants.integer_to_list_of_bytes(imm + int.from_bytes(pc, 'little'), 64, 'little'), True)

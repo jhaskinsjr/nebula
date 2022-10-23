@@ -250,18 +250,100 @@ def do_store(service, state, insn):
     }})
     return insn, True
 def do_atomic(service, state, insn):
-    insn = {
-        **insn,
-        **{
-            'reservation': True, # TODO: add code to "do" reservations in lsu, l2, mainmem
-        },
-    }
-    return {
-        'LR.W': do_load,
-        'LR.D': do_load,
-        'SC.W': do_store,
-        'SC.D': do_store,
-    }.get(insn.get('cmd'), do_unimplemented)(service, state, insn)
+    service.tx({'info': 'state.operands.mem : {} ({})'.format(state.get('operands').get('mem'), insn.get('cmd'))})
+    if insn.get('cmd') in ['LR.W', 'LR.D', 'SC.W', 'SC.D']:
+        insn = {
+            **insn,
+            **{
+                'reservation': True, # TODO: add code to "do" reservations in lsu, l2, mainmem
+            },
+        }
+        return {
+            'LR.W': do_load,
+            'LR.D': do_load,
+            'SC.W': do_store,
+            'SC.D': do_store,
+        }.get(insn.get('cmd'), do_unimplemented)(service, state, insn)
+    _done = False
+    _rs1 = (insn.get('operands').get('rs1') if ('operands' in insn.keys() and 'rs1' in insn.get('operands').keys()) else state.get('operands').get(insn.get('rs1')))
+    _rs2 = (insn.get('operands').get('rs2') if ('operands' in insn.keys() and 'rs2' in insn.get('operands').keys()) else state.get('operands').get(insn.get('rs2')))
+    if not state.get('operands').get('mem'):
+        _addr = int.from_bytes(_rs1, 'little')
+        _size = (8 if insn.get('cmd').endswith('.D') else 4)
+        service.tx({'event': {
+            'arrival': 1 + state.get('cycle'),
+            'mem': {
+                'cmd': 'peek',
+                'addr': _addr,
+                'size': _size,
+            }
+        }})
+        state.get('operands').update({'mem': _addr})
+    else:
+        # These AMO instructions atomically load a data value from the
+        # address in rs1, place the value into register rd, apply a binary
+        # operator to the loaded value and the original value in rs2, then
+        # store the result back to the address in rs1.
+        # (see: https://riscv.org/wp-content/uploads/2019/06/riscv-spec.pdf, p.51)
+        #
+        # In other words...
+        # 1. rd <- value from @rs1
+        # 2. binop(value from @rs1, rs2) -> @rs1
+        if isinstance(state.get('operands').get('mem'), list):
+            _size = (8 if insn.get('cmd').endswith('.D') else 4)
+            _data  = state.get('operands').get('mem')
+            _data += (([0xff] * (8 - _size)) if 0 > int.from_bytes(_data, 'little', signed=True) else ([0] * (8 - _size)))
+            _result = {
+                'AMOSWAP.W': riscv.execute.swap,
+                'AMOADD.W': riscv.execute.add,
+                'AMOAND.W': riscv.execute.do_and,
+                'AMOOR.W': riscv.execute.do_or,
+                'AMOXOR.W': riscv.execute.xor,
+                'AMOAMIN.W': riscv.execute.min,
+                'AMOAMAX.W': riscv.execute.max,
+                'AMOAMINU.W': riscv.execute.minu,
+                'AMOAMAXU.W': riscv.execute.maxu,
+                'AMOSWAP.D': riscv.execute.swap,
+                'AMOADD.D': riscv.execute.add,
+                'AMOAND.D': riscv.execute.do_and,
+                'AMOOR.D': riscv.execute.do_or,
+                'AMOXOR.D': riscv.execute.xor,
+                'AMOAMIN.D': riscv.execute.min,
+                'AMOAMAX.D': riscv.execute.max,
+                'AMOAMINU.D': riscv.execute.minu,
+                'AMOAMAXU.D': riscv.execute.maxu,
+            }.get(insn.get('cmd'))(_data, _rs2)
+            insn = {
+                **insn,
+                **{
+                    'result': _data,
+                    'operands': {
+                        'rs1': _rs1,
+                        'rs2': _rs2,
+                    },
+                },
+            }
+            _addr = int.from_bytes(_rs1, 'little')
+            service.tx({'event': {
+                'arrival': 1 + state.get('cycle'),
+                'mem': {
+                    'cmd': 'poke',
+                    'addr': _addr,
+                    'size': _size,
+                    'data': _result[:_size],
+                }
+            }})
+            service.tx({'event': {
+                'arrival': 2 + state.get('cycle'),
+                'commit': {
+                    'insn': {
+                        **insn,
+                    },
+                }
+            }})
+            _done = True
+            state.get('operands').pop('mem')
+    return insn, _done
 def do_nop(service, state, insn):
     insn = {
         **insn,
@@ -433,7 +515,6 @@ def do_fence(service, state, insn):
 def do_execute(service, state):
     if not len(state.get('pending_execute')): return
     for _insn in map(lambda x: x.get('insn'), state.get('pending_execute')):
-#        state.get('pending_execute').pop(0)
         service.tx({'info': '_insn : {}'.format(_insn)})
         if 0x3 == _insn.get('word') & 0x3:
             logging.info('do_execute(): @{:8} {:08x} : {}'.format(state.get('cycle'), _insn.get('word'), _insn.get('cmd')))
@@ -484,6 +565,24 @@ def do_execute(service, state):
             'LR.D': do_atomic,
             'SC.W': do_atomic,
             'SC.D': do_atomic,
+            'AMOSWAP.W': do_atomic,
+            'AMOADD.W': do_atomic,
+            'AMOAND.W': do_atomic,
+            'AMOOR.W': do_atomic,
+            'AMOXOR.W': do_atomic,
+            'AMOAMIN.W': do_atomic,
+            'AMOAMAX.W': do_atomic,
+            'AMOAMINU.W': do_atomic,
+            'AMOAMAXU.W': do_atomic,
+            'AMOSWAP.D': do_atomic,
+            'AMOADD.D': do_atomic,
+            'AMOAND.D': do_atomic,
+            'AMOOR.D': do_atomic,
+            'AMOXOR.D': do_atomic,
+            'AMOAMIN.D': do_atomic,
+            'AMOAMAX.D': do_atomic,
+            'AMOAMINU.D': do_atomic,
+            'AMOAMAXU.D': do_atomic,
             'NOP': do_nop,
             'SLLI': do_shift,
             'SRLI': do_shift,
@@ -502,7 +601,6 @@ def do_execute(service, state):
             'FENCE': do_fence,
         }.get(_insn.get('cmd'), do_unimplemented)
         _insn, _done = _f(service, state, _insn)
-        if _done: state.get('pending_execute').pop(0)
         toolbox.report_stats(service, state, 'histo', 'category', _f.__name__)
         if state.get('config').get('forwarding') and 'rd' in _insn.keys() and _insn.get('result'):
             service.tx({'result': {
@@ -513,6 +611,10 @@ def do_execute(service, state):
                     'iid': _insn.get('iid'),
                 },
             }})
+        if _done:
+            state.get('pending_execute').pop(0)
+        else:
+            break
 
 def do_tick(service, state, results, events):
     for _mem in filter(lambda x: x, map(lambda y: y.get('mem'), results)):

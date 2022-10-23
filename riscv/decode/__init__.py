@@ -666,12 +666,48 @@ def atomic(word):
     # 00010 aq rl 00000 rs1 011 rd 0101111 LR.D
     # 00011 aq rl rs2   rs1 010 rd 0101111 SC.W
     # 00011 aq rl rs2   rs1 011 rd 0101111 SC.D
+    # 00001 aq rl rs2   rs1 010 rd 0101111 AMOSWAP.W
+    # 00000 aq rl rs2   rs1 010 rd 0101111 AMOADD.W
+    # 00100 aq rl rs2   rs1 010 rd 0101111 AMOXOR.W
+    # 01100 aq rl rs2   rs1 010 rd 0101111 AMOAND.W
+    # 01000 aq rl rs2   rs1 010 rd 0101111 AMOOR.W
+    # 10000 aq rl rs2   rs1 010 rd 0101111 AMOMIN.W
+    # 10100 aq rl rs2   rs1 010 rd 0101111 AMOMAX.W
+    # 11000 aq rl rs2   rs1 010 rd 0101111 AMOMINU.W
+    # 11100 aq rl rs2   rs1 010 rd 0101111 AMOMAXU.W
+    # 00001 aq rl rs2   rs1 011 rd 0101111 AMOSWAP.D
+    # 00000 aq rl rs2   rs1 011 rd 0101111 AMOADD.D
+    # 00100 aq rl rs2   rs1 011 rd 0101111 AMOXOR.D
+    # 01100 aq rl rs2   rs1 011 rd 0101111 AMOAND.D
+    # 01000 aq rl rs2   rs1 011 rd 0101111 AMOOR.D
+    # 10000 aq rl rs2   rs1 011 rd 0101111 AMOMIN.D
+    # 10100 aq rl rs2   rs1 011 rd 0101111 AMOMAX.D
+    # 11000 aq rl rs2   rs1 011 rd 0101111 AMOMINU.D
+    # 11100 aq rl rs2   rs1 011 rd 0101111 AMOMAXU.D
     # see: https://riscv.org/wp-content/uploads/2019/12/riscv-spec-20191213.pdf (p. 132)
     _variety = {
         (0b0_0010, 0b010): {'cmd': 'LR.W', 'nbytes': 4},
         (0b0_0010, 0b011): {'cmd': 'LR.D', 'nbytes': 8},
         (0b0_0011, 0b010): {'cmd': 'SC.W', 'nbytes': 4, 'rs2': uncompressed_rs2(word)},
         (0b0_0011, 0b011): {'cmd': 'SC.D', 'nbytes': 8, 'rs2': uncompressed_rs2(word)},
+        (0b0_0001, 0b010): {'cmd': 'AMOSWAP.W', 'nbytes': 4, 'rs2': uncompressed_rs2(word)},
+        (0b0_0000, 0b010): {'cmd': 'AMOADD.W', 'nbytes': 4, 'rs2': uncompressed_rs2(word)},
+        (0b0_0100, 0b010): {'cmd': 'AMOXOR.W', 'nbytes': 4, 'rs2': uncompressed_rs2(word)},
+        (0b0_1100, 0b010): {'cmd': 'AMOAND.W', 'nbytes': 4, 'rs2': uncompressed_rs2(word)},
+        (0b0_1000, 0b010): {'cmd': 'AMOOR.W', 'nbytes': 4, 'rs2': uncompressed_rs2(word)},
+        (0b1_0000, 0b010): {'cmd': 'AMOMIN.W', 'nbytes': 4, 'rs2': uncompressed_rs2(word)},
+        (0b1_0100, 0b010): {'cmd': 'AMOMAX.W', 'nbytes': 4, 'rs2': uncompressed_rs2(word)},
+        (0b1_1000, 0b010): {'cmd': 'AMOMINU.W', 'nbytes': 4, 'rs2': uncompressed_rs2(word)},
+        (0b1_1100, 0b010): {'cmd': 'AMOMAXU.W', 'nbytes': 4, 'rs2': uncompressed_rs2(word)},
+        (0b0_0001, 0b011): {'cmd': 'AMOSWAP.D', 'nbytes': 4, 'rs2': uncompressed_rs2(word)},
+        (0b0_0000, 0b011): {'cmd': 'AMOADD.D', 'nbytes': 4, 'rs2': uncompressed_rs2(word)},
+        (0b0_0100, 0b011): {'cmd': 'AMOXOR.D', 'nbytes': 4, 'rs2': uncompressed_rs2(word)},
+        (0b0_1100, 0b011): {'cmd': 'AMOAND.D', 'nbytes': 4, 'rs2': uncompressed_rs2(word)},
+        (0b0_1000, 0b011): {'cmd': 'AMOOR.D', 'nbytes': 4, 'rs2': uncompressed_rs2(word)},
+        (0b1_0000, 0b011): {'cmd': 'AMOMIN.D', 'nbytes': 4, 'rs2': uncompressed_rs2(word)},
+        (0b1_0100, 0b011): {'cmd': 'AMOMAX.D', 'nbytes': 4, 'rs2': uncompressed_rs2(word)},
+        (0b1_1000, 0b011): {'cmd': 'AMOMINU.D', 'nbytes': 4, 'rs2': uncompressed_rs2(word)},
+        (0b1_1100, 0b011): {'cmd': 'AMOMAXU.D', 'nbytes': 4, 'rs2': uncompressed_rs2(word)},
     }.get((uncompressed_funct5(word), uncompressed_funct3(word)))
     return {
         **_variety,
