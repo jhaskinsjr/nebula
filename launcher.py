@@ -282,7 +282,7 @@ def run(cycle, max_cycles, max_instructions, break_on_undefined, snapshot_freque
             state.get('lock').acquire()
             _ack = len(state.get('ack')) == len(state.get('connections'))
             state.get('lock').release()
-    if state.get('undefined'): print('*** Encountered undefined instruction! ***')
+    if state.get('undefined'): logging.info('*** Encountered undefined instruction! ***')
     return cycle
 def add_service(services, arguments, s):
     c, h = s.split(':')
