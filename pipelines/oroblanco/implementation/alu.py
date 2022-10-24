@@ -410,8 +410,8 @@ def do_ecall(service, stats, insn):
     if 'mem' in state.get('operands').keys() and isinstance(state.get('operands').get('mem'), list):
         _name = str(len(state.get('syscall_kwargs').keys()))
         state.get('syscall_kwargs').update({_name: bytes(state.get('operands').get('mem'))})
-        state.get('syscall_kwargs').update({'cycle': state.get('cycle')})
         state.get('operands').pop('mem')
+    state.get('syscall_kwargs').update({'cycle': state.get('cycle')})
     _side_effect = riscv.syscall.linux.do_syscall(_x17, _x10, _x11, _x12, _x13, _x14, _x15, **state.get('syscall_kwargs'))
     _done = _side_effect.get('done')
     if 'poke' in _side_effect.keys():

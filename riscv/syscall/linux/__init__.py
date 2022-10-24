@@ -47,6 +47,14 @@ def null(a0, a1, a2, a3, a4, a5, **kwargs):
     logging.info('*** Syscall ({}) not implemented! ***'.format(kwargs.get('syscall_num')))
     return {
         'done': True,
+        'event': {
+            'arrival': 1 + kwargs.get('cycle'),
+            'register': {
+                'cmd': 'set',
+                'name': 10,
+                'data': list((-1).to_bytes(8, 'little', signed=True)),
+            },
+        },
     }
 def do_openat(a0, a1, a2, a3, a4, a5, **kwargs):
     if '0' in kwargs.keys():
@@ -125,6 +133,11 @@ def do_write(a0, a1, a2, a3, a4, a5, **kwargs):
 def do_uname(a0, a1, a2, a3, a4, a5, **kwargs):
     # NOTE: The fields in a struct utsname are padded to 65 bytes;
     # see: _UTSNAME_LENGTH in /opt/riscv/sysroot/usr/include/bits/utsname.h
+    try:
+        _os_uname = os.uname()
+        _success = 0
+    except:
+        _success = -1
     return {
         'done': True,
         'event': {
@@ -132,14 +145,22 @@ def do_uname(a0, a1, a2, a3, a4, a5, **kwargs):
             'register': {
                 'cmd': 'set',
                 'name': 10,
-                'data': list((0).to_bytes(8, 'little', signed=True)),
+                'data': list(_success.to_bytes(8, 'little', signed=True)),
             },
         },
         'poke': {
             'addr': a0,
-            'data': list(bytes(''.join(map(lambda x: x + ('\0' * (65 - len(x))), os.uname())), encoding='ascii')),
+            'data': list(bytes(''.join(map(lambda x: x + ('\0' * (65 - len(x))), _os_uname)), encoding='ascii')),
         },
     }
 def do_brk(a0, a1, a2, a3, a4, a5, **kwargs): return {
     'done': True,
+    'event': {
+        'arrival': 1 + kwargs.get('cycle'),
+        'register': {
+            'cmd': 'set',
+            'name': 10,
+            'data': list((0).to_bytes(8, 'little', signed=True)),
+        },
+    },
 }

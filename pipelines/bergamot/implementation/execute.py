@@ -488,11 +488,12 @@ def do_ecall(service, state, insn):
     _syscall_a3 = state.get('operands').get('syscall_a3')
     _syscall_a4 = state.get('operands').get('syscall_a4')
     _syscall_a5 = state.get('operands').get('syscall_a5')
-    _kwargs = {}
     if 'mem' in state.get('operands').keys() and isinstance(state.get('operands').get('mem'), list):
-        _kwargs = {'buf': bytes(state.get('operands').get('mem'))}
+        _name = str(len(state.get('syscall_kwargs').keys()))
+        state.get('syscall_kwargs').update({_name: bytes(state.get('operands').get('mem'))})
         state.get('operands').pop('mem')
-    _side_effect = riscv.syscall.linux.do_syscall(_syscall_num, _syscall_a0, _syscall_a1, _syscall_a2, _syscall_a3, _syscall_a4, _syscall_a5, **_kwargs)
+    state.get('syscall_kwargs').update({'cycle': state.get('cycle')})
+    _side_effect = riscv.syscall.linux.do_syscall(_syscall_num, _syscall_a0, _syscall_a1, _syscall_a2, _syscall_a3, _syscall_a4, _syscall_a5, **state.get('syscall_kwargs'))
     _done = _side_effect.get('done')
     if 'poke' in _side_effect.keys():
         _addr = int.from_bytes(_side_effect.get('poke').get('addr'), 'little')
@@ -521,6 +522,9 @@ def do_ecall(service, state, insn):
             }})
             state.get('operands').update({'mem': _addr})
     if not _done: return
+    if 'event' in _side_effect.keys():
+        service.tx({'event': _side_effect.get('event')})
+    state.update({'syscall_kwargs': {}})
     do_complete(service, state, state.get('pending_execute'))
     do_confirm(service, state, state.get('pending_execute'))
     do_commit(service, state, state.get('pending_execute'))
@@ -684,6 +688,7 @@ if '__main__' == __name__:
         'running': False,
         'ack': True,
         'pending_execute': None,
+        'syscall_kwargs': {},
         '%pc': None,
         'operands': {},
     }
