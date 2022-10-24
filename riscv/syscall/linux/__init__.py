@@ -51,18 +51,28 @@ def null(a0, a1, a2, a3, a4, a5, **kwargs):
 def do_openat(a0, a1, a2, a3, a4, a5, **kwargs):
     if '0' in kwargs.keys():
         _dir_fd = int.from_bytes(a0[:4], 'little', signed=True)
-        _pathname = kwargs.get('0') + bytes([0])
+        kwargs.update({'0': kwargs.get('0') + bytes([0])})
+        _pathname = kwargs.get('0')[:kwargs.get('0').index(0)].decode('ascii')
         _flags = int.from_bytes(a2, 'little')
         try:
-            _fd = os.write(_pathname, _flags, dir_fd=_dir_fd)
+            _fd = os.open(_pathname, _flags, dir_fd=_dir_fd)
         except:
             logging.info('do_write(): a0        : {}'.format(a0))
             logging.info('do_write(): a1        : {}'.format(a1))
             logging.info('do_write(): a2        : {}'.format(a2))
             logging.info('do_write(): _dir_fd   : {}'.format(_dir_fd))
             logging.info('do_write(): _pathname : {} ({})'.format(_pathname, len(_pathname)))
+            _fd = -1
         _retval = {
             'done': True,
+            'event': {
+                'arrival': 1 + kwargs.get('cycle'),
+                'register': {
+                    'cmd': 'set',
+                    'name': 10,
+                    'data': list(_fd.to_bytes(8, 'little', signed=True)),
+                },
+            },
         }
     else:
         _len = 256 # HACK: This is the pathname of SYS_openat, which has
@@ -84,15 +94,24 @@ def do_write(a0, a1, a2, a3, a4, a5, **kwargs):
         _fd = int.from_bytes(a0[:4], 'little', signed=True)
         _buf = kwargs.get('0')
         try:
-            os.write(_fd, _buf[:_len])
+            _nbytes = os.write(_fd, _buf[:_len])
         except:
             logging.info('do_write(): a0   : {}'.format(a0))
             logging.info('do_write(): a1   : {}'.format(a1))
             logging.info('do_write(): a2   : {}'.format(a2))
             logging.info('do_write(): _fd  : {}'.format(_fd))
             logging.info('do_write(): _buf : {} ({})'.format(_buf, len(_buf)))
+            _nbytes = -1
         _retval = {
             'done': True,
+            'event': {
+                'arrival': 1 + kwargs.get('cycle'),
+                'register': {
+                    'cmd': 'set',
+                    'name': 10,
+                    'data': list(_nbytes.to_bytes(8, 'little', signed=True)),
+                },
+            },
         }
     else:
         _retval = {
@@ -108,6 +127,14 @@ def do_uname(a0, a1, a2, a3, a4, a5, **kwargs):
     # see: _UTSNAME_LENGTH in /opt/riscv/sysroot/usr/include/bits/utsname.h
     return {
         'done': True,
+        'event': {
+            'arrival': 1 + kwargs.get('cycle'),
+            'register': {
+                'cmd': 'set',
+                'name': 10,
+                'data': list((0).to_bytes(8, 'little', signed=True)),
+            },
+        },
         'poke': {
             'addr': a0,
             'data': list(bytes(''.join(map(lambda x: x + ('\0' * (65 - len(x))), os.uname())), encoding='ascii')),
