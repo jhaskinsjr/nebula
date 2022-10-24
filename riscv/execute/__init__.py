@@ -88,6 +88,22 @@ def sub(rs1, rs2):
         64,
         'little',
     )
+def slt(rs1, rs2):
+    # Description
+    # Place the value 1 in register rd if register rs1 is less than register
+    # rs2 when both are treated as signed numbers, else 0 is written to rd.
+    # Implementation
+    # x[rd] = x[rs1] <s x[rs2]
+    # see: https://msyksphinz-self.github.io/riscv-isadoc/html/rvi.html#slt
+    return riscv.constants.integer_to_list_of_bytes((1 if int.from_bytes(rs1, 'little', signed=True) < int.from_bytes(rs2, 'little', signed=True) else 0), 64, 'little')
+def sltu(rs1, rs2):
+    # Description
+    # Place the value 1 in register rd if register rs1 is less than register
+    # rs2 when both are treated as unsigned numbers, else 0 is written to rd.
+    # Implementation
+    # x[rd] = x[rs1] <u x[rs2]
+    # see: https://msyksphinz-self.github.io/riscv-isadoc/html/rvi.html#sltu
+    return riscv.constants.integer_to_list_of_bytes((1 if int.from_bytes(rs1, 'little') < int.from_bytes(rs2, 'little') else 0), 64, 'little')
 def xor(rs1, rs2):
     return list(map(
         lambda a, b: a ^ b,
