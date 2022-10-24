@@ -522,8 +522,11 @@ def do_ecall(service, state, insn):
             }})
             state.get('operands').update({'mem': _addr})
     if not _done: return
-    if 'event' in _side_effect.keys():
-        service.tx({'event': _side_effect.get('event')})
+    if 'output' in _side_effect.keys():
+        service.tx({'event': {
+            **{'arrival': 1 + state.get('cycle')},
+            **_side_effect.get('output'),
+        }})
     state.update({'syscall_kwargs': {}})
     do_complete(service, state, state.get('pending_execute'))
     do_confirm(service, state, state.get('pending_execute'))

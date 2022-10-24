@@ -47,8 +47,7 @@ def null(a0, a1, a2, a3, a4, a5, **kwargs):
     logging.info('*** Syscall ({}) not implemented! ***'.format(kwargs.get('syscall_num')))
     return {
         'done': True,
-        'event': {
-            'arrival': 1 + kwargs.get('cycle'),
+        'output': {
             'register': {
                 'cmd': 'set',
                 'name': 10,
@@ -73,8 +72,7 @@ def do_openat(a0, a1, a2, a3, a4, a5, **kwargs):
             _fd = -1
         _retval = {
             'done': True,
-            'event': {
-                'arrival': 1 + kwargs.get('cycle'),
+            'output': {
                 'register': {
                     'cmd': 'set',
                     'name': 10,
@@ -112,8 +110,7 @@ def do_write(a0, a1, a2, a3, a4, a5, **kwargs):
             _nbytes = -1
         _retval = {
             'done': True,
-            'event': {
-                'arrival': 1 + kwargs.get('cycle'),
+            'output': {
                 'register': {
                     'cmd': 'set',
                     'name': 10,
@@ -140,8 +137,7 @@ def do_uname(a0, a1, a2, a3, a4, a5, **kwargs):
         _success = -1
     return {
         'done': True,
-        'event': {
-            'arrival': 1 + kwargs.get('cycle'),
+        'output': {
             'register': {
                 'cmd': 'set',
                 'name': 10,
@@ -155,8 +151,7 @@ def do_uname(a0, a1, a2, a3, a4, a5, **kwargs):
     }
 def do_brk(a0, a1, a2, a3, a4, a5, **kwargs): return {
     'done': True,
-    'event': {
-        'arrival': 1 + kwargs.get('cycle'),
+    'output': {
         'register': {
             'cmd': 'set',
             'name': 10,

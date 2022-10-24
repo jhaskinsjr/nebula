@@ -452,8 +452,11 @@ def do_ecall(service, stats, insn):
             }
         }
     if _done:
-        if 'event' in _side_effect.keys():
-            service.tx({'event': _side_effect.get('event')})
+        if 'output' in _side_effect.keys():
+            service.tx({'event': {
+                **{'arrival': 1 + state.get('cycle')},
+                **_side_effect.get('output'),
+            }})
         service.tx({'event': {
             'arrival': 2 + state.get('cycle'),
             'commit': {
