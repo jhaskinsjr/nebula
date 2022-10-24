@@ -145,22 +145,18 @@ def loadbin(connections, mainmem_filename, mainmem_capacity, sp, pc, start_symbo
     _start_pc = pc
     with open(binary, 'rb') as fp:
         elffile = elftools.elf.elffile.ELFFile(fp)
-        _addr = pc
-        for section in map(lambda n: elffile.get_section_by_name(n), ['.text', '.data', '.rodata', '.bss']):
+        for section in map(lambda n: elffile.get_section_by_name(n), ['.text', '.data', '.rodata', '.bss', '.got', '.sdata', '.sbss']):
             if not section: continue
+            _addr = pc + section.header.sh_addr
             logging.info('{} : 0x{:08x} ({})'.format(section.name, _addr, section.data_size))
             os.lseek(fd, _addr, os.SEEK_SET)
             os.write(fd, section.data())
-            _addr += section.data_size
-            _addr += 0x10000
-            _addr |= 0xffff
-            _addr ^= 0xffff
         _symbol_tables = [s for s in elffile.iter_sections() if isinstance(s, elftools.elf.elffile.SymbolTableSection)]
         _start = sum([list(filter(lambda s: start_symbol == s.name, tab.iter_symbols())) for tab in _symbol_tables], [])
         assert 0 < len(_start), 'No {} symbol!'.format(start_symbol)
         assert 2 > len(_start), 'More than one {} symbol?!?!?!?'.format(start_symbol)
         _start = next(iter(_start))
-        _start_pc += _start.entry.st_value - elffile.get_section_by_name('.text').header.sh_addr
+        _start_pc = pc + _start.entry.st_value
     # The value of the argc argument is the number of command line
     # arguments. The argv argument is a vector of C strings; its elements
     # are the individual command line argument strings. The file name of
