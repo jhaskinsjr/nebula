@@ -64,6 +64,30 @@ def sltiu(rs1, imm):
     # x[rd] = x[rs1] <u sext(immediate)
     # see: https://msyksphinz-self.github.io/riscv-isadoc/html/rvi.html#sltiu
     return riscv.constants.integer_to_list_of_bytes((1 if int.from_bytes(rs1, 'little') < imm else 0), 64, 'little')
+def xori(rs1, imm):
+    # Description
+    # Performs bitwise XOR on register rs1 and the sign-extended 12-bit
+    # immediate and place the result in rd
+    # Implementation
+    # x[rd] = x[rs1] ^ sext(immediate)
+    # see: https://msyksphinz-self.github.io/riscv-isadoc/html/rvi.html#andi
+    return list(map(
+        lambda a, b: a ^ b,
+        rs1,
+        riscv.constants.integer_to_list_of_bytes(imm, 64, 'little')
+    ))
+def ori(rs1, imm):
+    # Description
+    # Performs bitwise OR on register rs1 and the sign-extended 12-bit
+    # immediate and place the result in rd
+    # Implementation
+    # x[rd] = x[rs1] | sext(immediate)
+    # see: https://msyksphinz-self.github.io/riscv-isadoc/html/rvi.html#andi
+    return list(map(
+        lambda a, b: a | b,
+        rs1,
+        riscv.constants.integer_to_list_of_bytes(imm, 64, 'little')
+    ))
 def andi(rs1, imm):
     # Description
     # Performs bitwise AND on register rs1 and the sign-extended 12-bit
@@ -206,6 +230,39 @@ def srai(rs1, shamt):
     # see: https://msyksphinz-self.github.io/riscv-isadoc/html/rvi.html#srai
     return riscv.constants.integer_to_list_of_bytes(
         int.from_bytes(rs1, 'little', signed=True) >> shamt,
+        64,
+        'little',
+    )
+def sll(rs1, rs2):
+    # Description
+    # Performs logical left shift on the value in register rs1 by the
+    # shift amount held in the lower 5 bits of register rs2.
+    # Implementation
+    # x[rd] = x[rs1] << x[rs2]
+    return riscv.constants.integer_to_list_of_bytes(
+        (int.from_bytes(rs1, 'little') << int.from_bytes(rs2, 'little')) & ((2**64) - 1),
+        64,
+        'little',
+    )
+def srl(rs1, rs2):
+    # Description
+    # Logical right shift on the value in register rs1 by the shift
+    # amount held in the lower 5 bits of register rs2
+    # Implementation
+    # x[rd] = x[rs1] >>u x[rs2]
+    return riscv.constants.integer_to_list_of_bytes(
+        int.from_bytes(rs1, 'little') >> int.from_bytes(rs2, 'little'),
+        64,
+        'little',
+    )
+def sra(rs1, rs2):
+    # Description
+    # Performs arithmetic right shift on the value in register rs1 by
+    # the shift amount held in the lower 5 bits of register rs2
+    # Implementation
+    # x[rd] = x[rs1] >>s x[rs2]
+    return riscv.constants.integer_to_list_of_bytes(
+        int.from_bytes(rs1, 'little', signed=True) >> int.from_bytes(rs2, 'little'),
         64,
         'little',
     )
