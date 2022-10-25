@@ -17,7 +17,7 @@ import logging
 # registers x10 (i.e., a0) and x11 (i.e., a1), respectively
 
 def do_syscall(syscall_num, a0, a1, a2, a3, a4, a5, **kwargs):
-    return {
+    f = {
 #         17: do_getcwd,
 #         34: do_mkdirat,
 #         35: do_unlinkat,
@@ -35,23 +35,32 @@ def do_syscall(syscall_num, a0, a1, a2, a3, a4, a5, **kwargs):
 #         93: do_exit,
         160: do_uname,
 #        169: do_gettimeofday,
-#        172: do_getpid,
-#        174: do_getuid,
-#        175: do_geteuid,
-#        176: do_getgid,
-#        177: do_getegid,
+        172: do_getpid,
+        174: do_getuid,
+        175: do_geteuid,
+        176: do_getgid,
+        177: do_getegid,
         214: do_brk,
-    }.get(int.from_bytes(syscall_num, 'little'), null)(a0, a1, a2, a3, a4, a5, **{**kwargs, **{'syscall_num': int.from_bytes(syscall_num, 'little')}})
-
+    }.get(int.from_bytes(syscall_num, 'little'), null)
+    if 'null' == f.__name__: kwargs.update({
+        'log': '*** Syscall ({}) not implemented! ***'.format(int.from_bytes(syscall_num, 'little')),
+        'retval': -1,
+    })
+    return f(a0, a1, a2, a3, a4, a5, **{
+        **kwargs,
+        **{
+            'syscall_num': int.from_bytes(syscall_num, 'little'),
+        }
+    })
 def null(a0, a1, a2, a3, a4, a5, **kwargs):
-    logging.info('*** Syscall ({}) not implemented! ***'.format(kwargs.get('syscall_num')))
+    if 'log' in kwargs.keys(): logging.info(kwargs.get('log'))
     return {
         'done': True,
         'output': {
             'register': {
                 'cmd': 'set',
                 'name': 10,
-                'data': list((-1).to_bytes(8, 'little', signed=True)),
+                'data': list((-1 if 'retval' not in kwargs.keys() else kwargs.get('retval')).to_bytes(8, 'little', signed=True)),
             },
         },
     }
@@ -149,13 +158,9 @@ def do_uname(a0, a1, a2, a3, a4, a5, **kwargs):
             'data': list(bytes(''.join(map(lambda x: x + ('\0' * (65 - len(x))), _os_uname)), encoding='ascii')),
         },
     }
-def do_brk(a0, a1, a2, a3, a4, a5, **kwargs): return {
-    'done': True,
-    'output': {
-        'register': {
-            'cmd': 'set',
-            'name': 10,
-            'data': list((0).to_bytes(8, 'little', signed=True)),
-        },
-    },
-}
+def do_getpid(a0, a1, a2, a3, a4, a5, **kwargs): return null(a0, a1, a2, a3, a4, a5, **{**kwargs, **{'retval': 5}})
+def do_getuid(a0, a1, a2, a3, a4, a5, **kwargs): return null(a0, a1, a2, a3, a4, a5, **{**kwargs, **{'retval': 0}})
+def do_geteuid(a0, a1, a2, a3, a4, a5, **kwargs): return null(a0, a1, a2, a3, a4, a5, **{**kwargs, **{'retval': 0}})
+def do_getgid(a0, a1, a2, a3, a4, a5, **kwargs): return null(a0, a1, a2, a3, a4, a5, **{**kwargs, **{'retval': 0}})
+def do_getegid(a0, a1, a2, a3, a4, a5, **kwargs): return null(a0, a1, a2, a3, a4, a5, **{**kwargs, **{'retval': 0}})
+def do_brk(a0, a1, a2, a3, a4, a5, **kwargs): return null(a0, a1, a2, a3, a4, a5, **{**kwargs, **{'retval': 0}})
