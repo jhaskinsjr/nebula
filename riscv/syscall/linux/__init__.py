@@ -79,6 +79,7 @@ def do_openat(a0, a1, a2, a3, a4, a5, **kwargs):
             logging.info('do_write(): _dir_fd   : {}'.format(_dir_fd))
             logging.info('do_write(): _pathname : {} ({})'.format(_pathname, len(_pathname)))
             _fd = -1
+        logging.info('openat({}, {}, {}) -> {}'.format(_dir_fd, _pathname, _flags, _fd))
         _retval = {
             'done': True,
             'output': {
@@ -117,6 +118,7 @@ def do_write(a0, a1, a2, a3, a4, a5, **kwargs):
             logging.info('do_write(): _fd  : {}'.format(_fd))
             logging.info('do_write(): _buf : {} ({})'.format(_buf, len(_buf)))
             _nbytes = -1
+        logging.info('write({}, {}, {}) -> {}'.format(_fd, _buf[:_len], _len, _nbytes))
         _retval = {
             'done': True,
             'output': {
@@ -144,6 +146,7 @@ def do_uname(a0, a1, a2, a3, a4, a5, **kwargs):
         _success = 0
     except:
         _success = -1
+    logging.info('uname() -> {}'.format(_success))
     return {
         'done': True,
         'output': {
