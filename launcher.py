@@ -145,7 +145,8 @@ def loadbin(connections, mainmem_filename, mainmem_capacity, sp, pc, start_symbo
     _start_pc = pc
     with open(binary, 'rb') as fp:
         elffile = elftools.elf.elffile.ELFFile(fp)
-        for section in map(lambda n: elffile.get_section_by_name(n), ['.text', '.data', '.rodata', '.bss', '.got', '.sdata', '.sbss']):
+#        for section in map(lambda n: elffile.get_section_by_name(n), ['.text', '.data', '.rodata', '.bss', '.got', '.sdata', '.sbss']):
+        for section in filter(lambda x: x.header.sh_addr, elffile.iter_sections()):
             if not section: continue
             _addr = pc + section.header.sh_addr
             logging.info('{} : 0x{:08x} ({})'.format(section.name, _addr, section.data_size))
