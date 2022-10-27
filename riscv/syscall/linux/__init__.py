@@ -4,6 +4,7 @@ import os
 import logging
 
 # The syscall numbers were learned from
+# https://www.robalni.org/riscv/linux-syscalls-64.html
 # https://github.com/westerndigitalcorporation/RISC-V-Linux/blob/master/riscv-pk/pk/syscall.h
 #
 # The syscall calling protocol was learned from
@@ -166,4 +167,38 @@ def do_getuid(a0, a1, a2, a3, a4, a5, **kwargs): return null(a0, a1, a2, a3, a4,
 def do_geteuid(a0, a1, a2, a3, a4, a5, **kwargs): return null(a0, a1, a2, a3, a4, a5, **{**kwargs, **{'retval': 0}})
 def do_getgid(a0, a1, a2, a3, a4, a5, **kwargs): return null(a0, a1, a2, a3, a4, a5, **{**kwargs, **{'retval': 0}})
 def do_getegid(a0, a1, a2, a3, a4, a5, **kwargs): return null(a0, a1, a2, a3, a4, a5, **{**kwargs, **{'retval': 0}})
-def do_brk(a0, a1, a2, a3, a4, a5, **kwargs): return null(a0, a1, a2, a3, a4, a5, **{**kwargs, **{'retval': 0}})
+def do_brk(a0, a1, a2, a3, a4, a5, **kwargs):
+    # Prototype
+    # int brk(void *endds);
+    #
+    # Argument
+    # endds 	pointer to the end of the data segment
+    #
+    # Return Value
+    #
+    # Returns ‘0’ if successful; otherwise, returns ‘-1’.
+    #
+    # If the argument endds is zero, the function sets the global variable
+    # __curbrk to the address of the start of the heap and returns zero.
+    #
+    # If the argument endds is non-zero and has a value less than the address
+    # of the end of the heap, the function sets the global variable __curbrk
+    # to the value of endds and returns zero.
+    #
+    # Otherwise, the global variable __curbrk is unchanged and the function
+    # returns -1.
+    #
+    # see: https://onlinedocs.microchip.com/pr/GUID-70ACD6B0-A33F-4653-B192-8465EAD1FD98-en-US-5/index.html?GUID-1DF544E2-138D-489F-803B-36427E9FBA54
+    _endds = int.from_bytes(a0, 'little')
+    _retval = (list((0x10000000).to_bytes(8, 'little')) if 0 == _endds else a0)
+    logging.info('brk({}) -> {}'.format(_endds, _retval))
+    return {
+        'done': True,
+        'output': {
+            'register': {
+                'cmd': 'set',
+                'name': 10,
+                'data': _retval,
+            },
+        },
+    }
