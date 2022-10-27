@@ -718,6 +718,7 @@ def atomic(word):
         **_variety,
         **{
             'imm': 0,
+            'rd': uncompressed_rd(word),
             'rs1': uncompressed_rs1(word),
             'aq': (1 == (word >> 26) & 0b1),
             'rl': (1 == (word >> 25) & 0b1),
