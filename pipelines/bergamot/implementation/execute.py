@@ -497,8 +497,12 @@ def do_ecall(service, state, insn):
         _name = str(len(state.get('syscall_kwargs').keys()))
         state.get('syscall_kwargs').update({_name: bytes(state.get('operands').get('mem'))})
         state.get('operands').pop('mem')
-    state.get('syscall_kwargs').update({'cycle': state.get('cycle')})
-    _side_effect = riscv.syscall.linux.do_syscall(_syscall_num, _syscall_a0, _syscall_a1, _syscall_a2, _syscall_a3, _syscall_a4, _syscall_a5, **state.get('syscall_kwargs'))
+    _side_effect = riscv.syscall.linux.do_syscall(
+        _syscall_num,
+        _syscall_a0, _syscall_a1, _syscall_a2, _syscall_a3, _syscall_a4, _syscall_a5, **{
+            **state.get('syscall_kwargs'),
+            **{'cycle': state.get('cycle')},
+    })
     _done = _side_effect.get('done')
     if 'poke' in _side_effect.keys():
         _addr = int.from_bytes(_side_effect.get('poke').get('addr'), 'little')
