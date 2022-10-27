@@ -532,6 +532,8 @@ def do_fence(service, state, insn):
 
 def do_execute(service, state):
     if not len(state.get('pending_execute')): return
+    _remove_from_pending_execute = []
+    service.tx({'info': 'state.pending_execute : {}'.format(state.get('pending_execute'))})
     for _insn in state.get('pending_execute'):
         service.tx({'info': '_insn : {}'.format(_insn)})
         if 0x3 == _insn.get('word') & 0x3:
@@ -637,9 +639,10 @@ def do_execute(service, state):
                 },
             }})
         if _done:
-            state.get('pending_execute').pop(0)
+            _remove_from_pending_execute.append(_insn)
         else:
             break
+    for _insn in _remove_from_pending_execute: state.get('pending_execute').remove(_insn)
 
 def do_tick(service, state, results, events):
     for _mem in filter(lambda x: x, map(lambda y: y.get('mem'), results)):
