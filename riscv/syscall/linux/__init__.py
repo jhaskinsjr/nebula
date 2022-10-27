@@ -34,6 +34,7 @@ def do_syscall(syscall_num, a0, a1, a2, a3, a4, a5, **kwargs):
 #         79: do_fstatat,
 #         80: do_fstat,
 #         93: do_exit,
+         98: do_futex,
         160: do_uname,
 #        169: do_gettimeofday,
         172: do_getpid,
@@ -139,6 +140,57 @@ def do_write(a0, a1, a2, a3, a4, a5, **kwargs):
             },
         }
     return _retval
+def do_futex(a0, a1, a2, a3, a4, a5, **kwargs):
+    # int futex(int *uaddr, int op, int val, const struct timespec *timeout, int *uaddr2, int val3)
+    #
+    # see: https://linux.die.net/man/2/futex
+    FUTEX_PRIVATE_FLAG = 128
+    _uaddr = int.from_bytes(a0, 'little')
+    _op = int.from_bytes(a1, 'little', signed=True)
+    _private = (_op & FUTEX_PRIVATE_FLAG == FUTEX_PRIVATE_FLAG)
+    _op = {
+        0: 'FUTEX_WAIT',
+        1: 'FUTEX_WAKE',
+        2: 'FUTEX_FD',
+        3: 'FUTEX_REQUEUE',
+        4: 'FUTEX_CMP_REQUEUE',
+    }.get((_op | FUTEX_PRIVATE_FLAG) ^ FUTEX_PRIVATE_FLAG, _op)
+    _op += ('|FUTEX_PRIVATE_FLAG' if _private else '')
+    _val = int.from_bytes(a2, 'little', signed=True)
+    _timeout_p = int.from_bytes(a3, 'little')
+    _timeout_p = ('NULL' if 0 == _timeout_p else _timeout_p)
+#    _uaddr2 = int.from_bytes(a4, 'little')
+#    _val3 = int.from_bytes(a5, 'little', signed=True)
+    logging.info('futex({}, {}, {}, {}, {}, {})...'.format(
+        _uaddr, _op, _val, _timeout_p, a4, a5,
+    ))
+    if 'FUTEX_WAIT' in _op:
+        if '0' in kwargs.keys():
+            _u = int.from_bytes(kwargs.get('0'), 'little', signed=True)
+            _retval = (0 if _u == _val else -1)
+            logging.info('futex({}, {}, {}, {}, {}, {}) -> {}'.format(
+                _uaddr, _op, _val, _timeout_p, a4, a5,
+                _retval
+            ))
+            return {
+                'done': True,
+                'output': {
+                    'register': {
+                        'cmd': 'set',
+                        'name': 10,
+                        'data': list(_retval.to_bytes(8, 'little', signed=True)),
+                    },
+                },
+            }
+        else:
+            return {
+                'done': False,
+                'peek': {
+                    'addr': _uaddr,
+                    'size': 4, # sizeof(int)
+                },
+            }
+    return null(a0, a1, a2, a3, a4, a5, **kwargs)
 def do_uname(a0, a1, a2, a3, a4, a5, **kwargs):
     # NOTE: The fields in a struct utsname are padded to 65 bytes;
     # see: _UTSNAME_LENGTH in /opt/riscv/sysroot/usr/include/bits/utsname.h
