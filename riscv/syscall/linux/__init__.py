@@ -31,6 +31,7 @@ def do_syscall(syscall_num, a0, a1, a2, a3, a4, a5, **kwargs):
 #         62: do_lseek,
 #         63: do_read,
          64: do_write,
+         78: do_readlinkat,
 #         79: do_fstatat,
 #         80: do_fstat,
 #         93: do_exit,
@@ -75,11 +76,11 @@ def do_openat(a0, a1, a2, a3, a4, a5, **kwargs):
         try:
             _fd = os.open(_pathname, _flags, dir_fd=_dir_fd)
         except:
-            logging.info('do_write(): a0        : {}'.format(a0))
-            logging.info('do_write(): a1        : {}'.format(a1))
-            logging.info('do_write(): a2        : {}'.format(a2))
-            logging.info('do_write(): _dir_fd   : {}'.format(_dir_fd))
-            logging.info('do_write(): _pathname : {} ({})'.format(_pathname, len(_pathname)))
+            logging.info('do_openat(): a0        : {}'.format(a0))
+            logging.info('do_openat(): a1        : {}'.format(a1))
+            logging.info('do_openat(): a2        : {}'.format(a2))
+            logging.info('do_openat(): _dir_fd   : {}'.format(_dir_fd))
+            logging.info('do_openat(): _pathname : {} ({})'.format(_pathname, len(_pathname)))
             _fd = -1
         logging.info('openat({}, {}, {}) -> {}'.format(_dir_fd, _pathname, _flags, _fd))
         _retval = {
@@ -132,6 +133,54 @@ def do_write(a0, a1, a2, a3, a4, a5, **kwargs):
             },
         }
     else:
+        _retval = {
+            'done': False,
+            'peek': {
+                'addr': int.from_bytes(a1, 'little'),
+                'size': _len,
+            },
+        }
+    return _retval
+def do_readlinkat(a0, a1, a2, a3, a4, a5, **kwargs):
+    # ssize_t readlinkat(int dirfd, const char *restrict pathname, char *restrict buf, size_t bufsiz);
+    #
+    # see: https://man7.org/linux/man-pages/man2/readlinkat.2.html
+    if '0' in kwargs.keys():
+        _dir_fd = int.from_bytes(a0, 'little', signed=True)
+        kwargs.update({'0': kwargs.get('0') + bytes([0])})
+        _pathname = kwargs.get('0')[:kwargs.get('0').index(0)].decode('ascii')
+        _buf_p = int.from_bytes(a2, 'little')
+        _bufsize = int.from_bytes(a3, 'little')
+        try:
+            _linkpath = os.readlink(_pathname, dir_fd=_dir_fd)
+            _syscall_ret = 0
+        except:
+            logging.info('do_readlinkat(): a0        : {}'.format(a0))
+            logging.info('do_readlinkat(): a1        : {}'.format(a1))
+            logging.info('do_readlinkat(): a2        : {}'.format(a2))
+            logging.info('do_readlinkat(): a3        : {}'.format(a3))
+            logging.info('do_readlinkat(): _dir_fd   : {}'.format(_dir_fd))
+            logging.info('do_readlinkat(): _pathname : {} ({})'.format(_pathname, len(_pathname)))
+            _syscall_ret = -1
+        logging.info('readlinkat({}, {}, {}, {}) -> {}'.format(_dir_fd, _pathname, _buf_p, _bufsize, _linkpath))
+        _retval = {
+            'done': True,
+            'output': {
+                'register': {
+                    'cmd': 'set',
+                    'name': 10,
+                    'data': list(_syscall_ret.to_bytes(8, 'little', signed=True)),
+                },
+            },
+            'poke': {
+                'addr': a3, # FIXME: convert this (i.e.: int.from_bytes(a3, 'little')) here
+                'data': list(bytes(_linkpath[:_bufsize], encoding='ascii')),
+            },
+        }
+    else:
+        _len = 256 # HACK: This is the pathname of SYS_readlinkat. How long is
+                   # the pathname? Who knows? It could, in theory, be much more than 256
+                   # bytes, but I can't be bothered with making this general-purpose right now.
         _retval = {
             'done': False,
             'peek': {
@@ -210,7 +259,7 @@ def do_uname(a0, a1, a2, a3, a4, a5, **kwargs):
             },
         },
         'poke': {
-            'addr': a0,
+            'addr': a0, # FIXME: convert this (i.e.: int.from_bytes(a3, 'little')) here
             'data': list(bytes(''.join(map(lambda x: x + ('\0' * (65 - len(x))), _os_uname)), encoding='ascii')),
         },
     }
