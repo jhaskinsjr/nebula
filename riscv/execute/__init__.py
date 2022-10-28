@@ -321,6 +321,46 @@ def sraiw(rs1, shamt):
         64,
         'little',
     )
+def sllw(rs1, rs2):
+    # Description
+    # Performs logical left shift on the 32-bit of value in register rs1
+    # by the shift amount held in the lower 5 bits of register rs2 and
+    # produce 32-bit results and written to the destination register rd.
+    # Encodings with $imm[5] neq 0$ are reserved.
+    # Implementation
+    # x[rd] = sext((x[rs1] << rs2[4:0])[31:0])
+    # see: https://msyksphinz-self.github.io/riscv-isadoc/html/rv64i.html#sllw
+    return riscv.constants.integer_to_list_of_bytes(
+        (int.from_bytes(rs1, 'little') << (int.from_bytes(rs2[:1], 'little')) & 0b1_1111) & ((2**32) - 1),
+        64,
+        'little',
+    )
+def srlw(rs1, rs2):
+    # Description
+    # Performs logical right shift on the low 32-bits value in register
+    # rs1 by the shift amount held in the lower 5 bits of register rs2 and
+    # produce 32-bit results and written to the destination register rd.
+    # Implementation
+    # x[rd] = sext(x[rs1][31:0] >>u x[rs2][4:0])
+    # see: https://msyksphinz-self.github.io/riscv-isadoc/html/rv64i.html#srlw
+    return riscv.constants.integer_to_list_of_bytes(
+        int.from_bytes(rs1[:4], 'little') >> (int.from_bytes(rs2[:1], 'little') & 0b1_1111),
+        64,
+        'little',
+    )
+def sraw(rs1, rs2):
+    # Description
+    # Performs arithmetic right shift on the low 32-bits value in register
+    # rs1 by the shift amount held in the lower 5 bits of register rs2 and
+    # produce 32-bit results and written to the destination register rd.
+    # Implementation
+    # x[rd] = sext(x[rs1][31:0] >>s x[rs2][4:0])
+    # see: https://msyksphinz-self.github.io/riscv-isadoc/html/rv64i.html#srlw
+    return riscv.constants.integer_to_list_of_bytes(
+        int.from_bytes(rs1[:4], 'little', signed=True) >> (int.from_bytes(rs2[:1], 'little') & 0b1_1111),
+        64,
+        'little',
+    )
 def addw(rs1, rs2):
     # Description
     # Adds the 32-bit of registers rs1 and 32-bit of register rs2 and
