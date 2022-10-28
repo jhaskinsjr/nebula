@@ -539,10 +539,9 @@ def do_execute(service, state):
     service.tx({'info': 'state.pending_execute : {}'.format(state.get('pending_execute'))})
     for _insn in state.get('pending_execute'):
         service.tx({'info': '_insn : {}'.format(_insn)})
-        if 0x3 == _insn.get('word') & 0x3:
-            logging.info('do_execute(): @{:8} {:08x} : {}'.format(state.get('cycle'), _insn.get('word'), _insn.get('cmd')))
-        else:
-            logging.info('do_execute(): @{:8}     {:04x} : {}'.format(state.get('cycle'), _insn.get('word'), _insn.get('cmd')))
+        _pc = int.from_bytes(_insn.get('%pc'), 'little')
+        _word = ('{:08x}'.format(_insn.get('word')) if 4 == _insn.get('size') else '    {:04x}'.format(_insn.get('word')))
+        logging.info('do_execute(): {:8x}: {} : {:10} ({:12})'.format(_pc, _word, _insn.get('cmd'), state.get('cycle')))
         _f = {
             'LUI': do_lui,
             'AUIPC': do_auipc,
