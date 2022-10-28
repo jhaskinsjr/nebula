@@ -106,6 +106,7 @@ def do_tick(service, state, results, events):
         elif _addr in state.get('pending_fetch'):
             service.tx({'info': '_mem : {}'.format(_mem)})
             state.get('l2').poke(_addr, _mem.get('data'))
+            state.get('pending_fetch').remove(_addr)
     for ev in map(lambda y: y.get('l2'), filter(lambda x: x.get('l2'), events)):
         if 'cmd' in ev.keys() and 'purge' == ev.get('cmd'):
             state.get('l2').purge()

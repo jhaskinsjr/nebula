@@ -142,6 +142,7 @@ def do_tick(service, state, results, events):
         elif _addr in state.get('pending_fetch'):
             service.tx({'info': '_l2 : {}'.format(_l2)})
             state.get('l1dc').poke(_addr, _l2.get('data'))
+            state.get('pending_fetch').remove(_addr)
     for _insn in map(lambda y: y.get('lsu'), filter(lambda x: x.get('lsu'), events)):
         state.get('pending_execute').append(_insn.get('insn'))
         # TODO: should this commit event be done in alu like everything else?

@@ -85,8 +85,8 @@ def do_tick(service, state, results, events):
         _addr = _l2.get('addr')
         if _addr not in state.get('pending_fetch'): continue
         service.tx({'info': '_l2 : {}'.format(_l2)})
-        state.get('pending_fetch').remove(_addr)
         state.get('l1ic').poke(_addr, _l2.get('data'))
+        state.get('pending_fetch').remove(_addr)
     service.tx({'info': 'decode.buffer_available : {}'.format(state.get('decode.buffer_available'))})
     service.tx({'info': 'fetch_size              : {}'.format(state.get('fetch_size'))})
     if not state.get('%jp'): return

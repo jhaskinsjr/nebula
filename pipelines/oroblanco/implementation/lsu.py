@@ -17,6 +17,7 @@ import riscv.syscall.linux
 def fetch_block(service, state, addr):
     _blockaddr = state.get('l1dc').blockaddr(addr)
     _blocksize = state.get('l1dc').nbytesperblock
+    service.tx({'info': 'fetch_block(..., {})'.format(addr)})
     state.get('pending_fetch').append(_blockaddr)
     service.tx({'event': {
         'arrival': 1 + state.get('cycle'),
@@ -33,11 +34,11 @@ def do_l1dc(service, state, addr, size, data=None):
     _post = None
     if state.get('l1dc').fits(addr, size):
         _data = state.get('l1dc').peek(addr, size)
-#        service.tx({'info': '_data : {}'.format(_data)})
         if not _data:
             if len(state.get('pending_fetch')): return # only 1 pending fetch at a time is primitive, but good enough for now
             fetch_block(service, state, addr)
             return
+        service.tx({'info': '_data : @{} {}'.format(addr, _data)})
     else:
         _blockaddr = state.get('l1dc').blockaddr(addr)
         _blocksize = state.get('l1dc').nbytesperblock
@@ -52,6 +53,8 @@ def do_l1dc(service, state, addr, size, data=None):
             if len(state.get('pending_fetch')): return # only 1 pending fetch at a time is primitive, but good enough for now
             fetch_block(service, state, addr + _size)
             return
+        service.tx({'info': '_ante : @{} {}'.format(addr, _ante)})
+        service.tx({'info': '_post : @{} {}'.format(addr + _size, _post)})
         # NOTE: In an L1DC with only a single block, an incoming _post would
         #       always displace _ante, and an incoming _ante would always displace
         #       _post... but an L1DC with only a single block would not be very
@@ -148,6 +151,7 @@ def do_tick(service, state, results, events):
         elif _addr in state.get('pending_fetch'):
             service.tx({'info': '_l2 : {}'.format(_l2)})
             state.get('l1dc').poke(_addr, _l2.get('data'))
+            state.get('pending_fetch').remove(_addr)
     for _lsu in map(lambda y: y.get('lsu'), filter(lambda x: x.get('lsu'), events)):
         if 'insn' in _lsu.keys():
             _insn = _lsu.get('insn')
