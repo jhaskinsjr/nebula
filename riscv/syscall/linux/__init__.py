@@ -194,6 +194,7 @@ def do_futex(a0, a1, a2, a3, a4, a5, **kwargs):
     #
     # see: https://linux.die.net/man/2/futex
     FUTEX_PRIVATE_FLAG = 128
+    ERESTARTSYS = 512 # see: https://elixir.bootlin.com/linux/latest/source/include/linux/errno.h#L14
     _uaddr = int.from_bytes(a0, 'little')
     _op = int.from_bytes(a1, 'little', signed=True)
     _private = (_op & FUTEX_PRIVATE_FLAG == FUTEX_PRIVATE_FLAG)
@@ -216,7 +217,8 @@ def do_futex(a0, a1, a2, a3, a4, a5, **kwargs):
     if 'FUTEX_WAIT' in _op:
         if '0' in kwargs.keys():
             _u = int.from_bytes(kwargs.get('0'), 'little', signed=True)
-            _retval = (0 if _u == _val else -1)
+            _retval = -ERESTARTSYS # see: https://elixir.bootlin.com/linux/latest/source/kernel/futex/waitwake.c#L632
+            if _u != _val: _retval = -1
             logging.info('futex({}, {}, {}, {}, {}, {}) -> {}'.format(
                 _uaddr, _op, _val, _timeout_p, a4, a5,
                 _retval
