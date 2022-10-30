@@ -197,7 +197,7 @@ def snapshot(mainmem_filename, snapshot_filename, cycle):
     global state
     subprocess.run('cp {} {}'.format(mainmem_filename, snapshot_filename).split())
     fd = os.open(snapshot_filename, os.O_RDWR)
-    os.lseek(fd, 0x10000000, os.SEEK_SET) # HACK: hard-coding snapshot metadata to 0x10000000 is dumb, but I don't want to be bothered with that now
+    os.lseek(fd, state.get('snapshot').get('addr').get('cycle'), os.SEEK_SET)
     os.write(fd, (1 + cycle).to_bytes(8, 'little'))
     os.lseek(fd, 8, os.SEEK_CUR)
     os.fsync(fd)
@@ -207,7 +207,7 @@ def snapshot(mainmem_filename, snapshot_filename, cycle):
         'register': {
             'cmd': 'snapshot',
             'name': '{}'.format(snapshot_filename),
-            'data': 0x20000000, # HACK: hard-coding snapshot metadata to 0x20000000 is dumb, but I don't want to be bothere with that now
+            'data': state.get('snapshot').get('addr').get('register'),
         }
     })
     state.get('futures').update({1 + cycle: _res_evt})
@@ -215,9 +215,9 @@ def restore(mainmem_filename, snapshot_filename):
     global state
     subprocess.run('cp {} {}'.format(snapshot_filename, mainmem_filename).split())
     fd = os.open(mainmem_filename, os.O_RDWR)
-    os.lseek(fd, 0x10000000, os.SEEK_SET)
+    os.lseek(fd, state.get('snapshot').get('addr').get('cycle'), os.SEEK_SET)
     cycle = int.from_bytes(os.read(fd, 8), 'little')
-    os.lseek(fd, 0x20000000, os.SEEK_SET)
+    os.lseek(fd, state.get('snapshot').get('addr').get('register'), os.SEEK_SET)
     pc = int.from_bytes(os.read(fd, 8), 'little')
     os.close(fd)
     _res_evt = state.get('futures').get(cycle, {'results': [], 'events': []})
@@ -225,7 +225,7 @@ def restore(mainmem_filename, snapshot_filename):
         'register': {
             'cmd': 'restore',
             'name': '{}'.format(snapshot_filename),
-            'data': 0x20000000, # HACK: hard-coding snapshot metadata to 0x20000000 is dumb, but I don't want to be bothere with that now
+            'data': state.get('snapshot').get('addr').get('register'),
         }
     })
     state.get('futures').update({cycle: _res_evt})
@@ -343,6 +343,12 @@ if __name__ == '__main__':
         'cycle': 0,
         'instructions_committed': 0,
         'undefined': None,
+        'snapshot': {
+            'addr': {
+                'register': 0x90000000,
+                'cycle': 0x91000000,
+            },
+        },
         'config': {
             'mainmem_filename': None,
             'mainmem_capacity': None,
