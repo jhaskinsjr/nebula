@@ -400,8 +400,6 @@ def do_shift(service, state, insn):
     }})
     return insn, True
 def do_ecall(service, stats, insn):
-    # TODO: acutally grab the registers and invoke
-    # riscv.syscall.linux.do_syscall()
     _x17 = state.get('operands').get(17)
     _x10 = state.get('operands').get(10)
     _x11 = state.get('operands').get(11)
@@ -416,11 +414,13 @@ def do_ecall(service, stats, insn):
         }
     }
     if 'mem' in state.get('operands').keys() and isinstance(state.get('operands').get('mem'), list):
-        _name = str(len(state.get('syscall_kwargs').keys()))
-        state.get('syscall_kwargs').update({_name: bytes(state.get('operands').get('mem'))})
+        if 'arg' not in state.get('syscall_kwargs').keys(): state.get('syscall_kwargs').update({'arg': []})
+#        _name = str(len(state.get('syscall_kwargs').get('arg')))
+#        state.get('syscall_kwargs').update({_name: bytes(state.get('operands').get('mem'))})
+        state.get('syscall_kwargs').get('arg').append(bytes(state.get('operands').get('mem')))
         state.get('operands').pop('mem')
     service.tx({'info': 'state.syscall_kwargs : {}'.format(state.get('syscall_kwargs'))})
-    _side_effect = riscv.syscall.linux.do_syscall(_x17, _x10, _x11, _x12, _x13, _x14, _x15, **{
+    _side_effect = state.get('system').do_syscall(_x17, _x10, _x11, _x12, _x13, _x14, _x15, **{
         **state.get('syscall_kwargs'),
         **{'cycle': state.get('cycle')},
     })
@@ -691,6 +691,7 @@ if '__main__' == __name__:
         'ack': True,
         'pending_execute': [],
         'syscall_kwargs': {},
+        'system': riscv.syscall.linux.System(),
         'operands': {
             **{x: riscv.constants.integer_to_list_of_bytes(0, 64, 'little') for x in range(32)},
         },

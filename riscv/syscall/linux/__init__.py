@@ -17,291 +17,440 @@ import logging
 # optionally, the first and second parameters to the syscall are in
 # registers x10 (i.e., a0) and x11 (i.e., a1), respectively
 
-def do_syscall(syscall_num, a0, a1, a2, a3, a4, a5, **kwargs):
-    f = {
-#         17: do_getcwd,
-#         34: do_mkdirat,
-#         35: do_unlinkat,
-#         37: do_linkat,
-#         38: do_renameat,
-#         48: do_faccessat,
-#         49: do_chdir,
-         56: do_openat,
-#         57: do_close,
-#         62: do_lseek,
-#         63: do_read,
-         64: do_write,
-         78: do_readlinkat,
-#         79: do_fstatat,
-#         80: do_fstat,
-#         93: do_exit,
-         98: do_futex,
-        160: do_uname,
-#        169: do_gettimeofday,
-        172: do_getpid,
-        174: do_getuid,
-        175: do_geteuid,
-        176: do_getgid,
-        177: do_getegid,
-        214: do_brk,
-    }.get(int.from_bytes(syscall_num, 'little'), null)
-    if 'null' == f.__name__: kwargs.update({
-        'log': '*** Syscall ({}) not implemented! ***'.format(int.from_bytes(syscall_num, 'little')),
-        'retval': -1,
-    })
-    return f(a0, a1, a2, a3, a4, a5, **{
-        **kwargs,
-        **{
-            'syscall_num': int.from_bytes(syscall_num, 'little'),
-        }
-    })
-def null(a0, a1, a2, a3, a4, a5, **kwargs):
-    if 'log' in kwargs.keys(): logging.info(kwargs.get('log'))
-    return {
-        'done': True,
-        'output': {
-            'register': {
-                'cmd': 'set',
-                'name': 10,
-                'data': list((-1 if 'retval' not in kwargs.keys() else kwargs.get('retval')).to_bytes(8, 'little', signed=True)),
-            },
-        },
-    }
-def do_openat(a0, a1, a2, a3, a4, a5, **kwargs):
-    if '0' in kwargs.keys():
-        _dir_fd = int.from_bytes(a0[:4], 'little', signed=True)
-        kwargs.update({'0': kwargs.get('0') + bytes([0])})
-        _pathname = kwargs.get('0')[:kwargs.get('0').index(0)].decode('ascii')
-        _flags = int.from_bytes(a2, 'little')
-        try:
-            _fd = os.open(_pathname, _flags, dir_fd=_dir_fd)
-        except:
-            logging.info('do_openat(): a0        : {}'.format(a0))
-            logging.info('do_openat(): a1        : {}'.format(a1))
-            logging.info('do_openat(): a2        : {}'.format(a2))
-            logging.info('do_openat(): _dir_fd   : {}'.format(_dir_fd))
-            logging.info('do_openat(): _pathname : {} ({})'.format(_pathname, len(_pathname)))
-            _fd = -1
-        logging.info('openat({}, {}, {}) -> {}'.format(_dir_fd, _pathname, _flags, _fd))
-        _retval = {
+class System:
+    PAGESIZE = 2**12    # HACK: pages need not necessarily always be 4096 B
+    SIZEOF_VOID_P = 8   # HACK: this is highly (!) 64-bit-specific
+    SIZEOF_SIZE_T = 8   # HACK: this is highly (!) 64-bit specific
+    def __init__(self):
+        self.state = {}
+    def do_syscall(self, syscall_num, a0, a1, a2, a3, a4, a5, **kwargs):
+        f = {
+    #         17: self.do_getcwd,
+    #         34: self.do_mkdirat,
+    #         35: self.do_unlinkat,
+    #         37: self.do_linkat,
+    #         38: self.do_renameat,
+    #         48: self.do_faccessat,
+    #         49: self.do_chdir,
+            56: self.do_openat,
+    #         57: self.do_close,
+    #         62: self.do_lseek,
+    #         63: self.do_read,
+            64: self.do_write,
+            66: self.do_writev,
+            78: self.do_readlinkat,
+    #         79: self.do_fstatat,
+    #         80: self.do_fstat,
+    #         93: self.do_exit,
+            98: self.do_futex,
+            160: self.do_uname,
+    #        169: self.do_gettimeofday,
+            172: self.do_getpid,
+            174: self.do_getuid,
+            175: self.do_geteuid,
+            176: self.do_getgid,
+            177: self.do_getegid,
+            214: self.do_brk,
+            215: self.do_munmap,
+            222: self.do_mmap,
+        }.get(int.from_bytes(syscall_num, 'little'), self.null)
+        if 'null' == f.__name__: kwargs.update({
+            'log': '*** Syscall ({}) not implemented! ***'.format(int.from_bytes(syscall_num, 'little')),
+            'retval': -1,
+        })
+        return f(a0, a1, a2, a3, a4, a5, **{
+            **kwargs,
+            **{
+                'syscall_num': int.from_bytes(syscall_num, 'little'),
+            }
+        })
+    def null(self, a0, a1, a2, a3, a4, a5, **kwargs):
+        if 'log' in kwargs.keys(): logging.info(kwargs.get('log'))
+        return {
             'done': True,
             'output': {
                 'register': {
                     'cmd': 'set',
                     'name': 10,
-                    'data': list(_fd.to_bytes(8, 'little', signed=True)),
+                    'data': list((-1 if 'retval' not in kwargs.keys() else kwargs.get('retval')).to_bytes(8, 'little', signed=True)),
                 },
             },
         }
-    else:
-        _len = 256 # HACK: This is the pathname of SYS_openat, which has
-                   # function prototype openat(int dirfd, const char * pathname, int flags);
-                   # see: https://man7.org/linux/man-pages/man2/open.2.html. How long is
-                   # the pathname? Who knows? It could, in theory, be much more than 256
-                   # bytes, but I can't be bothered with making this general-purpose right now.
-        _retval = {
-            'done': False,
-            'peek': {
-                'addr': int.from_bytes(a1, 'little'),
-                'size': _len,
-            },
-        }
-    return _retval
-def do_write(a0, a1, a2, a3, a4, a5, **kwargs):
-    _len = int.from_bytes(a2, 'little')
-    if '0' in kwargs.keys():
-        _fd = int.from_bytes(a0[:4], 'little', signed=True)
-        _buf = kwargs.get('0')
-        try:
-            _nbytes = os.write(_fd, _buf[:_len])
-        except:
-            logging.info('do_write(): a0   : {}'.format(a0))
-            logging.info('do_write(): a1   : {}'.format(a1))
-            logging.info('do_write(): a2   : {}'.format(a2))
-            logging.info('do_write(): _fd  : {}'.format(_fd))
-            logging.info('do_write(): _buf : {} ({})'.format(_buf, len(_buf)))
-            _nbytes = -1
-        logging.info('write({}, {}, {}) -> {}'.format(_fd, _buf[:_len], _len, _nbytes))
-        _retval = {
+    def do_openat(self, a0, a1, a2, a3, a4, a5, **kwargs):
+#        if '0' in kwargs.keys():
+        if 'arg' in kwargs.keys():
+            _dir_fd = int.from_bytes(a0[:4], 'little', signed=True)
+#            kwargs.update({'0': kwargs.get('0') + bytes([0])})
+            kwargs.get('arg')[0] += bytes([0])
+#            _pathname = kwargs.get('0')[:kwargs.get('0').index(0)].decode('ascii')
+            _pathname = kwargs.get('arg')[0][:kwargs.get('arg')[0].index(0)].decode('ascii')
+            _flags = int.from_bytes(a2, 'little')
+            try:
+                _fd = os.open(_pathname, _flags, dir_fd=_dir_fd)
+            except:
+                logging.info('do_openat(): a0        : {}'.format(a0))
+                logging.info('do_openat(): a1        : {}'.format(a1))
+                logging.info('do_openat(): a2        : {}'.format(a2))
+                logging.info('do_openat(): _dir_fd   : {}'.format(_dir_fd))
+                logging.info('do_openat(): _pathname : {} ({})'.format(_pathname, len(_pathname)))
+                _fd = -1
+            logging.info('openat({}, {}, {}) -> {}'.format(_dir_fd, _pathname, _flags, _fd))
+            _retval = {
+                'done': True,
+                'output': {
+                    'register': {
+                        'cmd': 'set',
+                        'name': 10,
+                        'data': list(_fd.to_bytes(8, 'little', signed=True)),
+                    },
+                },
+            }
+        else:
+            _len = 256 # HACK: This is the pathname of SYS_openat, which has
+                    # function prototype openat(int dirfd, const char * pathname, int flags);
+                    # see: https://man7.org/linux/man-pages/man2/open.2.html. How long is
+                    # the pathname? Who knows? It could, in theory, be much more than 256
+                    # bytes, but I can't be bothered with making this general-purpose right now.
+            _retval = {
+                'done': False,
+                'peek': {
+                    'addr': int.from_bytes(a1, 'little'),
+                    'size': _len,
+                },
+            }
+        return _retval
+    def do_write(self, a0, a1, a2, a3, a4, a5, **kwargs):
+        _len = int.from_bytes(a2, 'little')
+#        if '0' in kwargs.keys():
+        if 'arg' in kwargs.keys():
+            _fd = int.from_bytes(a0[:4], 'little', signed=True)
+#            _buf = kwargs.get('0')
+            _buf = kwargs.get('arg')[0]
+            try:
+                _nbytes = os.write(_fd, _buf[:_len])
+            except:
+                logging.info('do_write(): a0   : {}'.format(a0))
+                logging.info('do_write(): a1   : {}'.format(a1))
+                logging.info('do_write(): a2   : {}'.format(a2))
+                logging.info('do_write(): _fd  : {}'.format(_fd))
+                logging.info('do_write(): _buf : {} ({})'.format(_buf, len(_buf)))
+                _nbytes = -1
+            logging.info('write({}, {}, {}) -> {}'.format(_fd, _buf[:_len], _len, _nbytes))
+            _retval = {
+                'done': True,
+                'output': {
+                    'register': {
+                        'cmd': 'set',
+                        'name': 10,
+                        'data': list(_nbytes.to_bytes(8, 'little', signed=True)),
+                    },
+                },
+            }
+        else:
+            _retval = {
+                'done': False,
+                'peek': {
+                    'addr': int.from_bytes(a1, 'little'),
+                    'size': _len,
+                },
+            }
+        return _retval
+    def do_writev(self, a0, a1, a2, a3, a4, a5, **kwargs):
+        _sys_ret = 0
+#        if '0' not in kwargs.keys():
+        if 'arg' not in kwargs.keys():
+            _len = 256
+            return {
+                'done': False,
+                'peek': {
+                    'addr': int.from_bytes(a1, 'little'),
+                    'size': _len,
+                }
+            }
+        else:
+            _iovcnt = int.from_bytes(a2, 'little')
+#            if str(_iovcnt) not in kwargs.keys():
+            if len(kwargs.get('arg')) <= _iovcnt:
+#                _iov_so_far = len(kwargs.keys()) - 1
+                _iov_so_far = len(kwargs.get('arg')) - 1
+                _p = _iov_so_far * (self.SIZEOF_VOID_P + self.SIZEOF_SIZE_T)
+#                _addr = int.from_bytes(kwargs.get('0')[_p:(self.SIZEOF_VOID_P + _p)], 'little')
+                _addr = int.from_bytes(kwargs.get('arg')[0][_p:(self.SIZEOF_VOID_P + _p)], 'little')
+                logging.info('writev(): _iov_so_far        : {}'.format(_iov_so_far))
+                logging.info('writev(): _p                 : {}'.format(_p))
+                logging.info('writev(): _addr              : {}'.format(_addr))
+                _p += self.SIZEOF_VOID_P
+#                _size = int.from_bytes(kwargs.get('0')[_p:(self.SIZEOF_SIZE_T + _p)], 'little')
+                _size = int.from_bytes(kwargs.get('arg')[0][_p:(self.SIZEOF_SIZE_T + _p)], 'little')
+                logging.info('writev(): _p                 : {}'.format(_p))
+                logging.info('writev(): _size              : {}'.format(_size))
+                logging.info('writev(): self.SIZEOF_VOID_P : {}'.format(self.SIZEOF_VOID_P))
+                logging.info('writev(): self.SIZEOF_SIZE_T : {}'.format(self.SIZEOF_SIZE_T))
+                return {
+                    'done': False,
+                    'peek': {
+                        'addr': _addr,
+                        'size': _size,
+                    }
+                }
+            else:
+                for x in range(1, 1 + _iovcnt):
+                    _fd = int.from_bytes(a0, 'little')
+                    _buf = kwargs.get('arg')[x]
+                    os.write(_fd, _buf)
+                    _sys_ret += len(_buf)
+                logging.info('writev({}, {}, {}) -> {}'.format(_fd, int.from_bytes(a1, 'little'), _iovcnt, _sys_ret))
+        return {
             'done': True,
             'output': {
                 'register': {
                     'cmd': 'set',
                     'name': 10,
-                    'data': list(_nbytes.to_bytes(8, 'little', signed=True)),
+                    'data': list(_sys_ret.to_bytes(8, 'little', signed=True)),
                 },
             },
         }
-    else:
-        _retval = {
-            'done': False,
-            'peek': {
-                'addr': int.from_bytes(a1, 'little'),
-                'size': _len,
-            },
-        }
-    return _retval
-def do_readlinkat(a0, a1, a2, a3, a4, a5, **kwargs):
-    # ssize_t readlinkat(int dirfd, const char *restrict pathname, char *restrict buf, size_t bufsiz);
-    #
-    # see: https://man7.org/linux/man-pages/man2/readlinkat.2.html
-    if '0' in kwargs.keys():
-        _dir_fd = int.from_bytes(a0, 'little', signed=True)
-        kwargs.update({'0': kwargs.get('0') + bytes([0])})
-        _pathname = kwargs.get('0')[:kwargs.get('0').index(0)].decode('ascii')
-        _buf_p = int.from_bytes(a2, 'little')
-        _bufsize = int.from_bytes(a3, 'little')
+    def do_readlinkat(self, a0, a1, a2, a3, a4, a5, **kwargs):
+        # ssize_t readlinkat(int dirfd, const char *restrict pathname, char *restrict buf, size_t bufsiz);
+        #
+        # see: https://man7.org/linux/man-pages/man2/readlinkat.2.html
+#        if '0' in kwargs.keys():
+        if 'arg' in kwargs.keys():
+            _dir_fd = int.from_bytes(a0, 'little', signed=True)
+#            kwargs.update({'0': kwargs.get('0') + bytes([0])})
+            kwargs.get('arg')[0] += bytes([0])
+#            _pathname = kwargs.get('0')[:kwargs.get('0').index(0)].decode('ascii')
+            _pathname = kwargs.get('arg')[0][:kwargs.get('arg')[0].index(0)].decode('ascii')
+            _buf_p = int.from_bytes(a2, 'little')
+            _bufsize = int.from_bytes(a3, 'little')
+            try:
+                _linkpath = os.readlink(_pathname, dir_fd=_dir_fd)
+                _syscall_ret = 0
+            except:
+                logging.info('do_readlinkat(): a0        : {}'.format(a0))
+                logging.info('do_readlinkat(): a1        : {}'.format(a1))
+                logging.info('do_readlinkat(): a2        : {}'.format(a2))
+                logging.info('do_readlinkat(): a3        : {}'.format(a3))
+                logging.info('do_readlinkat(): _dir_fd   : {}'.format(_dir_fd))
+                logging.info('do_readlinkat(): _pathname : {} ({})'.format(_pathname, len(_pathname)))
+                _syscall_ret = -1
+            logging.info('readlinkat({}, {}, {}, {}) -> {}'.format(_dir_fd, _pathname, _buf_p, _bufsize, _linkpath))
+            _retval = {
+                'done': True,
+                'output': {
+                    'register': {
+                        'cmd': 'set',
+                        'name': 10,
+                        'data': list(_syscall_ret.to_bytes(8, 'little', signed=True)),
+                    },
+                },
+                'poke': {
+                    'addr': a3, # FIXME: convert this (i.e.: int.from_bytes(a3, 'little')) here
+                    'data': list(bytes(_linkpath[:_bufsize], encoding='ascii')),
+                },
+            }
+        else:
+            _len = 256 # HACK: This is the pathname of SYS_readlinkat. How long is
+                    # the pathname? Who knows? It could, in theory, be much more than 256
+                    # bytes, but I can't be bothered with making this general-purpose right now.
+            _retval = {
+                'done': False,
+                'peek': {
+                    'addr': int.from_bytes(a1, 'little'),
+                    'size': _len,
+                },
+            }
+        return _retval
+    def do_futex(self, a0, a1, a2, a3, a4, a5, **kwargs):
+        # int futex(int *uaddr, int op, int val, const struct timespec *timeout, int *uaddr2, int val3)
+        #
+        # see: https://linux.die.net/man/2/futex
+        FUTEX_PRIVATE_FLAG = 128
+        ERESTARTSYS = 512 # see: https://elixir.bootlin.com/linux/latest/source/include/linux/errno.h#L14
+        _uaddr = int.from_bytes(a0, 'little')
+        _op = int.from_bytes(a1, 'little', signed=True)
+        _private = (_op & FUTEX_PRIVATE_FLAG == FUTEX_PRIVATE_FLAG)
+        _op = {
+            0: 'FUTEX_WAIT',
+            1: 'FUTEX_WAKE',
+            2: 'FUTEX_FD',
+            3: 'FUTEX_REQUEUE',
+            4: 'FUTEX_CMP_REQUEUE',
+        }.get((_op | FUTEX_PRIVATE_FLAG) ^ FUTEX_PRIVATE_FLAG, _op)
+        _op += ('|FUTEX_PRIVATE_FLAG' if _private else '')
+        _val = int.from_bytes(a2, 'little', signed=True)
+        _timeout_p = int.from_bytes(a3, 'little')
+        _timeout_p = ('NULL' if 0 == _timeout_p else _timeout_p)
+    #    _uaddr2 = int.from_bytes(a4, 'little')
+    #    _val3 = int.from_bytes(a5, 'little', signed=True)
+        logging.info('futex({}, {}, {}, {}, {}, {})...'.format(
+            _uaddr, _op, _val, _timeout_p, a4, a5,
+        ))
+        if 'FUTEX_WAIT' in _op:
+#            if '0' in kwargs.keys():
+            if 'arg' in kwargs.keys():
+#                _u = int.from_bytes(kwargs.get('0'), 'little', signed=True)
+                _u = int.from_bytes(kwargs.get('arg')[0], 'little', signed=True)
+                _retval = -ERESTARTSYS # see: https://elixir.bootlin.com/linux/latest/source/kernel/futex/waitwake.c#L632
+                if _u != _val: _retval = -1
+                logging.info('futex({}, {}, {}, {}, {}, {}) -> {}'.format(
+                    _uaddr, _op, _val, _timeout_p, a4, a5,
+                    _retval
+                ))
+                return {
+                    'done': True,
+                    'output': {
+                        'register': {
+                            'cmd': 'set',
+                            'name': 10,
+                            'data': list(_retval.to_bytes(8, 'little', signed=True)),
+                        },
+                    },
+                }
+            else:
+                return {
+                    'done': False,
+                    'peek': {
+                        'addr': _uaddr,
+                        'size': 4, # sizeof(int)
+                    },
+                }
+        return self.null(a0, a1, a2, a3, a4, a5, **kwargs)
+    def do_uname(self, a0, a1, a2, a3, a4, a5, **kwargs):
+        # NOTE: The fields in a struct utsname are padded to 65 bytes;
+        # see: _UTSNAME_LENGTH in /opt/riscv/sysroot/usr/include/bits/utsname.h
         try:
-            _linkpath = os.readlink(_pathname, dir_fd=_dir_fd)
-            _syscall_ret = 0
+            _os_uname = os.uname()
+            _success = 0
         except:
-            logging.info('do_readlinkat(): a0        : {}'.format(a0))
-            logging.info('do_readlinkat(): a1        : {}'.format(a1))
-            logging.info('do_readlinkat(): a2        : {}'.format(a2))
-            logging.info('do_readlinkat(): a3        : {}'.format(a3))
-            logging.info('do_readlinkat(): _dir_fd   : {}'.format(_dir_fd))
-            logging.info('do_readlinkat(): _pathname : {} ({})'.format(_pathname, len(_pathname)))
-            _syscall_ret = -1
-        logging.info('readlinkat({}, {}, {}, {}) -> {}'.format(_dir_fd, _pathname, _buf_p, _bufsize, _linkpath))
-        _retval = {
+            _success = -1
+        logging.info('uname() -> {}'.format(_success))
+        return {
             'done': True,
             'output': {
                 'register': {
                     'cmd': 'set',
                     'name': 10,
-                    'data': list(_syscall_ret.to_bytes(8, 'little', signed=True)),
+                    'data': list(_success.to_bytes(8, 'little', signed=True)),
                 },
             },
             'poke': {
-                'addr': a3, # FIXME: convert this (i.e.: int.from_bytes(a3, 'little')) here
-                'data': list(bytes(_linkpath[:_bufsize], encoding='ascii')),
+                'addr': a0, # FIXME: convert this (i.e.: int.from_bytes(a3, 'little')) here
+                'data': list(bytes(''.join(map(lambda x: x + ('\0' * (65 - len(x))), _os_uname)), encoding='ascii')),
             },
         }
-    else:
-        _len = 256 # HACK: This is the pathname of SYS_readlinkat. How long is
-                   # the pathname? Who knows? It could, in theory, be much more than 256
-                   # bytes, but I can't be bothered with making this general-purpose right now.
-        _retval = {
-            'done': False,
-            'peek': {
-                'addr': int.from_bytes(a1, 'little'),
-                'size': _len,
+    def do_getpid(self, a0, a1, a2, a3, a4, a5, **kwargs):
+        _sys_ret = 5
+        return self.null(a0, a1, a2, a3, a4, a5, **{
+            **kwargs,
+            **{
+                'retval': _sys_ret,
+                'log': 'getpid() -> {}'.format(_sys_ret),
+            },
+        })
+    def do_getuid(self, a0, a1, a2, a3, a4, a5, **kwargs):
+        _sys_ret = 0
+        return self.null(a0, a1, a2, a3, a4, a5, **{
+            **kwargs,
+            **{
+                'retval': _sys_ret,
+                'log': 'getuid() -> {}'.format(_sys_ret),
+            },
+        })
+    def do_geteuid(self, a0, a1, a2, a3, a4, a5, **kwargs):
+        _sys_ret = 0
+        return self.null(a0, a1, a2, a3, a4, a5, **{
+            **kwargs,
+            **{
+                'retval': _sys_ret,
+                'log': 'geteuid() -> {}'.format(_sys_ret),
+            },
+        })
+    def do_getgid(self, a0, a1, a2, a3, a4, a5, **kwargs):
+        _sys_ret = 0
+        return self.null(a0, a1, a2, a3, a4, a5, **{
+            **kwargs,
+            **{
+                'retval': _sys_ret,
+                'log': 'getgid() -> {}'.format(_sys_ret),
+            },
+        })
+    def do_getegid(self, a0, a1, a2, a3, a4, a5, **kwargs):
+        _sys_ret = 0
+        return self.null(a0, a1, a2, a3, a4, a5, **{
+            **kwargs,
+            **{
+                'retval': _sys_ret,
+                'log': 'getegid() -> {}'.format(_sys_ret),
+            },
+        })
+    def do_brk(self, a0, a1, a2, a3, a4, a5, **kwargs):
+        # Prototype
+        # int brk(void *endds);
+        #
+        # Argument
+        # endds 	pointer to the end of the data segment
+        #
+        # Return Value
+        #
+        # Returns ‘0’ if successful; otherwise, returns ‘-1’.
+        #
+        # If the argument endds is zero, the function sets the global variable
+        # __curbrk to the address of the start of the heap and returns zero.
+        #
+        # If the argument endds is non-zero and has a value less than the address
+        # of the end of the heap, the function sets the global variable __curbrk
+        # to the value of endds and returns zero.
+        #
+        # Otherwise, the global variable __curbrk is unchanged and the function
+        # returns -1.
+        #
+        # see: https://onlinedocs.microchip.com/pr/GUID-70ACD6B0-A33F-4653-B192-8465EAD1FD98-en-US-5/index.html?GUID-1DF544E2-138D-489F-803B-36427E9FBA54
+        _endds = int.from_bytes(a0, 'little')
+        _retval = (list((0x10000000).to_bytes(8, 'little')) if 0 == _endds else a0)
+        logging.info('brk({}) -> {}'.format(_endds, _retval))
+        return {
+            'done': True,
+            'output': {
+                'register': {
+                    'cmd': 'set',
+                    'name': 10,
+                    'data': _retval,
+                },
             },
         }
-    return _retval
-def do_futex(a0, a1, a2, a3, a4, a5, **kwargs):
-    # int futex(int *uaddr, int op, int val, const struct timespec *timeout, int *uaddr2, int val3)
-    #
-    # see: https://linux.die.net/man/2/futex
-    FUTEX_PRIVATE_FLAG = 128
-    ERESTARTSYS = 512 # see: https://elixir.bootlin.com/linux/latest/source/include/linux/errno.h#L14
-    _uaddr = int.from_bytes(a0, 'little')
-    _op = int.from_bytes(a1, 'little', signed=True)
-    _private = (_op & FUTEX_PRIVATE_FLAG == FUTEX_PRIVATE_FLAG)
-    _op = {
-        0: 'FUTEX_WAIT',
-        1: 'FUTEX_WAKE',
-        2: 'FUTEX_FD',
-        3: 'FUTEX_REQUEUE',
-        4: 'FUTEX_CMP_REQUEUE',
-    }.get((_op | FUTEX_PRIVATE_FLAG) ^ FUTEX_PRIVATE_FLAG, _op)
-    _op += ('|FUTEX_PRIVATE_FLAG' if _private else '')
-    _val = int.from_bytes(a2, 'little', signed=True)
-    _timeout_p = int.from_bytes(a3, 'little')
-    _timeout_p = ('NULL' if 0 == _timeout_p else _timeout_p)
-#    _uaddr2 = int.from_bytes(a4, 'little')
-#    _val3 = int.from_bytes(a5, 'little', signed=True)
-    logging.info('futex({}, {}, {}, {}, {}, {})...'.format(
-        _uaddr, _op, _val, _timeout_p, a4, a5,
-    ))
-    if 'FUTEX_WAIT' in _op:
-        if '0' in kwargs.keys():
-            _u = int.from_bytes(kwargs.get('0'), 'little', signed=True)
-            _retval = -ERESTARTSYS # see: https://elixir.bootlin.com/linux/latest/source/kernel/futex/waitwake.c#L632
-            if _u != _val: _retval = -1
-            logging.info('futex({}, {}, {}, {}, {}, {}) -> {}'.format(
-                _uaddr, _op, _val, _timeout_p, a4, a5,
-                _retval
-            ))
+    def do_munmap(self, a0, a1, a2, a3, a4, a5, **kwargs):
+        _sys_ret = 0
+        return self.null(a0, a1, a2, a3, a4, a5, **{
+            **kwargs,
+            **{
+                'retval': _sys_ret,
+                'log': 'munmap({}, {}) -> {}'.format(int.from_bytes(a0, 'little'), int.from_bytes(a1, 'little'), _sys_ret),
+            },
+        })
+    def do_mmap(self, a0, a1, a2, a3, a4, a5, **kwargs):
+        _addr = int.from_bytes(a0, 'little')
+        _length = int.from_bytes(a1, 'little')
+        _prot = int.from_bytes(a2, 'little')
+        _flags = int.from_bytes(a3, 'little')
+        _fd = int.from_bytes(a4, 'little', signed=True)
+        _offset = int.from_bytes(a5, 'little')
+        logging.info('mmap({}, {}, {}, {}, {}, {})'.format(_addr, _length, _prot, _flags, _fd, _offset))
+        if -1 == _fd:
+            _sys_ret = self.state.get('mmap', 0x20000000)
+            _mmap  = _sys_ret + _length
+            _mmap += (self.PAGESIZE if (_mmap & (self.PAGESIZE - 1)) else 0)
+            _mmap |= (self.PAGESIZE - 1)
+            _mmap ^= (self.PAGESIZE - 1)
+            self.state.update({'mmap': _mmap})
             return {
                 'done': True,
                 'output': {
                     'register': {
                         'cmd': 'set',
                         'name': 10,
-                        'data': list(_retval.to_bytes(8, 'little', signed=True)),
+                        'data': list(_sys_ret.to_bytes(8, 'little', signed=True)),
                     },
                 },
             }
-        else:
-            return {
-                'done': False,
-                'peek': {
-                    'addr': _uaddr,
-                    'size': 4, # sizeof(int)
-                },
-            }
-    return null(a0, a1, a2, a3, a4, a5, **kwargs)
-def do_uname(a0, a1, a2, a3, a4, a5, **kwargs):
-    # NOTE: The fields in a struct utsname are padded to 65 bytes;
-    # see: _UTSNAME_LENGTH in /opt/riscv/sysroot/usr/include/bits/utsname.h
-    try:
-        _os_uname = os.uname()
-        _success = 0
-    except:
-        _success = -1
-    logging.info('uname() -> {}'.format(_success))
-    return {
-        'done': True,
-        'output': {
-            'register': {
-                'cmd': 'set',
-                'name': 10,
-                'data': list(_success.to_bytes(8, 'little', signed=True)),
-            },
-        },
-        'poke': {
-            'addr': a0, # FIXME: convert this (i.e.: int.from_bytes(a3, 'little')) here
-            'data': list(bytes(''.join(map(lambda x: x + ('\0' * (65 - len(x))), _os_uname)), encoding='ascii')),
-        },
-    }
-def do_getpid(a0, a1, a2, a3, a4, a5, **kwargs): return null(a0, a1, a2, a3, a4, a5, **{**kwargs, **{'retval': 5}})
-def do_getuid(a0, a1, a2, a3, a4, a5, **kwargs): return null(a0, a1, a2, a3, a4, a5, **{**kwargs, **{'retval': 0}})
-def do_geteuid(a0, a1, a2, a3, a4, a5, **kwargs): return null(a0, a1, a2, a3, a4, a5, **{**kwargs, **{'retval': 0}})
-def do_getgid(a0, a1, a2, a3, a4, a5, **kwargs): return null(a0, a1, a2, a3, a4, a5, **{**kwargs, **{'retval': 0}})
-def do_getegid(a0, a1, a2, a3, a4, a5, **kwargs): return null(a0, a1, a2, a3, a4, a5, **{**kwargs, **{'retval': 0}})
-def do_brk(a0, a1, a2, a3, a4, a5, **kwargs):
-    # Prototype
-    # int brk(void *endds);
-    #
-    # Argument
-    # endds 	pointer to the end of the data segment
-    #
-    # Return Value
-    #
-    # Returns ‘0’ if successful; otherwise, returns ‘-1’.
-    #
-    # If the argument endds is zero, the function sets the global variable
-    # __curbrk to the address of the start of the heap and returns zero.
-    #
-    # If the argument endds is non-zero and has a value less than the address
-    # of the end of the heap, the function sets the global variable __curbrk
-    # to the value of endds and returns zero.
-    #
-    # Otherwise, the global variable __curbrk is unchanged and the function
-    # returns -1.
-    #
-    # see: https://onlinedocs.microchip.com/pr/GUID-70ACD6B0-A33F-4653-B192-8465EAD1FD98-en-US-5/index.html?GUID-1DF544E2-138D-489F-803B-36427E9FBA54
-    _endds = int.from_bytes(a0, 'little')
-    _retval = (list((0x10000000).to_bytes(8, 'little')) if 0 == _endds else a0)
-    logging.info('brk({}) -> {}'.format(_endds, _retval))
-    return {
-        'done': True,
-        'output': {
-            'register': {
-                'cmd': 'set',
-                'name': 10,
-                'data': _retval,
-            },
-        },
-    }
+        return self.null(a0, a1, a2, a3, a4, a5, **kwargs)

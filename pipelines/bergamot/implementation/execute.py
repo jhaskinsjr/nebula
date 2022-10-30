@@ -497,10 +497,12 @@ def do_ecall(service, state, insn):
     _syscall_a4 = state.get('operands').get('syscall_a4')
     _syscall_a5 = state.get('operands').get('syscall_a5')
     if 'mem' in state.get('operands').keys() and isinstance(state.get('operands').get('mem'), list):
-        _name = str(len(state.get('syscall_kwargs').keys()))
-        state.get('syscall_kwargs').update({_name: bytes(state.get('operands').get('mem'))})
+        if 'arg' not in state.get('syscall_kwargs').keys(): state.get('syscall_kwargs').update({'arg': []})
+#        _name = str(len(state.get('syscall_kwargs').keys()))
+#        state.get('syscall_kwargs').update({_name: bytes(state.get('operands').get('mem'))})
+        state.get('syscall_kwargs').get('arg').append(bytes(state.get('operands').get('mem')))
         state.get('operands').pop('mem')
-    _side_effect = riscv.syscall.linux.do_syscall(
+    _side_effect = state.get('system').do_syscall(
         _syscall_num,
         _syscall_a0, _syscall_a1, _syscall_a2, _syscall_a3, _syscall_a4, _syscall_a5, **{
             **state.get('syscall_kwargs'),
@@ -712,6 +714,7 @@ if '__main__' == __name__:
         'ack': True,
         'pending_execute': None,
         'syscall_kwargs': {},
+        'system': riscv.syscall.linux.System(),
         '%pc': None,
         'operands': {},
     }
