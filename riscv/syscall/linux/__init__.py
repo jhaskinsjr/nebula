@@ -77,12 +77,9 @@ class System:
             },
         }
     def do_openat(self, a0, a1, a2, a3, a4, a5, **kwargs):
-#        if '0' in kwargs.keys():
         if 'arg' in kwargs.keys():
             _dir_fd = int.from_bytes(a0[:4], 'little', signed=True)
-#            kwargs.update({'0': kwargs.get('0') + bytes([0])})
             kwargs.get('arg')[0] += bytes([0])
-#            _pathname = kwargs.get('0')[:kwargs.get('0').index(0)].decode('ascii')
             _pathname = kwargs.get('arg')[0][:kwargs.get('arg')[0].index(0)].decode('ascii')
             _flags = int.from_bytes(a2, 'little')
             try:
@@ -121,10 +118,8 @@ class System:
         return _retval
     def do_write(self, a0, a1, a2, a3, a4, a5, **kwargs):
         _len = int.from_bytes(a2, 'little')
-#        if '0' in kwargs.keys():
         if 'arg' in kwargs.keys():
             _fd = int.from_bytes(a0[:4], 'little', signed=True)
-#            _buf = kwargs.get('0')
             _buf = kwargs.get('arg')[0]
             try:
                 _nbytes = os.write(_fd, _buf[:_len])
@@ -157,7 +152,6 @@ class System:
         return _retval
     def do_writev(self, a0, a1, a2, a3, a4, a5, **kwargs):
         _sys_ret = 0
-#        if '0' not in kwargs.keys():
         if 'arg' not in kwargs.keys():
             _len = 256
             return {
@@ -169,18 +163,14 @@ class System:
             }
         else:
             _iovcnt = int.from_bytes(a2, 'little')
-#            if str(_iovcnt) not in kwargs.keys():
             if len(kwargs.get('arg')) <= _iovcnt:
-#                _iov_so_far = len(kwargs.keys()) - 1
                 _iov_so_far = len(kwargs.get('arg')) - 1
                 _p = _iov_so_far * (self.SIZEOF_VOID_P + self.SIZEOF_SIZE_T)
-#                _addr = int.from_bytes(kwargs.get('0')[_p:(self.SIZEOF_VOID_P + _p)], 'little')
                 _addr = int.from_bytes(kwargs.get('arg')[0][_p:(self.SIZEOF_VOID_P + _p)], 'little')
                 logging.info('writev(): _iov_so_far        : {}'.format(_iov_so_far))
                 logging.info('writev(): _p                 : {}'.format(_p))
                 logging.info('writev(): _addr              : {}'.format(_addr))
                 _p += self.SIZEOF_VOID_P
-#                _size = int.from_bytes(kwargs.get('0')[_p:(self.SIZEOF_SIZE_T + _p)], 'little')
                 _size = int.from_bytes(kwargs.get('arg')[0][_p:(self.SIZEOF_SIZE_T + _p)], 'little')
                 logging.info('writev(): _p                 : {}'.format(_p))
                 logging.info('writev(): _size              : {}'.format(_size))
@@ -214,12 +204,9 @@ class System:
         # ssize_t readlinkat(int dirfd, const char *restrict pathname, char *restrict buf, size_t bufsiz);
         #
         # see: https://man7.org/linux/man-pages/man2/readlinkat.2.html
-#        if '0' in kwargs.keys():
         if 'arg' in kwargs.keys():
             _dir_fd = int.from_bytes(a0, 'little', signed=True)
-#            kwargs.update({'0': kwargs.get('0') + bytes([0])})
             kwargs.get('arg')[0] += bytes([0])
-#            _pathname = kwargs.get('0')[:kwargs.get('0').index(0)].decode('ascii')
             _pathname = kwargs.get('arg')[0][:kwargs.get('arg')[0].index(0)].decode('ascii')
             _buf_p = int.from_bytes(a2, 'little')
             _bufsize = int.from_bytes(a3, 'little')
@@ -287,9 +274,7 @@ class System:
             _uaddr, _op, _val, _timeout_p, a4, a5,
         ))
         if 'FUTEX_WAIT' in _op:
-#            if '0' in kwargs.keys():
             if 'arg' in kwargs.keys():
-#                _u = int.from_bytes(kwargs.get('0'), 'little', signed=True)
                 _u = int.from_bytes(kwargs.get('arg')[0], 'little', signed=True)
                 _retval = -ERESTARTSYS # see: https://elixir.bootlin.com/linux/latest/source/kernel/futex/waitwake.c#L632
                 if _u != _val: _retval = -1

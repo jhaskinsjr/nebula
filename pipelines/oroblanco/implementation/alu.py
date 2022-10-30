@@ -415,8 +415,6 @@ def do_ecall(service, stats, insn):
     }
     if 'mem' in state.get('operands').keys() and isinstance(state.get('operands').get('mem'), list):
         if 'arg' not in state.get('syscall_kwargs').keys(): state.get('syscall_kwargs').update({'arg': []})
-#        _name = str(len(state.get('syscall_kwargs').get('arg')))
-#        state.get('syscall_kwargs').update({_name: bytes(state.get('operands').get('mem'))})
         state.get('syscall_kwargs').get('arg').append(bytes(state.get('operands').get('mem')))
         state.get('operands').pop('mem')
     service.tx({'info': 'state.syscall_kwargs : {}'.format(state.get('syscall_kwargs'))})
