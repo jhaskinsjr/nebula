@@ -213,6 +213,19 @@ def c_addi16sp(word, **kwargs):
         'word': word,
         'size': 2,
     }
+def c_swsp(word, **kwargs):
+    # C.SWSP stores a 32-bit value in register rs2 to memory. It computes
+    # an effective address by adding the zero-extended offset, scaled by 4,
+    # to the stack pointer, x2. It expands to sw rs2, offset[7:2](x2).
+    return {
+        'cmd': 'SW',
+        'imm': kwargs.get('imm'),
+        'rs1': 2,
+        'rs2': compressed_rs2(word),
+        'nbytes': 4,
+        'word': word,
+        'size': 2,
+    }
 def c_sdsp(word, **kwargs):
     # C.SDSP is an RV64C/RV128C-only instruction that stores a 64-bit value in
     # register rs2 to memory. It computes an effective address by adding the
@@ -1006,6 +1019,7 @@ def compressed_quadrant_10(word):
         0b000: compressed_quadrant_10_opcode_000,
         0b011: compressed_quadrant_10_opcode_011,
         0b100: compressed_quadrant_10_opcode_100,
+        0b110: compressed_quadrant_10_opcode_110,
         0b111: compressed_quadrant_10_opcode_111,
     }.get(compressed_opcode(word), compressed_unimplemented_instruction)(word)
 def compressed_quadrant_10_opcode_000(word):
@@ -1053,6 +1067,14 @@ def compressed_quadrant_10_opcode_100(word):
             else:
                 _impl = c_jalr
     return _impl(word)
+def compressed_quadrant_10_opcode_110(word):
+    # 110 uimm[5:2|7:6] rs2 10 C.SWSP
+    # see: https://riscv.org/wp-content/uploads/2019/06/riscv-spec.pdf (p. 111)
+    _impl = c_swsp
+    _b0706 = (word >> 7) & 0b11
+    _b05040302 = (word >> 9) & 0b1111
+    _imm = (_b0706 << 6) | (_b05040302 << 2)
+    return _impl(word, imm=_imm)
 def compressed_quadrant_10_opcode_111(word):
     # 111 uimm[5:3|8:6] rs2 10 C.SDSP (RV64/128
     # https://riscv.org/wp-content/uploads/2019/06/riscv-spec.pdf (p.111)
