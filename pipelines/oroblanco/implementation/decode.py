@@ -25,7 +25,8 @@ def do_issue(service, state):
         service.tx({'info': '_hazards : {}'.format(_hazards)})
         if not all(map(lambda y: y in state.get('forward').keys(), _hazards)): break
         state.get('remove_from_decoded').append(_dec)
-        if 'ECALL' != _insn.get('cmd'):
+#        if 'ECALL' != _insn.get('cmd'):
+        if _insn.get('cmd') not in ['ECALL', 'FENCE']:
             if 'rs1' in _insn.keys():
                 if _insn.get('rs1') in _hazards and _insn.get('rs1') in state.get('forward').keys():
                     if not 'operands' in _insn.keys(): _insn.update({'operands': {}})
@@ -174,12 +175,14 @@ def do_tick(service, state, results, events):
         }})
     if state.get('max_instructions_to_decode') > len(state.get('decoded')):
         for _insn in riscv.decode.do_decode(state.get('buffer'), state.get('max_instructions_to_decode') - len(state.get('decoded'))):
-            # ECALL must execute alone, i.e., all issued instructions
-            # must retire before an ECALL instruction will issue and no
-            # further instructions will issue so long as an ECALL has
+            # ECALL/FENCE must execute alone, i.e., all issued instructions
+            # must retire before an ECALL/FENCE instruction will issue and no
+            # further instructions will issue so long as an ECALL/FENCE has
             # yet to flush/retire
-            if 'ECALL' == _insn.get('cmd') and len(state.get('issued')): break
-            if len(state.get('issued')) and 'ECALL' == state.get('issued')[0].get('cmd'): break
+#            if 'ECALL' == _insn.get('cmd') and len(state.get('issued')): break
+#            if len(state.get('issued')) and 'ECALL' == state.get('issued')[0].get('cmd'): break
+            if _insn.get('cmd') in ['ECALL', 'FENCE'] and len(state.get('issued')): break
+            if len(state.get('issued')) and state.get('issued')[0].get('cmd') in ['ECALL', 'FENCE']: break
             state.get('decoded').append({
                 'insn': _insn,
                 '%pc': state.get('%pc'),
