@@ -167,15 +167,15 @@ class System:
                 _iov_so_far = len(kwargs.get('arg')) - 1
                 _p = _iov_so_far * (self.SIZEOF_VOID_P + self.SIZEOF_SIZE_T)
                 _addr = int.from_bytes(kwargs.get('arg')[0][_p:(self.SIZEOF_VOID_P + _p)], 'little')
-                logging.info('writev(): _iov_so_far        : {}'.format(_iov_so_far))
-                logging.info('writev(): _p                 : {}'.format(_p))
-                logging.info('writev(): _addr              : {}'.format(_addr))
+#                logging.info('writev(): _iov_so_far        : {}'.format(_iov_so_far))
+#                logging.info('writev(): _p                 : {}'.format(_p))
+#                logging.info('writev(): _addr              : {}'.format(_addr))
                 _p += self.SIZEOF_VOID_P
                 _size = int.from_bytes(kwargs.get('arg')[0][_p:(self.SIZEOF_SIZE_T + _p)], 'little')
-                logging.info('writev(): _p                 : {}'.format(_p))
-                logging.info('writev(): _size              : {}'.format(_size))
-                logging.info('writev(): self.SIZEOF_VOID_P : {}'.format(self.SIZEOF_VOID_P))
-                logging.info('writev(): self.SIZEOF_SIZE_T : {}'.format(self.SIZEOF_SIZE_T))
+#                logging.info('writev(): _p                 : {}'.format(_p))
+#                logging.info('writev(): _size              : {}'.format(_size))
+#                logging.info('writev(): self.SIZEOF_VOID_P : {}'.format(self.SIZEOF_VOID_P))
+#                logging.info('writev(): self.SIZEOF_SIZE_T : {}'.format(self.SIZEOF_SIZE_T))
                 return {
                     'done': False,
                     'peek': {
@@ -254,6 +254,8 @@ class System:
         # see: https://linux.die.net/man/2/futex
         FUTEX_PRIVATE_FLAG = 128
         ERESTARTSYS = 512 # see: https://elixir.bootlin.com/linux/latest/source/include/linux/errno.h#L14
+        EAGAIN = 11 # see: https://elixir.bootlin.com/linux/latest/source/include/uapi/asm-generic/errno-base.h#L15
+        EINVAL = 22 # see: https://elixir.bootlin.com/linux/latest/source/include/uapi/asm-generic/errno-base.h#L26
         _uaddr = int.from_bytes(a0, 'little')
         _op = int.from_bytes(a1, 'little', signed=True)
         _private = (_op & FUTEX_PRIVATE_FLAG == FUTEX_PRIVATE_FLAG)
@@ -276,8 +278,12 @@ class System:
         if 'FUTEX_WAIT' in _op:
             if 'arg' in kwargs.keys():
                 _u = int.from_bytes(kwargs.get('arg')[0], 'little', signed=True)
-                _retval = -ERESTARTSYS # see: https://elixir.bootlin.com/linux/latest/source/kernel/futex/waitwake.c#L632
-                if _u != _val: _retval = -1
+                # NOTE: Since this code is supposed to mimick an underlying
+                # kernel, it will behave here as if the FUTEX_WAIT has already
+                # happened and we are resuming execution following a FUTEX_WAKE
+                # see: https://elixir.bootlin.com/linux/latest/source/kernel/futex/waitwake.c#L632
+                # see: https://www.man7.org/linux/man-pages/man2/futex.2.html#RETURN_VALUE
+                _retval = 0
                 logging.info('futex({}, {}, {}, {}, {}, {}) -> {}'.format(
                     _uaddr, _op, _val, _timeout_p, a4, a5,
                     _retval
@@ -291,6 +297,10 @@ class System:
                             'data': list(_retval.to_bytes(8, 'little', signed=True)),
                         },
                     },
+                    'poke': {   # HACK: this needs more study; I don't know why it seems to work
+                        'addr': a0,
+                        'data': list((0).to_bytes(8, 'little')),
+                    },
                 }
             else:
                 return {
@@ -300,6 +310,16 @@ class System:
                         'size': 4, # sizeof(int)
                     },
                 }
+        elif 'FUTEX_WAKE' in _op:
+            _retval = 1
+            logging.info('futex({}, {}, {}, {}, {}, {}) -> {}'.format(
+                _uaddr, _op, _val, _timeout_p, a4, a5,
+                _retval
+            ))
+            return self.null(a0, a1, a2, a3, a4, a5, **{
+                **kwargs,
+                **{'retval': _retval}, # NOTE: return that 1 thread was woken up; see: https://www.man7.org/linux/man-pages/man2/futex.2.html#RETURN_VALUE
+            })
         return self.null(a0, a1, a2, a3, a4, a5, **kwargs)
     def do_uname(self, a0, a1, a2, a3, a4, a5, **kwargs):
         # NOTE: The fields in a struct utsname are padded to 65 bytes;
@@ -392,15 +412,26 @@ class System:
         #
         # see: https://onlinedocs.microchip.com/pr/GUID-70ACD6B0-A33F-4653-B192-8465EAD1FD98-en-US-5/index.html?GUID-1DF544E2-138D-489F-803B-36427E9FBA54
         _endds = int.from_bytes(a0, 'little')
-        _retval = (list((0x10000000).to_bytes(8, 'little')) if 0 == _endds else a0)
-        logging.info('brk({}) -> {}'.format(_endds, _retval))
+        if 0 == _endds:
+            self.state.update({'brk': 0x10000000})
+            _sys_ret = self.state.get('brk')
+        else:
+            assert 'brk' in self.state.keys(), 'SYS_brk should have been called with parameter 0 first!'
+            _brk  = _endds
+            _brk += (self.PAGESIZE if (_brk & (self.PAGESIZE  - 1)) else 0)
+            _brk |= (self.PAGESIZE - 1)
+            _brk ^= (self.PAGESIZE - 1)
+#            _brk = 0x20000000
+            self.state.update({'brk': _brk})
+            _sys_ret = self.state.get('brk')
+        logging.info('brk({:08x}) -> {:08x}'.format(_endds, _sys_ret))
         return {
             'done': True,
             'output': {
                 'register': {
                     'cmd': 'set',
                     'name': 10,
-                    'data': _retval,
+                    'data': list(_sys_ret.to_bytes(8, 'little')),
                 },
             },
         }
@@ -410,7 +441,7 @@ class System:
             **kwargs,
             **{
                 'retval': _sys_ret,
-                'log': 'munmap({}, {}) -> {}'.format(int.from_bytes(a0, 'little'), int.from_bytes(a1, 'little'), _sys_ret),
+                'log': 'munmap({:08x}, {:08x}) -> {}'.format(int.from_bytes(a0, 'little'), int.from_bytes(a1, 'little'), _sys_ret),
             },
         })
     def do_mmap(self, a0, a1, a2, a3, a4, a5, **kwargs):
@@ -420,7 +451,6 @@ class System:
         _flags = int.from_bytes(a3, 'little')
         _fd = int.from_bytes(a4, 'little', signed=True)
         _offset = int.from_bytes(a5, 'little')
-        logging.info('mmap({}, {}, {}, {}, {}, {})'.format(_addr, _length, _prot, _flags, _fd, _offset))
         if -1 == _fd:
             _sys_ret = self.state.get('mmap', 0x20000000)
             _mmap  = _sys_ret + _length
@@ -428,6 +458,7 @@ class System:
             _mmap |= (self.PAGESIZE - 1)
             _mmap ^= (self.PAGESIZE - 1)
             self.state.update({'mmap': _mmap})
+            logging.info('mmap({:08x}, {:08x}, {}, {}, {}, {}) -> {:08x}'.format(_addr, _length, _prot, _flags, _fd, _offset, _sys_ret))
             return {
                 'done': True,
                 'output': {
@@ -438,4 +469,5 @@ class System:
                     },
                 },
             }
+        logging.info('mmap({:08x}, {:08x}, {}, {}, {}, {})'.format(_addr, _length, _prot, _flags, _fd, _offset))
         return self.null(a0, a1, a2, a3, a4, a5, **kwargs)
