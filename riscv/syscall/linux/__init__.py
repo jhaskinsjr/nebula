@@ -167,15 +167,8 @@ class System:
                 _iov_so_far = len(kwargs.get('arg')) - 1
                 _p = _iov_so_far * (self.SIZEOF_VOID_P + self.SIZEOF_SIZE_T)
                 _addr = int.from_bytes(kwargs.get('arg')[0][_p:(self.SIZEOF_VOID_P + _p)], 'little')
-#                logging.info('writev(): _iov_so_far        : {}'.format(_iov_so_far))
-#                logging.info('writev(): _p                 : {}'.format(_p))
-#                logging.info('writev(): _addr              : {}'.format(_addr))
                 _p += self.SIZEOF_VOID_P
                 _size = int.from_bytes(kwargs.get('arg')[0][_p:(self.SIZEOF_SIZE_T + _p)], 'little')
-#                logging.info('writev(): _p                 : {}'.format(_p))
-#                logging.info('writev(): _size              : {}'.format(_size))
-#                logging.info('writev(): self.SIZEOF_VOID_P : {}'.format(self.SIZEOF_VOID_P))
-#                logging.info('writev(): self.SIZEOF_SIZE_T : {}'.format(self.SIZEOF_SIZE_T))
                 return {
                     'done': False,
                     'peek': {
@@ -390,27 +383,6 @@ class System:
             },
         })
     def do_brk(self, a0, a1, a2, a3, a4, a5, **kwargs):
-        # Prototype
-        # int brk(void *endds);
-        #
-        # Argument
-        # endds 	pointer to the end of the data segment
-        #
-        # Return Value
-        #
-        # Returns ‘0’ if successful; otherwise, returns ‘-1’.
-        #
-        # If the argument endds is zero, the function sets the global variable
-        # __curbrk to the address of the start of the heap and returns zero.
-        #
-        # If the argument endds is non-zero and has a value less than the address
-        # of the end of the heap, the function sets the global variable __curbrk
-        # to the value of endds and returns zero.
-        #
-        # Otherwise, the global variable __curbrk is unchanged and the function
-        # returns -1.
-        #
-        # see: https://onlinedocs.microchip.com/pr/GUID-70ACD6B0-A33F-4653-B192-8465EAD1FD98-en-US-5/index.html?GUID-1DF544E2-138D-489F-803B-36427E9FBA54
         _endds = int.from_bytes(a0, 'little')
         if 0 == _endds:
             self.state.update({'brk': 0x10000000})
