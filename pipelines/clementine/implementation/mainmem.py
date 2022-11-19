@@ -36,15 +36,21 @@ def poke(state, addr, size, data):
     # data : list of unsigned char, e.g., to make an integer, X, into a list
     # of N little-endian-formatted bytes -> list(X.to_bytes(N, 'little'))
     _fd = state.get('fd')
-    os.lseek(_fd, addr, os.SEEK_SET)
-    os.write(_fd, bytes(data))
+    try:
+        os.lseek(_fd, addr, os.SEEK_SET)
+        os.write(_fd, bytes(data))
+    except:
+        pass
 #    os.write(_fd, data.to_bytes(size, 'little'))
 def peek(state, addr, size):
     # return : list of unsigned char, e.g., to make an 8-byte quadword from
     # a list, X, of N bytes -> int.from_bytes(X, 'little')
     _fd = state.get('fd')
-    os.lseek(_fd, addr, os.SEEK_SET)
-    return list(os.read(_fd, size))
+    try:
+        os.lseek(_fd, addr, os.SEEK_SET)
+        return list(os.read(_fd, size))
+    except:
+        return []
 
 if '__main__' == __name__:
     parser = argparse.ArgumentParser(description='μService-SIMulator: Main Memory')
@@ -75,7 +81,7 @@ if '__main__' == __name__:
         'ack': True,
         'fd': None,
         'config': {
-            'main_memory_filename': None,
+            'main_memory_filename': '/tmp/mainmem.raw',
             'main_memory_capacity': 2**32,
             'peek_latency_in_cycles': 500,
         },
