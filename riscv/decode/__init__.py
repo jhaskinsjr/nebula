@@ -108,6 +108,28 @@ def c_lui(word, **kwargs):
         'word': word,
         'size': 2,
     }
+def c_lwsp(word):
+    # C.LWSP loads a 32-bit value from memory into register rd. It computes
+    # an effective address by adding the zero-extended offset, scaled by 4,
+    # to the stack pointer, x2. It expands to lw rd, offset[7:2](x2).
+    # C.LWSP is only valid when rd̸=x0; the code points with rd=x0 are reserved;
+    # see: https://riscv.org/wp-content/uploads/2019/06/riscv-spec.pdf (p.99)
+    #
+    # 010 uimm[5] rd̸=0 uimm[4:2|7:6] 10 C.LWSP (RES, rd=0);
+    # see: https://riscv.org/wp-content/uploads/2019/06/riscv-spec.pdf (p.111)
+    _b0706   = (word >> 2) & 0b11
+    _b040302 = (word >> 4) & 0b111
+    _b05     = (word >> 12) & 0b1
+    _imm = (_b0706 << 6) | (_b05 << 5) | (_b040302 << 2)
+    return {
+        'cmd': 'LW',
+        'rs1': 2,
+        'imm': _imm,
+        'rd': compressed_rs1_or_rd(word),
+        'nbytes': 4,
+        'word': word,
+        'size': 2,
+    }
 def c_ldsp(word):
     # C.LDSP is an RV64C/RV128C-only instruction that loads a 64-bit value from memory
     # into register rd. It computes its effective address by adding the zero-extended
@@ -1017,6 +1039,7 @@ def compressed_quadrant_10(word):
 #    print('compressed_quadrant_10({:04x})'.format(word))
     return {
         0b000: compressed_quadrant_10_opcode_000,
+        0b010: compressed_quadrant_10_opcode_010,
         0b011: compressed_quadrant_10_opcode_011,
         0b100: compressed_quadrant_10_opcode_100,
         0b110: compressed_quadrant_10_opcode_110,
@@ -1034,6 +1057,13 @@ def compressed_quadrant_10_opcode_000(word):
         _imm = (_b05 << 5) | _b0403020100
         _impl = c_slli
     return _impl(word, imm=_imm)
+def compressed_quadrant_10_opcode_010(word):
+    _impl = compressed_unimplemented_instruction
+    if 0 == compressed_rs1_or_rd(word):
+        pass
+    else:
+        _impl = c_lwsp
+    return _impl(word)
 def compressed_quadrant_10_opcode_011(word):
     _impl = compressed_unimplemented_instruction
     if 0 == compressed_rs1_or_rd(word):
