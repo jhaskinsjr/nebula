@@ -461,6 +461,9 @@ def do_ecall(service, stats, insn):
                 'peek': True,
             }
         }
+    if 'shutdown' in _side_effect.keys():
+        service.tx({'info': 'ECALL {}... graceful shutdown'.format(int.from_bytes(_x17, 'little'))})
+        service.tx({'shutdown': None})
     if _done:
         if 'output' in _side_effect.keys():
             service.tx({'event': {

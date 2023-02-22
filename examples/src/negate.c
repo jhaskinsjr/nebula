@@ -1,8 +1,7 @@
 // return the -1 * argv[1]
 
 #include <stdio.h>
-
-#include "basics.h"
+#include <stdlib.h>
 
 int
 main(int argc, char ** argv)

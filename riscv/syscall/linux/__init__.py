@@ -32,17 +32,17 @@ class System:
     #         38: self.do_renameat,
     #         48: self.do_faccessat,
     #         49: self.do_chdir,
-            56: self.do_openat,
+             56: self.do_openat,
     #         57: self.do_close,
     #         62: self.do_lseek,
     #         63: self.do_read,
-            64: self.do_write,
-            66: self.do_writev,
-            78: self.do_readlinkat,
+             64: self.do_write,
+             66: self.do_writev,
+             78: self.do_readlinkat,
     #         79: self.do_fstatat,
     #         80: self.do_fstat,
-    #         93: self.do_exit,
-            98: self.do_futex,
+             93: self.do_exit,
+             98: self.do_futex,
             160: self.do_uname,
     #        169: self.do_gettimeofday,
             172: self.do_getpid,
@@ -241,6 +241,25 @@ class System:
                 },
             }
         return _retval
+    def do_exit(self, a0, a1, a2, a3, a4, a5, **kwargs):
+        logging.info('do_exit(): a0     : {}'.format(a0))
+        logging.info('do_exit(): a1     : {}'.format(a1))
+        logging.info('do_exit(): a2     : {}'.format(a2))
+        logging.info('do_exit(): a3     : {}'.format(a3))
+        logging.info('do_exit(): a4     : {}'.format(a4))
+        logging.info('do_exit(): a5     : {}'.format(a5))
+        logging.info('do_exit(): kwargs : {}'.format(kwargs))
+        return {
+            'done': True,
+            'output': {
+                'register': {
+                    'cmd': 'set',
+                    'name': 10,
+                    'data': a0,
+                },
+            },
+            'shutdown': None,
+        }
     def do_futex(self, a0, a1, a2, a3, a4, a5, **kwargs):
         # int futex(int *uaddr, int op, int val, const struct timespec *timeout, int *uaddr2, int val3)
         #
