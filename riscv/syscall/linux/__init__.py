@@ -40,7 +40,7 @@ class System:
              66: self.do_writev,
              78: self.do_readlinkat,
     #         79: self.do_fstatat,
-    #         80: self.do_fstat,
+             80: self.do_fstat,
              93: self.do_exit,
              98: self.do_futex,
             160: self.do_uname,
@@ -243,11 +243,6 @@ class System:
         return _retval
     def do_exit(self, a0, a1, a2, a3, a4, a5, **kwargs):
         logging.info('do_exit(): a0     : {}'.format(a0))
-        logging.info('do_exit(): a1     : {}'.format(a1))
-        logging.info('do_exit(): a2     : {}'.format(a2))
-        logging.info('do_exit(): a3     : {}'.format(a3))
-        logging.info('do_exit(): a4     : {}'.format(a4))
-        logging.info('do_exit(): a5     : {}'.format(a5))
         logging.info('do_exit(): kwargs : {}'.format(kwargs))
         return {
             'done': True,
@@ -259,6 +254,39 @@ class System:
                 },
             },
             'shutdown': None,
+        }
+    def do_fstat(self, a0, a1, a2, a3, a4, a5, **kwargs):
+        logging.info('do_fstat(): a0     : {}'.format(a0))
+        logging.info('do_fstat(): a1     : {}'.format(a1))
+        logging.info('do_fstat(): kwargs : {}'.format(kwargs))
+        try:
+            _os_fstat = os.fstat(int.from_bytes(a0, 'little'))
+            _success = 0
+        except:
+            _success = -1
+        logging.info('fstat() -> {}'.format(_success))
+        return {
+            'done': True,
+            'output': {
+                'register': {
+                    'cmd': 'set',
+                    'name': 10,
+                    'data': list(_success.to_bytes(8, 'little', signed=True)),
+                },
+            },
+            'poke': {
+                'addr': a1,
+                'data': list(b''.join([
+                    _os_fstat.st_dev.to_bytes(4, 'little', signed=True),
+                    _os_fstat.st_ino.to_bytes(4, 'little', signed=True),
+                    _os_fstat.st_mode.to_bytes(4, 'little', signed=True),
+                    _os_fstat.st_nlink.to_bytes(2, 'little'),
+                    _os_fstat.st_uid.to_bytes(4, 'little', signed=True),
+                    _os_fstat.st_gid.to_bytes(4, 'little', signed=True),
+                    (0).to_bytes(4, 'little', signed=True),
+                    _os_fstat.st_size.to_bytes(8, 'little', signed=True)
+                ])),
+            },
         }
     def do_futex(self, a0, a1, a2, a3, a4, a5, **kwargs):
         # int futex(int *uaddr, int op, int val, const struct timespec *timeout, int *uaddr2, int val3)
