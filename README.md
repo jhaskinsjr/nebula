@@ -437,7 +437,11 @@ any other machines on the network.
 
 The sample binaries... examples/bin/sum, examples/bin/sort,
 examples/bin/negate, and examples/bin/test... were created using the RISC-V
-cross compiler at https://github.com/riscv-collab/riscv-gnu-toolchain.
+cross compiler at https://github.com/riscv-collab/riscv-gnu-toolchain,
+following the directions under the "Installation (Newlib)" section; see:
+https://github.com/riscv-collab/riscv-gnu-toolchain#installation-newlib. (It
+would be a *lot* more work to execute binaries built for Linux, i.e.,
+following the directions under the "Installation (Linux)" section.)
 Consider the source for the sum program:
 
 ```
