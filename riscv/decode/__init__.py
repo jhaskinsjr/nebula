@@ -290,7 +290,7 @@ def c_addiw(word, **kwargs):
         'word': word,
         'size': 2,
     }
-def c_nop(word):
+def c_nop(word, **kwargs):
     return {
         'cmd': 'NOP',
         'word': word,
