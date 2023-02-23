@@ -648,8 +648,9 @@ def system(word):
         0b0000_0000_0000: 'ECALL',
         0b0000_0000_0001: 'EBREAK',
     }
-    if not uncompressed_i_type_imm12(word) in _cmds.keys(): uncompressed_illegal_instruction(word)
-    _cmd = _cmds.get(uncompressed_i_type_imm12(word))
+#    if not uncompressed_i_type_imm12(word) in _cmds.keys(): uncompressed_unimplemented_instruction(word)
+#    _cmd = _cmds.get(uncompressed_i_type_imm12(word))
+    _cmd = _cmds.get(uncompressed_i_type_imm12(word), 'Undefined')
     return {
         'cmd': _cmd,
         'word': word,
