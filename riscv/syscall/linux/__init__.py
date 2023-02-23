@@ -34,7 +34,7 @@ class System:
     #         49: self.do_chdir,
              56: self.do_openat,
     #         57: self.do_close,
-    #         62: self.do_lseek,
+             62: self.do_lseek,
     #         63: self.do_read,
              64: self.do_write,
              66: self.do_writev,
@@ -116,6 +116,33 @@ class System:
                 },
             }
         return _retval
+    def do_lseek(self, a0, a1, a2, a3, a4, a5, **kwargs):
+        logging.info('do_lseek(): a0     : {}'.format(a0))
+        logging.info('do_lseek(): a1     : {}'.format(a1))
+        logging.info('do_lseek(): a2     : {}'.format(a2))
+        logging.info('do_lseek(): kwargs : {}'.format(kwargs))
+        try:
+            _fd = int.from_bytes(a0, 'little')
+            _off = int.from_bytes(a1, 'little')
+            _whence = {
+                0: os.SEEK_SET,
+                1: os.SEEK_CUR,
+                2: os.SEEK_END,
+            }.get(int.from_bytes(a2, 'little'))
+            _retval = os.lseek(_fd, _off, _whence)
+        except:
+            _retval = -1
+        logging.info('lseek() -> {}'.format(_retval))
+        return {
+            'done': True,
+            'output': {
+                'register': {
+                    'cmd': 'set',
+                    'name': 10,
+                    'data': list(_retval.to_bytes(8, 'little', signed=True)),
+                },
+            },
+        }
     def do_write(self, a0, a1, a2, a3, a4, a5, **kwargs):
         _len = int.from_bytes(a2, 'little')
         if 'arg' in kwargs.keys():
