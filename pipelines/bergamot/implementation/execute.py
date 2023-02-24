@@ -533,6 +533,9 @@ def do_ecall(service, state, insn):
                 }
             }})
             state.get('operands').update({'mem': _addr})
+    if 'shutdown' in _side_effect.keys():
+        service.tx({'info': 'ECALL {}... graceful shutdown'.format(int.from_bytes(_syscall_num, 'little'))})
+        service.tx({'shutdown': None})
     if not _done: return
     if 'output' in _side_effect.keys():
         service.tx({'event': {
