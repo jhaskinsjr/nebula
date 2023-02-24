@@ -135,9 +135,8 @@ execute:
         --log /tmp/bergamot/sum \
         --mainmem /tmp/bergamot/sum/mainmem.raw:$((2**32)) \
         --config stats:output_filename:/tmp/bergamot/sum/stats.json \
-        --max_cycles 32000 \
-        --snapshots 1000 \
-        --break_on_undefined \
+        --max_cycles 100000 \
+        --snapshots 10000 \
         -- \
         10000 \
         main.ussim \
@@ -448,8 +447,6 @@ Consider the source for the sum program:
     /* examples/src/sum.c */
     #include <stdio.h>
 
-    #include "basics.h"
-
     int
     main(int argc, char ** argv)
     {
@@ -459,42 +456,15 @@ Consider the source for the sum program:
         return retval;
     }
 ```
-```
-    /* examples/src/basics.h */
-    int atoi(const char *);
-```
-```
-    /* examples/src/basics.c */
-    int
-    atoi(const char * s)
-    {
-        int retval = 0;
-        int x = 0;
-        while (s[x] >= '0' && s[x] <= '9') {
-            retval *= 10;
-            retval += s[x] - '0';
-            x += 1;
-        }
-        return retval;
-    }
-```
 
 which is compiled accordingly:
 
-    riscv64-unknown-linux-gnu-gcc -o sum -static -march=rv64g sum.c basics.c
+    riscv64-unknown-elf-gcc -o sum -static -march=rv64g sum.c basics.c
 
-A few things to note: (1) the binary is statically linked, since the
+A couple of things to note: (1) the binary is statically linked, since the
 simulator at this stage makes NO effort to accommodate dynamic linking;
-(2) the simulator does not use the stdlib's atoi() implementation
-since, even with static linking, there are runtime elements (e.g.,
-the RISC-V global-pointer register and thread-pointer register) that
-are not properly established when execution begins from main(), rather
-than _start() (which executes __libc_start_main()); (3) execution from
-_start() is a planned feature, but will require a great deal of
-additional work on syscall proxying; and (4) because syscall proxying
-is not yet complete, there is no printf(), thus, when execution
-completes, the sum of all the arguments passed is returned in register
-x10, which can be viewed in the regile.py output log.
+and (2) when execution completes, the sum of all the arguments passed is
+returned in register x10.
 
 ## Running Large-Scale Studies
 
@@ -647,7 +617,7 @@ of the ADDI instruction:
 The entire assembly language file consists of a single ADDI instruction,
 which gets assembled into an object file accordingly
 
-    riscv64-unknown-linux-gnu-as -o addi.o -march=rv64v addi.s
+    riscv64-unknown-elf-as -o addi.o -march=rv64v addi.s
 
 This is **not** a complete binary, but the simulator will nevertheless load
 it into memory, set the PC to the address of the _start label, and 
@@ -661,8 +631,8 @@ extend and enhance the simulator:
 1. pipeline implementation with value prediction
 1. pipeline implementation with decoupled fetch engine
 1. pipeline implementation with out-of-order execution
-1. syscall proxying
-1. launch from binary's `_start` label rather than `main` label
+1. ~~syscall proxying~~
+1. ~~launch from binary's `_start` label rather than `main` label~~
 1. Kubernetes deployment
 1. `clone`-based perfect branch predictor
 1. `clone`-based perfect value predictor
