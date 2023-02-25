@@ -30,10 +30,10 @@ config stats:output_filename /tmp/stats.json
 # - L2 peek-hit latency: 5**1 cycles
 # - MM peek     latency: 5**2 cycles
 cycle
-loadbin 0x80000000 0x00000000 main  # set x2 to 0x80000000 and %pc to 0x00000000, then
-                                    # load binary (e.g., ../../examples/bin/sum), and
-                                    # execute beginning from the "main" symbol in the
-                                    # binary's .text section
+loadbin 0x80000000 0x00000000 _start # set x2 to 0x80000000 and %pc to 0x00000000, then
+                                     # load binary (e.g., ../../examples/bin/sum), and
+                                     # execute beginning from the "_start" symbol in the
+                                     # binary's .text section
 run
 cycle
 state

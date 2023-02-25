@@ -14,6 +14,64 @@ import riscv.decode
 def remaining_buffer_availability(): return state.get('config').get('buffer_capacity') - len(state.get('buffer'))
 def hazard(p, c):
     return 'rd' in p.keys() and (('rs1' in c.keys() and p.get('rd') == c.get('rs1')) or ('rs2' in c.keys() and p.get('rd') == c.get('rs2')))
+
+def do_issue(service, state):
+    # ECALL/FENCE must execute alone, i.e., all issued instructions
+    # must retire before an ECALL/FENCE instruction will issue and no
+    # further instructions will issue so long as an ECALL/FENCE has
+    # yet to flush/retire
+    if len(state.get('issued')) and state.get('issued')[0].get('cmd') in ['ECALL', 'FENCE']: return
+    for _insn in riscv.decode.do_decode(state.get('buffer'), state.get('max_instructions_to_decode')):
+        toolbox.report_stats(service, state, 'histo', 'decoded.insn', _insn.get('cmd'))
+        if _insn.get('cmd') in ['ECALL', 'FENCE'] and len(state.get('issued')): break
+        if any(map(lambda x: hazard(x, _insn), state.get('issued'))): break
+        if _insn.get('cmd') not in ['ECALL', 'FENCE']:
+            if _insn.get('rs1'): service.tx({'event': {
+                'arrival': 1 + state.get('cycle'),
+                'register': {
+                    'cmd': 'get',
+                    'name': _insn.get('rs1'),
+                }
+            }})
+            if _insn.get('rs2'): service.tx({'event': {
+                'arrival': 1 + state.get('cycle'),
+                'register': {
+                    'cmd': 'get',
+                    'name': _insn.get('rs2'),
+                }
+            }})
+        else:
+            # FIXME: This is not super-realistic because it
+            # requests all seven of the registers used by a
+            # RISC-V Linux syscall all at once (see: https://git.kernel.org/pub/scm/docs/man-pages/man-pages.git/tree/man2/syscall.2?h=man-pages-5.04#n332;
+            # basically, the syscall number is in x17, and
+            # as many as six parameters are in x10 through
+            # x15). But I just now I prefer to focus on
+            # syscall proxying, rather than realism.
+            for _reg in [10, 11, 12, 13, 14, 15, 17]:
+                service.tx({'event': {
+                    'arrival': 1 + state.get('cycle'),
+                    'register': {
+                        'cmd': 'get',
+                        'name': _reg,
+                    }
+                }})
+        _insn = {
+            **_insn,
+            **{'iid': state.get('iid')},
+            **{'%pc': state.get('%pc')},
+        }
+        state.update({'iid': 1 + state.get('iid')})
+        state.update({'%pc': riscv.constants.integer_to_list_of_bytes(_insn.get('size') + int.from_bytes(state.get('%pc'), 'little'), 64, 'little')})
+        service.tx({'event': {
+            'arrival': 2 + state.get('cycle'),
+            'alu': {
+                'insn': _insn,
+            },
+        }})
+        state.get('issued').append(_insn)
+        for _ in range(_insn.get('size')): state.get('buffer').pop(0)
+        toolbox.report_stats(service, state, 'histo', 'issued.insn', _insn.get('cmd'))
 def do_tick(service, state, results, events):
     for _reg in map(lambda y: y.get('register'), filter(lambda x: x.get('register'), results)):
         if '%pc' != _reg.get('name'): continue
@@ -39,44 +97,13 @@ def do_tick(service, state, results, events):
             state.update({'%pc': _dec.get('addr')})
         state.get('buffer').extend(_dec.get('data'))
         service.tx({'info': 'state.get(drop_until) : {}'.format(state.get('drop_until'))})
-    if state.get('bytes_fetched') == state.get('config').get('buffer_capacity') and len(state.get('buffer')) <= (state.get('config').get('buffer_capacity') >> 1):
+#    if state.get('bytes_fetched') == state.get('config').get('buffer_capacity') and len(state.get('buffer')) <= (state.get('config').get('buffer_capacity') >> 1):
+    if state.get('bytes_fetched') >= (state.get('config').get('buffer_capacity') >> 1) and len(state.get('buffer')) <= (state.get('config').get('buffer_capacity') >> 1):
         state.update({'reset_buffer_available': True})
     service.tx({'info': 'state.bytes_fetched : {}'.format(state.get('bytes_fetched'))})
     service.tx({'info': 'state.issued        : {}'.format(state.get('issued'))})
     service.tx({'info': 'state.buffer        : {}'.format(state.get('buffer'))})
-    for _insn in riscv.decode.do_decode(state.get('buffer'), state.get('max_instructions_to_decode')):
-        toolbox.report_stats(service, state, 'histo', 'decoded.insn', _insn.get('cmd'))
-        if any(map(lambda x: hazard(x, _insn), state.get('issued'))): break
-        if _insn.get('rs1'): service.tx({'event': {
-            'arrival': 1 + state.get('cycle'),
-            'register': {
-                'cmd': 'get',
-                'name': _insn.get('rs1'),
-            }
-        }})
-        if _insn.get('rs2'): service.tx({'event': {
-            'arrival': 1 + state.get('cycle'),
-            'register': {
-                'cmd': 'get',
-                'name': _insn.get('rs2'),
-            }
-        }})
-        _insn = {
-            **_insn,
-            **{'iid': state.get('iid')},
-            **{'%pc': state.get('%pc')},
-        }
-        state.update({'iid': 1 + state.get('iid')})
-        state.update({'%pc': riscv.constants.integer_to_list_of_bytes(_insn.get('size') + int.from_bytes(state.get('%pc'), 'little'), 64, 'little')})
-        service.tx({'event': {
-            'arrival': 2 + state.get('cycle'),
-            'alu': {
-                'insn': _insn,
-            },
-        }})
-        state.get('issued').append(_insn)
-        for _ in range(_insn.get('size')): state.get('buffer').pop(0)
-        toolbox.report_stats(service, state, 'histo', 'issued.insn', _insn.get('cmd'))
+    do_issue(service, state)
     if state.get('reset_buffer_available'):
         service.tx({'result': {
             'arrival': 1 + state.get('cycle'),

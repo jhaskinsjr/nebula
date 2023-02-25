@@ -27,6 +27,7 @@ def do_unimplemented(service, state, insn):
             },
         }
     }})
+    return True
 
 def do_lui(service, state, insn):
     _result = riscv.execute.lui(insn.get('imm'))
@@ -41,6 +42,7 @@ def do_lui(service, state, insn):
             },
         }
     }})
+    return True
 def do_auipc(service, state, insn):
     _result = riscv.execute.auipc(insn.get('%pc'), insn.get('imm'))
     service.tx({'event': {
@@ -54,6 +56,7 @@ def do_auipc(service, state, insn):
             },
         }
     }})
+    return True
 def do_jal(service, state, insn):
     _next_pc, _ret_pc = riscv.execute.jal(insn.get('%pc'), insn.get('imm'), insn.get('size'))
     service.tx({'event': {
@@ -69,6 +72,7 @@ def do_jal(service, state, insn):
             },
         }
     }})
+    return True
 def do_jalr(service, state, insn):
     _rs1 = state.get('operands').get(insn.get('rs1'))
     _next_pc, _ret_pc = riscv.execute.jalr(insn.get('%pc'), insn.get('imm'), _rs1, insn.get('size'))
@@ -88,6 +92,7 @@ def do_jalr(service, state, insn):
             },
         }
     }})
+    return True
 def do_branch(service, state, insn):
     _rs1 = state.get('operands').get(insn.get('rs1'))
     _rs2 = state.get('operands').get(insn.get('rs2'))
@@ -116,6 +121,7 @@ def do_branch(service, state, insn):
             },
         }
     }})
+    return True
 def do_itype(service, state, insn):
     _rs1 = state.get('operands').get(insn.get('rs1'))
     _result = {
@@ -141,6 +147,7 @@ def do_itype(service, state, insn):
             },
         }
     }})
+    return True
 def do_rtype(service, state, insn):
     _rs1 = state.get('operands').get(insn.get('rs1'))
     _rs2 = state.get('operands').get(insn.get('rs2'))
@@ -189,6 +196,7 @@ def do_rtype(service, state, insn):
             },
         }
     }})
+    return True
 def do_load(service, state, insn):
     _rs1 = state.get('operands').get(insn.get('rs1'))
     service.tx({'event': {
@@ -205,6 +213,7 @@ def do_load(service, state, insn):
             },
         }
     }})
+    return True
 def do_store(service, state, insn):
     _rs1 = state.get('operands').get(insn.get('rs1'))
     _rs2 = state.get('operands').get(insn.get('rs2'))
@@ -223,6 +232,7 @@ def do_store(service, state, insn):
             },
         }
     }})
+    return True
 def do_nop(service, state, insn):
     service.tx({'event': {
         'arrival': 2 + state.get('cycle'),
@@ -235,6 +245,7 @@ def do_nop(service, state, insn):
             },
         }
     }})
+    return True
 def do_shift(service, state, insn):
     _rs1 = state.get('operands').get(insn.get('rs1'))
     _shamt = insn.get('shamt')
@@ -260,6 +271,88 @@ def do_shift(service, state, insn):
             },
         }
     }})
+    return True
+def do_ecall(service, stats, insn):
+    _x17 = state.get('operands').get(17)
+    _x10 = state.get('operands').get(10)
+    _x11 = state.get('operands').get(11)
+    _x12 = state.get('operands').get(12)
+    _x13 = state.get('operands').get(13)
+    _x14 = state.get('operands').get(14)
+    _x15 = state.get('operands').get(15)
+    insn = {
+        **insn,
+        **{
+            'result': None,
+        }
+    }
+    if 'mem' in state.get('operands').keys() and isinstance(state.get('operands').get('mem'), list):
+        if 'arg' not in state.get('syscall_kwargs').keys(): state.get('syscall_kwargs').update({'arg': []})
+        state.get('syscall_kwargs').get('arg').append(bytes(state.get('operands').get('mem')))
+        state.get('operands').pop('mem')
+    service.tx({'info': 'state.syscall_kwargs : {}'.format(state.get('syscall_kwargs'))})
+    _side_effect = state.get('system').do_syscall(_x17, _x10, _x11, _x12, _x13, _x14, _x15, **{
+        **state.get('syscall_kwargs'),
+        **{'cycle': state.get('cycle')},
+    })
+    service.tx({'info': '_side_effect         : {}'.format(_side_effect)})
+    _done = _side_effect.get('done')
+    if 'poke' in _side_effect.keys():
+        _addr = int.from_bytes(_side_effect.get('poke').get('addr'), 'little')
+        _data = _side_effect.get('poke').get('data')
+        service.tx({'event': {
+            'arrival': 1 + state.get('cycle'),
+            'mem': {
+                'cmd': 'poke',
+                'addr': _addr,
+                'size': len(_data),
+                'data': _data,
+            }
+        }})
+        insn = {
+            **insn,
+            **{
+                'poke': True,
+            }
+        }
+    if 'peek' in _side_effect.keys():
+        if not 'mem' in state.get('operands').keys():
+            _addr = _side_effect.get('peek').get('addr')
+            _size = _side_effect.get('peek').get('size')
+            service.tx({'event': {
+                'arrival': 1 + state.get('cycle'),
+                'mem': {
+                    'cmd': 'peek',
+                    'addr': _addr,
+                    'size': _size,
+                }
+            }})
+            state.get('operands').update({'mem': _addr})
+        insn = {
+            **insn,
+            **{
+                'peek': True,
+            }
+        }
+    if 'shutdown' in _side_effect.keys():
+        service.tx({'info': 'ECALL {}... graceful shutdown'.format(int.from_bytes(_x17, 'little'))})
+        service.tx({'shutdown': None})
+    if _done:
+        if 'output' in _side_effect.keys():
+            service.tx({'event': {
+                **{'arrival': 1 + state.get('cycle')},
+                **_side_effect.get('output'),
+            }})
+        service.tx({'event': {
+            'arrival': 2 + state.get('cycle'),
+            'commit': {
+                'insn': {
+                    **insn,
+                },
+            }
+        }})
+        state.update({'syscall_kwargs': {}})
+    return _done
 def do_fence(service, state, insn):
     # HACK: in a complex pipeline, this needs to be more than a NOP
     service.tx({'event': {
@@ -273,11 +366,13 @@ def do_fence(service, state, insn):
             },
         }
     }})
+    return True
 
 def do_execute(service, state):
     if not len(state.get('pending_execute')): return
+    _remove_from_pending_execute = []
     for _insn in map(lambda x: x.get('insn'), state.get('pending_execute')):
-        state.get('pending_execute').pop(0)
+#        state.get('pending_execute').pop(0)
         service.tx({'info': '_insn : {}'.format(_insn)})
         if 0x3 == _insn.get('word') & 0x3:
             logging.info('do_execute(): @{:8} {:08x} : {}'.format(state.get('cycle'), _insn.get('word'), _insn.get('cmd')))
@@ -347,12 +442,18 @@ def do_execute(service, state):
             'BGE': do_branch,
             'BLTU': do_branch,
             'BGEU': do_branch,
+            'ECALL': do_ecall,
             'FENCE': do_fence,
         }.get(_insn.get('cmd'), do_unimplemented)
-        _f(service, state, _insn)
+        if True == _f(service, state, _insn): _remove_from_pending_execute.append(_insn)
         toolbox.report_stats(service, state, 'histo', 'category', _f.__name__)
+    for _ in range(len(_remove_from_pending_execute)): state.get('pending_execute').pop(0)
 
 def do_tick(service, state, results, events):
+    for _mem in filter(lambda x: x, map(lambda y: y.get('mem'), results)):
+        _addr = _mem.get('addr')
+        if _addr == state.get('operands').get('mem'):
+            state.get('operands').update({'mem': _mem.get('data')})
     for _reg in filter(lambda x: x, map(lambda y: y.get('register'), results)):
         _name = _reg.get('name')
         _data = _reg.get('data')
@@ -360,7 +461,6 @@ def do_tick(service, state, results, events):
     for _insn in map(lambda y: y.get('alu'), filter(lambda x: x.get('alu'), events)):
         state.get('pending_execute').append(_insn)
     do_execute(service, state)
-    # TODO: properly handle ECALL instruction, which requires a LOT (!) of registers
 
 if '__main__' == __name__:
     parser = argparse.ArgumentParser(description='μService-SIMulator: Execute')
@@ -390,6 +490,8 @@ if '__main__' == __name__:
         'running': False,
         'ack': True,
         'pending_execute': [],
+        'syscall_kwargs': {},
+        'system': riscv.syscall.linux.System(),
         'operands': {
             **{x: riscv.constants.integer_to_list_of_bytes(0, 64, 'little') for x in range(32)},
         },
