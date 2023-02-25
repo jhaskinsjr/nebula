@@ -461,7 +461,6 @@ def do_tick(service, state, results, events):
     for _insn in map(lambda y: y.get('alu'), filter(lambda x: x.get('alu'), events)):
         state.get('pending_execute').append(_insn)
     do_execute(service, state)
-    # TODO: properly handle ECALL instruction, which requires a LOT (!) of registers
 
 if '__main__' == __name__:
     parser = argparse.ArgumentParser(description='μService-SIMulator: Execute')
