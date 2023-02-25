@@ -12,10 +12,10 @@ config mainmem:peek_latency_in_cycles 25
 config decode:buffer_capacity 32
 config stats:output_filename /tmp/stats.json
 cycle
-loadbin 0x80000000 0x00000000 main  # set x2 to 0x80000000 and %pc to 0x00000000, then
-                                    # load binary (e.g., ../../examples/bin/sum), and
-                                    # execute beginning from the "main" symbol in the
-                                    # binary's .text section
+loadbin 0x80000000 0x00000000 _start # set x2 to 0x80000000 and %pc to 0x00000000, then
+                              _      # load binary (e.g., ../../examples/bin/sum), and
+                              _      # execute beginning from the "start" symbol in the
+                              _      # binary's .text section
 run
 cycle
 state
