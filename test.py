@@ -52,7 +52,7 @@ class Harness:
             'lui': self.lui,
             'auipc': self.auipc,
         }
-        self._start_pc = 0x40000000
+        self._start_pc = 0x00000000
 #        self._start_pc = int.from_bytes(struct.Struct('<Q').pack(self._start_pc), 'little', signed=True)
         self._sp = 0x80000000
     def c_lui(self):
