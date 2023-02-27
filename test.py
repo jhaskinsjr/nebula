@@ -583,11 +583,14 @@ class Harness:
     def generate(self, args, test):
         _correct_answer, _assembly = self.tests.get(test)()
         _n_instruction = len(_assembly)
-        _program = '\n'.join(['_start:'] + list(map(lambda x: '\t{}'.format(x), _assembly)) + [''])
+        _program  = '\n'.join(list(map(lambda x: '\t{}'.format(x), ['.text', '.globl\t_start', '.type\t_start, @function'])) + [''])
+        _program += '\n'.join(['_exit: '] + list(map(lambda x: '\t{}'.format(x), ['add x17, x0, 93', 'ecall'])) + [''])
+        _program += '\n'.join(['_start:'] + list(map(lambda x: '\t{}'.format(x), _assembly + ['jal x1, _exit'])))
+        _program += '\n'
         with open(os.path.join(args.dir, 'src', '{}.s'.format(test)), 'w+') as fp: fp.write(_program)
-        subprocess.run('{} -o {} -march=rv64gc {}'.format(
-            os.path.join(args.toolchain, 'riscv64-unknown-linux-gnu-as'),
-            os.path.join(args.dir, 'obj', '{}.o'.format(test)),
+        subprocess.run('{} -o {} -march=rv64gc {} -nostartfiles'.format(
+            args.compiler,
+            os.path.join(args.dir, 'bin', '{}'.format(test)),
             os.path.join(args.dir, 'src', '{}.s'.format(test))
         ).split())
         _script  = ['# μService-SIMulator test harness script']
@@ -595,7 +598,7 @@ class Harness:
         _script += ['service pipelines/bergamot/implementation/{}:localhost'.format(s) for s in ('simplecore.py', 'regfile.py', 'mainmem.py', 'decode.py', 'execute.py')]
         _script += ['spawn']
         _script += ['config mainmem:peek_latency_in_cycles 1']
-        _script += ['loadbin 0x{:08x} 0x{:08x} _start'.format(self._sp, self._start_pc, os.path.join(args.dir, 'obj'))]
+        _script += ['loadbin 0x{:08x} 0x{:08x} _start'.format(self._sp, self._start_pc)]
 #        _script += ['config max_instructions {}'.format(_n_instruction)]
         _script += ['run']
         _script += ['shutdown']
@@ -605,7 +608,7 @@ class Harness:
             _n_instruction,
             args.port,
             os.path.join(args.dir, 'test.ussim'),
-            os.path.join(args.dir, 'obj', '{}.o'.format(test))
+            os.path.join(args.dir, 'bin', '{}'.format(test))
         )
         if args.debug: print('_cmd : {}'.format(_cmd))
         _result = subprocess.run(
@@ -631,12 +634,12 @@ if __name__ == '__main__':
     parser = argparse.ArgumentParser(description='μService-SIMulator')
     parser.add_argument('--debug', '-D', dest='debug', action='store_true', help='print debug messages')
     parser.add_argument('port', type=int, help='port for accepting connections')
-    parser.add_argument('toolchain', type=str, help='directory containing RISC-V toolchain')
+    parser.add_argument('compiler', type=str, help='RISC-V cross-compiler')
     parser.add_argument('dir', type=str, help='directory to put tests')
     args = parser.parse_args()
     assert os.path.exists(args.dir), 'Cannot open dir, {}!'.format(args.dir)
     if not os.path.exists(os.path.join(args.dir, 'src')): os.mkdir(os.path.join(args.dir, 'src'))
-    if not os.path.exists(os.path.join(args.dir, 'obj')): os.mkdir(os.path.join(args.dir, 'obj'))
+    if not os.path.exists(os.path.join(args.dir, 'bin')): os.mkdir(os.path.join(args.dir, 'bin'))
     if args.debug: print('args : {}'.format(args))
     _harness = Harness()
 #    [_harness.generate(args, n) for n in _harness.tests.keys()]
