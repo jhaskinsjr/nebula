@@ -331,7 +331,7 @@ def sllw(rs1, rs2):
     # x[rd] = sext((x[rs1] << rs2[4:0])[31:0])
     # see: https://msyksphinz-self.github.io/riscv-isadoc/html/rv64i.html#sllw
     return riscv.constants.integer_to_list_of_bytes(
-        (int.from_bytes(rs1, 'little') << (int.from_bytes(rs2[:1], 'little')) & 0b1_1111) & ((2**32) - 1),
+        (int.from_bytes(rs1, 'little') << ((int.from_bytes(rs2[:1], 'little')) & 0b1_1111)) & ((2**32) - 1),
         64,
         'little',
     )
