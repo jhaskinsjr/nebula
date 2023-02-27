@@ -39,6 +39,8 @@ class Harness:
             'addiw': self.addiw,
             'add': self.add,
             'sub': self.sub,
+            'addw': self.addw,
+            'subw': self.subw,
             'mulw': self.mulw,
             'divw': self.divw,
             'divuw': self.divuw,
@@ -139,8 +141,10 @@ class Harness:
         _assembly += ['c.mv x31, x15']
         _const_0 = int.from_bytes(struct.Struct('<I').pack(_const_0 << 12), 'little', signed=True)
         _const_1 = int.from_bytes(struct.Struct('<I').pack(_const_1 << 12), 'little', signed=True)
-        _correct_answer = ((_const_0 + _const_1) << 32) >> 32
-        _correct_answer = list(_correct_answer.to_bytes(8, 'little', signed=True))
+        _correct_answer = (_const_0 + _const_1) & ((2 ** 32) - 1)
+        _b31 = (_correct_answer >> 31) & 0b1
+        _correct_answer = functools.reduce(lambda a, b: a | b, map(lambda x: _b31 << x, range(32, 64)), _correct_answer)
+        _correct_answer = list(_correct_answer.to_bytes(8, 'little'))
         return _correct_answer, _assembly
     def c_subw(self):
         _const_0 = random.randint(0, 2**20 - 1)
@@ -153,8 +157,10 @@ class Harness:
         _assembly += ['c.mv x31, x15']
         _const_0 = int.from_bytes(struct.Struct('<I').pack(_const_0 << 12), 'little', signed=True)
         _const_1 = int.from_bytes(struct.Struct('<I').pack(_const_1 << 12), 'little', signed=True)
-        _correct_answer = ((_const_0 - _const_1) << 32) >> 32
-        _correct_answer = list(_correct_answer.to_bytes(8, 'little', signed=True))
+        _correct_answer = (_const_0 - _const_1) & ((2 ** 32) - 1)
+        _b31 = (_correct_answer >> 31) & 0b1
+        _correct_answer = functools.reduce(lambda a, b: a | b, map(lambda x: _b31 << x, range(32, 64)), _correct_answer)
+        _correct_answer = list(_correct_answer.to_bytes(8, 'little'))
         return _correct_answer, _assembly
     def c_addi16sp(self):
         _const = random.choice([
@@ -405,6 +411,38 @@ class Harness:
         _assembly += ['sub x31, x29, x30']
         _correct_answer = _const_0 - _const_1
         _correct_answer = list(_correct_answer.to_bytes(8, 'little', signed=True))
+        return _correct_answer, _assembly
+    def addw(self):
+        _const_0 = random.randint(0, 2**20 - 1)
+        _const_1 = random.randint(0, 2**20 - 1)
+#        _const_0 = 2**20 - 1
+#        _const_1 = 8
+        _assembly  = ['lui x13, {}'.format(_const_0)]
+        _assembly += ['lui x14, {}'.format(_const_1)]
+        _assembly += ['addw x15, x13, x14']
+        _assembly += ['c.mv x31, x15']
+        _const_0 = int.from_bytes(struct.Struct('<I').pack(_const_0 << 12), 'little', signed=True)
+        _const_1 = int.from_bytes(struct.Struct('<I').pack(_const_1 << 12), 'little', signed=True)
+        _correct_answer = (_const_0 + _const_1) & ((2 ** 32) - 1)
+        _b31 = (_correct_answer >> 31) & 0b1
+        _correct_answer = functools.reduce(lambda a, b: a | b, map(lambda x: _b31 << x, range(32, 64)), _correct_answer)
+        _correct_answer = list(_correct_answer.to_bytes(8, 'little'))
+        return _correct_answer, _assembly
+    def subw(self):
+        _const_0 = random.randint(0, 2**20 - 1)
+        _const_1 = random.randint(0, 2**20 - 1)
+#        _const_0 = 2**20 - 1
+#        _const_1 = 8
+        _assembly  = ['lui x13, {}'.format(_const_0)]
+        _assembly += ['lui x14, {}'.format(_const_1)]
+        _assembly += ['subw x15, x13, x14']
+        _assembly += ['c.mv x31, x15']
+        _const_0 = int.from_bytes(struct.Struct('<I').pack(_const_0 << 12), 'little', signed=True)
+        _const_1 = int.from_bytes(struct.Struct('<I').pack(_const_1 << 12), 'little', signed=True)
+        _correct_answer = (_const_0 - _const_1) & ((2 ** 32) - 1)
+        _b31 = (_correct_answer >> 31) & 0b1
+        _correct_answer = functools.reduce(lambda a, b: a | b, map(lambda x: _b31 << x, range(32, 64)), _correct_answer)
+        _correct_answer = list(_correct_answer.to_bytes(8, 'little'))
         return _correct_answer, _assembly
     def mulw(self):
         _const_0 = random.randint(0, 2**20 - 1)
@@ -670,11 +708,13 @@ if __name__ == '__main__':
 #    _harness.generate(args, 'addiw')
 #    _harness.generate(args, 'add')
 #    _harness.generate(args, 'sub')
+    _harness.generate(args, 'addw')
+    _harness.generate(args, 'subw')
 #    _harness.generate(args, 'mulw')
 #    _harness.generate(args, 'divw')
-    _harness.generate(args, 'divuw')
+#    _harness.generate(args, 'divuw')
 #    _harness.generate(args, 'remw')
-    _harness.generate(args, 'remuw')
+#    _harness.generate(args, 'remuw')
 #    _harness.generate(args, 'and')
 #    _harness.generate(args, 'or')
 #    _harness.generate(args, 'xor')
