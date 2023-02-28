@@ -639,6 +639,7 @@ class Harness:
         _const_0 = int.from_bytes(struct.Struct('<I').pack(_const_0), 'little', signed=True)
         _const_1 = random.randint(0, 2**20 - 1)
         _assembly += ['lui x30, {}'.format(_const_1)]
+        _assembly += ['slt x31, x29, x30']
         _const_1 <<= 12
         _const_1 = int.from_bytes(struct.Struct('<I').pack(_const_1), 'little', signed=True)
         _correct_answer = list((1 if _const_0 < _const_1 else 0).to_bytes(8, 'little'))
