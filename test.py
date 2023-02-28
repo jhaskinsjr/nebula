@@ -804,16 +804,21 @@ class Harness:
 if __name__ == '__main__':
     parser = argparse.ArgumentParser(description='μService-SIMulator')
     parser.add_argument('--debug', '-D', dest='debug', action='store_true', help='print debug messages')
+    parser.add_argument('--loop', dest='loop', type=int, default=1, help='number of times to repeat tests')
+    parser.add_argument('--insns', dest='insns', type=str, nargs='+', help='specific instruction(s) to test')
     parser.add_argument('port', type=int, help='port for accepting connections')
     parser.add_argument('compiler', type=str, help='RISC-V cross-compiler')
     parser.add_argument('dir', type=str, help='directory to put tests')
     args = parser.parse_args()
+    if args.debug: print('args : {}'.format(args))
     assert os.path.exists(args.dir), 'Cannot open dir, {}!'.format(args.dir)
     if not os.path.exists(os.path.join(args.dir, 'src')): os.mkdir(os.path.join(args.dir, 'src'))
     if not os.path.exists(os.path.join(args.dir, 'bin')): os.mkdir(os.path.join(args.dir, 'bin'))
-    if args.debug: print('args : {}'.format(args))
     _harness = Harness()
-#    [_harness.generate(args, n) for n in _harness.tests.keys()]
+    for _ in range(args.loop): [
+        _harness.generate(args, n)
+        for n in filter(lambda a: a in (args.insns if args.insns else _harness.tests.keys()), _harness.tests.keys())
+    ]
 #    _harness.generate(args, 'c.lui')
 #    _harness.generate(args, 'c.add')
 #    _harness.generate(args, 'c.sub')
@@ -855,7 +860,7 @@ if __name__ == '__main__':
 #    _harness.generate(args, 'sra')
 #    _harness.generate(args, 'sraw')
 #    _harness.generate(args, 'slt')
-    _harness.generate(args, 'sltu')
+#    _harness.generate(args, 'sltu')
 #    _harness.generate(args, 'and')
 #    _harness.generate(args, 'or')
 #    _harness.generate(args, 'xor')
