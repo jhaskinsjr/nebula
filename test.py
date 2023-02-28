@@ -308,8 +308,8 @@ class Harness:
         _correct_answer = int.from_bytes(struct.Struct('<I').pack(_correct_answer), 'little', signed=True)
         _correct_answer &= (2**32 - 1)
         _correct_answer >>= _shamt
-#        _b31 = (_correct_answer >> 31) & 0b1
-#        _correct_answer = functools.reduce(lambda a, b: a | b, map(lambda x: _b31 << x, range(32, 64)), _correct_answer)
+        _b31 = (_correct_answer >> 31) & 0b1
+        _correct_answer = functools.reduce(lambda a, b: a | b, map(lambda x: _b31 << x, range(32, 64)), _correct_answer)
         _correct_answer = list(_correct_answer.to_bytes(8, 'little'))
         return _correct_answer, _assembly
     def srai(self):
@@ -340,7 +340,8 @@ class Harness:
         _correct_answer >>= _shamt
         _correct_answer &= 2**32 - 1
         _correct_answer = int.from_bytes(struct.Struct('<Q').pack(_correct_answer), 'little')
-        _correct_answer = (_correct_answer << 32) >> 32
+        _b31 = (_correct_answer >> 31) & 0b1
+        _correct_answer = functools.reduce(lambda a, b: a | b, map(lambda x: _b31 << x, range(32, 64)), _correct_answer)
         _correct_answer = list(_correct_answer.to_bytes(8, 'little'))
         return _correct_answer, _assembly
     def andi(self):
@@ -734,7 +735,7 @@ if __name__ == '__main__':
     if not os.path.exists(os.path.join(args.dir, 'bin')): os.mkdir(os.path.join(args.dir, 'bin'))
     if args.debug: print('args : {}'.format(args))
     _harness = Harness()
-#    [_harness.generate(args, n) for n in _harness.tests.keys()]
+    [_harness.generate(args, n) for n in _harness.tests.keys()]
 #    _harness.generate(args, 'c.lui')
 #    _harness.generate(args, 'c.add')
 #    _harness.generate(args, 'c.sub')
