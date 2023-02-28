@@ -46,6 +46,7 @@ class Harness:
             'divuw': self.divuw,
             'remw': self.remw,
             'remuw': self.remuw,
+            'sll': self.sll,
             'sllw': self.sllw,
             'srlw': self.srlw,
             'sraw': self.sraw,
@@ -55,10 +56,9 @@ class Harness:
             'slti': self.slti,
             'sltiu': self.sltiu,
             'lui': self.lui,
-            'auipc': self.auipc,
+#            'auipc': self.auipc, # FIXME: self._start_pc is not 0x00000000
         }
         self._start_pc = 0x00000000
-#        self._start_pc = int.from_bytes(struct.Struct('<Q').pack(self._start_pc), 'little', signed=True)
         self._sp = 0x80000000
     def c_lui(self):
         _const = random.randint(1, 2**5 - 1)
@@ -529,6 +529,21 @@ class Harness:
         _correct_answer %= _const_1 << 12
         _correct_answer  = list(int.from_bytes(_correct_answer.to_bytes(4, 'little'), 'little', signed=True).to_bytes(8, 'little', signed=True))
         return _correct_answer, _assembly
+    def sll(self):
+        _const = random.randint(0, 2**20 - 1)
+#        _const = 17
+        _shamt = random.randint(0, 2**5 - 1)
+#        _shamt = 0x20
+        _assembly  = ['c.li x15, {}'.format(_shamt)]
+        _assembly += ['lui x30, {}'.format(_const)]
+        _assembly += ['sll x31, x30, x15'.format(_shamt)]
+        _correct_answer = _const << 12
+        _correct_answer = int.from_bytes(struct.Struct('<I').pack(_correct_answer), 'little', signed=True)
+        _correct_answer <<= _shamt
+        _correct_answer &= 2**64 - 1
+        _correct_answer = int.from_bytes(struct.Struct('<Q').pack(_correct_answer), 'little')
+        _correct_answer = list(_correct_answer.to_bytes(8, 'little'))
+        return _correct_answer, _assembly
     def sllw(self):
         _const = random.randint(0, 2**20 - 1)
 #        _const = 178273
@@ -735,7 +750,7 @@ if __name__ == '__main__':
     if not os.path.exists(os.path.join(args.dir, 'bin')): os.mkdir(os.path.join(args.dir, 'bin'))
     if args.debug: print('args : {}'.format(args))
     _harness = Harness()
-    [_harness.generate(args, n) for n in _harness.tests.keys()]
+#    [_harness.generate(args, n) for n in _harness.tests.keys()]
 #    _harness.generate(args, 'c.lui')
 #    _harness.generate(args, 'c.add')
 #    _harness.generate(args, 'c.sub')
@@ -770,6 +785,7 @@ if __name__ == '__main__':
 #    _harness.generate(args, 'divuw')
 #    _harness.generate(args, 'remw')
 #    _harness.generate(args, 'remuw')
+    _harness.generate(args, 'sll')
 #    _harness.generate(args, 'sllw')
 #    _harness.generate(args, 'srlw')
 #    _harness.generate(args, 'sraw')
