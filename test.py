@@ -50,6 +50,7 @@ class Harness:
             'sllw': self.sllw,
             'srl': self.srl,
             'srlw': self.srlw,
+            'sra': self.sra,
             'sraw': self.sraw,
             'and': self.test_and,
             'or': self.test_or,
@@ -597,6 +598,22 @@ class Harness:
 #        _correct_answer = functools.reduce(lambda a, b: a | b, map(lambda x: _b31 << x, range(32, 64)), _correct_answer)
         _correct_answer = list(_correct_answer.to_bytes(8, 'little'))
         return _correct_answer, _assembly
+    def sra(sra):
+        _const = random.randint(0, 2**20 - 1)
+#        _const = int.from_bytes((-789958656 // (2**12) & 0xffff_ffff).to_bytes(8, 'little'), 'little') >> 12
+#        print('_const : {:08x} ({})'.format(_const, _const))
+        _shamt = random.randint(0, 2**5 - 1)
+#        _shamt = 7
+        _assembly  = ['c.li x15, {}'.format(_shamt)]
+        _assembly += ['lui x30, {}'.format(_const)]
+        _assembly += ['sra x31, x30, x15']
+        _correct_answer = _const << 12
+        _correct_answer = int.from_bytes(struct.Struct('<I').pack(_correct_answer), 'little', signed=True)
+        _correct_answer >>= _shamt
+        _correct_answer &= 2**64 - 1
+        _correct_answer = int.from_bytes(struct.Struct('<Q').pack(_correct_answer), 'little')
+        _correct_answer = list(_correct_answer.to_bytes(8, 'little'))
+        return _correct_answer, _assembly
     def sraw(self):
         _const = random.randint(0, 2**20 - 1)
 #        _const = int.from_bytes((-789958656 // (2**12) & 0xffff_ffff).to_bytes(8, 'little'), 'little') >> 12
@@ -807,8 +824,9 @@ if __name__ == '__main__':
 #    _harness.generate(args, 'remuw')
 #    _harness.generate(args, 'sll')
 #    _harness.generate(args, 'sllw')
-    _harness.generate(args, 'srl')
+#    _harness.generate(args, 'srl')
 #    _harness.generate(args, 'srlw')
+    _harness.generate(args, 'sra')
 #    _harness.generate(args, 'sraw')
 #    _harness.generate(args, 'and')
 #    _harness.generate(args, 'or')
