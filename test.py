@@ -1,6 +1,7 @@
 # Copyright (C) 2021, 2022 John Haskins Jr.
 
 import os
+import sys
 import re
 import random
 import argparse
@@ -802,6 +803,10 @@ class Harness:
 
 
 if __name__ == '__main__':
+    _harness = Harness()
+    if '--list' in sys.argv:
+        for x in _harness.tests.keys(): print(x)
+        sys.exit(0)
     parser = argparse.ArgumentParser(description='μService-SIMulator')
     parser.add_argument('--debug', '-D', dest='debug', action='store_true', help='print debug messages')
     parser.add_argument('--loop', dest='loop', type=int, default=1, help='number of times to repeat tests')
@@ -814,7 +819,6 @@ if __name__ == '__main__':
     assert os.path.exists(args.dir), 'Cannot open dir, {}!'.format(args.dir)
     if not os.path.exists(os.path.join(args.dir, 'src')): os.mkdir(os.path.join(args.dir, 'src'))
     if not os.path.exists(os.path.join(args.dir, 'bin')): os.mkdir(os.path.join(args.dir, 'bin'))
-    _harness = Harness()
     for _ in range(args.loop): [
         _harness.generate(args, n)
         for n in filter(lambda a: a in (args.insns if args.insns else _harness.tests.keys()), _harness.tests.keys())
