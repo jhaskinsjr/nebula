@@ -52,10 +52,11 @@ class Harness:
             'srlw': self.srlw,
             'sra': self.sra,
             'sraw': self.sraw,
-            'slt': self.slt,
             'and': self.test_and,
             'or': self.test_or,
             'xor': self.test_xor,
+            'slt': self.slt,
+            'sltu': self.sltu,
             'slti': self.slti,
             'sltiu': self.sltiu,
             'lui': self.lui,
@@ -632,18 +633,6 @@ class Harness:
         _correct_answer = functools.reduce(lambda a, b: a | b, map(lambda x: _b31 << x, range(32, 64)), _correct_answer)
         _correct_answer = list(_correct_answer.to_bytes(8, 'little'))
         return _correct_answer, _assembly
-    def slt(self):
-        _const_0 = random.randint(0, 2**20 - 1)
-        _assembly  = ['lui x29, {}'.format(_const_0)]
-        _const_0 <<= 12
-        _const_0 = int.from_bytes(struct.Struct('<I').pack(_const_0), 'little', signed=True)
-        _const_1 = random.randint(0, 2**20 - 1)
-        _assembly += ['lui x30, {}'.format(_const_1)]
-        _assembly += ['slt x31, x29, x30']
-        _const_1 <<= 12
-        _const_1 = int.from_bytes(struct.Struct('<I').pack(_const_1), 'little', signed=True)
-        _correct_answer = list((1 if _const_0 < _const_1 else 0).to_bytes(8, 'little'))
-        return _correct_answer, _assembly
     def test_and(self):
         _const_0 = random.randint(0, 2**20 - 1)
         _assembly  = ['lui x29, {}'.format(_const_0)]
@@ -694,6 +683,30 @@ class Harness:
             _const_1.to_bytes(8, 'little', signed=True),
         ), 'little', signed=True)
         _correct_answer = list(_correct_answer.to_bytes(8, 'little', signed=True))
+        return _correct_answer, _assembly
+    def slt(self):
+        _const_0 = random.randint(0, 2**20 - 1)
+        _assembly  = ['lui x29, {}'.format(_const_0)]
+        _const_0 <<= 12
+        _const_0 = int.from_bytes(struct.Struct('<I').pack(_const_0), 'little', signed=True)
+        _const_1 = random.randint(0, 2**20 - 1)
+        _assembly += ['lui x30, {}'.format(_const_1)]
+        _assembly += ['slt x31, x29, x30']
+        _const_1 <<= 12
+        _const_1 = int.from_bytes(struct.Struct('<I').pack(_const_1), 'little', signed=True)
+        _correct_answer = list((1 if _const_0 < _const_1 else 0).to_bytes(8, 'little'))
+        return _correct_answer, _assembly
+    def sltu(self):
+        _const_0 = random.randint(0, 2**20 - 1)
+        _assembly  = ['lui x29, {}'.format(_const_0)]
+        _const_0 <<= 12
+        _const_0 = int.from_bytes(struct.Struct('<I').pack(_const_0), 'little')
+        _const_1 = random.randint(0, 2**20 - 1)
+        _assembly += ['lui x30, {}'.format(_const_1)]
+        _assembly += ['slt x31, x29, x30']
+        _const_1 <<= 12
+        _const_1 = int.from_bytes(struct.Struct('<I').pack(_const_1), 'little')
+        _correct_answer = list((1 if _const_0 < _const_1 else 0).to_bytes(8, 'little'))
         return _correct_answer, _assembly
     def slti(self):
         _const_0 = random.randint(0, 2**20 - 1)
@@ -841,7 +854,8 @@ if __name__ == '__main__':
 #    _harness.generate(args, 'srlw')
 #    _harness.generate(args, 'sra')
 #    _harness.generate(args, 'sraw')
-    _harness.generate(args, 'slt')
+#    _harness.generate(args, 'slt')
+    _harness.generate(args, 'sltu')
 #    _harness.generate(args, 'and')
 #    _harness.generate(args, 'or')
 #    _harness.generate(args, 'xor')
