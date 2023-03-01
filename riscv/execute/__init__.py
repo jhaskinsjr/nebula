@@ -304,7 +304,7 @@ def srliw(rs1, shamt):
     # x[rd] = sext(x[rs1][31:0] >>u shamt)
     # see: https://msyksphinz-self.github.io/riscv-isadoc/html/rv64i.html#srliw
     return riscv.constants.integer_to_list_of_bytes(
-        int.from_bytes(rs1[:4], 'little') >> shamt,
+        int.from_bytes(rs1[:4], 'little', signed=(False if shamt else True)) >> shamt,
         64,
         'little',
     )
