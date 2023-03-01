@@ -343,8 +343,9 @@ def srlw(rs1, rs2):
     # Implementation
     # x[rd] = sext(x[rs1][31:0] >>u x[rs2][4:0])
     # see: https://msyksphinz-self.github.io/riscv-isadoc/html/rv64i.html#srlw
+    _shamt = int.from_bytes(rs2[:1], 'little') & 0b1_1111
     return riscv.constants.integer_to_list_of_bytes(
-        int.from_bytes(rs1[:4], 'little') >> (int.from_bytes(rs2[:1], 'little') & 0b1_1111),
+        int.from_bytes(rs1[:4], 'little', signed=(False if _shamt else True)) >> _shamt,
         64,
         'little',
     )

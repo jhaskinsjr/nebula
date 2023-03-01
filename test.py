@@ -597,8 +597,8 @@ class Harness:
         _correct_answer = int.from_bytes(struct.Struct('<I').pack(_correct_answer), 'little', signed=True)
         _correct_answer &= (2**32 - 1)
         _correct_answer >>= _shamt
-#        _b31 = (_correct_answer >> 31) & 0b1
-#        _correct_answer = functools.reduce(lambda a, b: a | b, map(lambda x: _b31 << x, range(32, 64)), _correct_answer)
+        _b31 = (_correct_answer >> 31) & 0b1
+        _correct_answer = functools.reduce(lambda a, b: a | b, map(lambda x: _b31 << x, range(32, 64)), _correct_answer)
         _correct_answer = list(_correct_answer.to_bytes(8, 'little'))
         return _correct_answer, _assembly
     def sra(sra):
