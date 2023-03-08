@@ -182,7 +182,7 @@ class Harness:
         _correct_answer = list(_correct_answer.to_bytes(8, 'little', signed=True))
         return _correct_answer, _assembly
     def c_addi4spn(self):
-        _const = (random.randint(1, 2**9 - 1) | 0b11) ^ 0b11
+        _const = random.randint(1, 2**7 - 1) << 2
 #        _const = 4
         _assembly  = ['c.addi4spn x15, x2, {}'.format(_const)]
         _assembly += ['c.mv x31, x15']
@@ -334,9 +334,11 @@ class Harness:
         return _correct_answer, _assembly
     def sraiw(self):
         _const = random.randint(0, 2**20 - 1)
+#        _const = 381056
 #        _const = int.from_bytes((-789958656 // (2**12) & 0xffff_ffff).to_bytes(8, 'little'), 'little') >> 12
 #        print('_const : {:08x} ({})'.format(_const, _const))
         _shamt = random.randint(0, 2**5 - 1)
+#        _shamt = 21
 #        _shamt = 7
         _assembly  = ['lui x30, {}'.format(_const)]
         _assembly += ['sraiw x31, x30, {}'.format(_shamt)]
@@ -788,6 +790,7 @@ class Harness:
         _stdout = _result.stdout.decode('utf-8').split('\n')
         if args.debug: print('\n'.join(_stdout))
         _regfile_py_log = None
+        os.sync()
         with open(os.path.join(args.dir, 'regfile.py.log'), 'r') as fp: _regfile_py_log = fp.readlines()
         _x31 = list(filter(lambda x: re.search('register 31 : ', x), _regfile_py_log))[-1].split(':')[1]
         _x31 = eval(_x31)
