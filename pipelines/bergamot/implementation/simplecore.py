@@ -45,11 +45,12 @@ def do_tick(service, state, results, events):
         }})
     for insns in filter(lambda x: x, map(lambda y: y.get('insns'), results)):
         state.update({'pending_decode': False})
-        state.update({'pending_execute': insns.get('data')})
+        _pending = [{**x, **{'%pc': state.get('%pc')}} for x in insns.get('data')]
+        state.update({'pending_execute': _pending})
         service.tx({'event': {
             'arrival': 1 + state.get('cycle'),
             'execute': {
-                'insns': insns.get('data'), 
+                'insns': _pending,
             }
         }})
     for completed in filter(lambda x: x, map(lambda y: y.get('complete'), events)):
