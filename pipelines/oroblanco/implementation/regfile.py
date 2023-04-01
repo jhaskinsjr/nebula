@@ -92,6 +92,7 @@ if '__main__' == __name__:
         'registers': {
             **{'%pc': riscv.constants.integer_to_list_of_bytes(0, 64, 'little')},
             **{x: riscv.constants.integer_to_list_of_bytes(0, 64, 'little') for x in range(32)},
+            **{0x1000_0000 + x: riscv.constants.integer_to_list_of_bytes(0, 64, 'little') for x in range(32)}, # FP registers
         }
     }
     _service = service.Service(state.get('service'), _launcher.get('host'), _launcher.get('port'))
