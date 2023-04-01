@@ -27,6 +27,7 @@ def c_j(word, **kwargs):
         'rd': 0,
         'word': word,
         'size': 2,
+        'mnemonic': 'C.J',
     }
 def c_jr(word):
     return {
@@ -36,6 +37,7 @@ def c_jr(word):
         'rd': 0,
         'word': word,
         'size': 2,
+        'mnemonic': 'C.JR',
     }
 def c_jalr(word):
     # C.JALR (jump and link register) performs the same operation as
@@ -50,6 +52,7 @@ def c_jalr(word):
         'rd': 1,
         'word': word,
         'size': 2,
+        'mnemonic': 'C.JALR',
     }
 def c_beqz(word, **kwargs):
     # BEQZ performs conditional control transfers. The offset is
@@ -65,6 +68,7 @@ def c_beqz(word, **kwargs):
         'taken': None,
         'word': word,
         'size': 2,
+        'mnemonic': 'C.BEQZ',
     }
 def c_bnez(word, **kwargs):
     # BEQZ performs conditional control transfers. The offset is
@@ -80,6 +84,7 @@ def c_bnez(word, **kwargs):
         'taken': None,
         'word': word,
         'size': 2,
+        'mnemonic': 'C.BNEZ',
     }
 def c_mv(word):
     # C.MV copies the value in register rs2 into register rd. C.MV expands into add rd, x0, rs2;
@@ -91,6 +96,7 @@ def c_mv(word):
         'rd': compressed_rs1_or_rd(word),
         'word': word,
         'size': 2,
+        'mnemonic': 'C.MV',
     }
 def c_lui(word, **kwargs):
     # C.LUI loads the non-zero 6-bit immediate field into bits 17–12 of the
@@ -107,6 +113,7 @@ def c_lui(word, **kwargs):
         'imm': kwargs.get('imm'),
         'word': word,
         'size': 2,
+        'mnemonic': 'C.LUI',
     }
 def c_lwsp(word):
     # C.LWSP loads a 32-bit value from memory into register rd. It computes
@@ -129,6 +136,7 @@ def c_lwsp(word):
         'nbytes': 4,
         'word': word,
         'size': 2,
+        'mnemonic': 'C.LWSP',
     }
 def c_ldsp(word):
     # C.LDSP is an RV64C/RV128C-only instruction that loads a 64-bit value from memory
@@ -150,6 +158,23 @@ def c_ldsp(word):
         'nbytes': 8,
         'word': word,
         'size': 2,
+        'mnemonic': 'C.LDSP',
+    }
+def c_fld(word, **kwargs):
+    # C.FLD is an RV32DC/RV64DC-only instruction that loads a double-precision
+    # floating-point value from memory into floating-point register rd'. It
+    # computes an effective address by adding the zero-extended offset, scaled by 8,
+    # to the base address in register rs1'. It expands to fld rd', offset[7:3](rs1')
+    # see: https://riscv.org/wp-content/uploads/2019/06/riscv-spec.pdf (p.101)
+    return {
+        'cmd': 'LD',
+        'rs1': compressed_quadrant_00_rs1_prime(word),
+        'imm': kwargs.get('imm'),
+        'rd': 0x1000_0000 + compressed_quadrant_00_rs2_prime_or_rd_prime(word),
+        'nbytes': 8,
+        'word': word,
+        'size': 2,
+        'mnemonic': 'C.FLD',
     }
 def c_lw(word, **kwargs):
     # C.LW loads a 32-bit value from memory into register rd ′. It computes
@@ -165,6 +190,7 @@ def c_lw(word, **kwargs):
         'nbytes': 4,
         'word': word,
         'size': 2,
+        'mnemonic': 'C.LW',
     }
 def c_ld(word, **kwargs):
     # C.LD is an RV64C/RV128C-only instruction that loads a 64-bit value from memory
@@ -180,6 +206,7 @@ def c_ld(word, **kwargs):
         'nbytes': 8,
         'word': word,
         'size': 2,
+        'mnemonic': 'C.LD',
     }
 def c_sd(word, **kwargs):
     # C.SD is an RV64C/RV128C-only instruction that stores a 64-bit value in
@@ -195,6 +222,7 @@ def c_sd(word, **kwargs):
         'nbytes': 8,
         'word': word,
         'size': 2,
+        'mnemonic': 'C.SD',
     }
 def c_sw(word, **kwargs):
     # C.SW stores a 32-bit value in register rs2' to memory. It computes an
@@ -209,6 +237,7 @@ def c_sw(word, **kwargs):
         'nbytes': 4,
         'word': word,
         'size': 2,
+        'mnemonic': 'C.SW',
     }
 def c_addi4spn(word, **kwargs):
     # C.ADDI4SPN is a CIW-format instruction that adds a zero-extended non-zero
@@ -222,6 +251,7 @@ def c_addi4spn(word, **kwargs):
         'rd': compressed_quadrant_00_rs2_prime_or_rd_prime(word),
         'word': word,
         'size': 2,
+        'mnemonic': 'C.ADDI4SPN',
     }
 def c_addi16sp(word, **kwargs):
     # C.ADDI16SP is used to adjust the stack pointer in procedure prologues and
@@ -234,6 +264,7 @@ def c_addi16sp(word, **kwargs):
         'rd': 2,
         'word': word,
         'size': 2,
+        'mnemonic': 'C.ADDI16SP',
     }
 def c_swsp(word, **kwargs):
     # C.SWSP stores a 32-bit value in register rs2 to memory. It computes
@@ -247,6 +278,7 @@ def c_swsp(word, **kwargs):
         'nbytes': 4,
         'word': word,
         'size': 2,
+        'mnemonic': 'C.SWSP',
     }
 def c_sdsp(word, **kwargs):
     # C.SDSP is an RV64C/RV128C-only instruction that stores a 64-bit value in
@@ -261,6 +293,7 @@ def c_sdsp(word, **kwargs):
         'nbytes': 8,
         'word': word,
         'size': 2,
+        'mnemonic': 'C.SDSP',
     }
 def c_addi(word, **kwargs):
     # C.ADDI adds the non-zero sign-extended 6-bit immediate to the value in
@@ -275,6 +308,7 @@ def c_addi(word, **kwargs):
         'rd': compressed_rs1_or_rd(word),
         'word': word,
         'size': 2,
+        'mnemonic': 'C.ADDI',
     }
 def c_addiw(word, **kwargs):
     # C.ADDIW is an RV64C/RV128C-only instruction that performs the same
@@ -289,12 +323,14 @@ def c_addiw(word, **kwargs):
         'rd': compressed_rs1_or_rd(word),
         'word': word,
         'size': 2,
+        'mnemonic': 'C.ADDIW',
     }
 def c_nop(word, **kwargs):
     return {
         'cmd': 'NOP',
         'word': word,
         'size': 2,
+        'mnemonic': 'C.NOP',
     }
 def c_add(word):
     # C.ADD adds the values in registers rd and rs2 and writes the result to
@@ -308,6 +344,7 @@ def c_add(word):
         'rd': compressed_rs1_or_rd(word),
         'word': word,
         'size': 2,
+        'mnemonic': 'C.ADD',
     }
 def c_sub(word):
     # C.SUB subtracts the value in register rs2 ′ from the value in register rd',
@@ -320,6 +357,7 @@ def c_sub(word):
         'rd': compressed_quadrant_01_rs1_prime_or_rd_prime(word),
         'word': word,
         'size': 2,
+        'mnemonic': 'C.SUB',
     }
 def c_xor(word):
     # C.XOR computes the bitwise XOR of the values in registers rd'
@@ -332,6 +370,7 @@ def c_xor(word):
         'rd': compressed_quadrant_01_rs1_prime_or_rd_prime(word),
         'word': word,
         'size': 2,
+        'mnemonic': 'C.XOR',
     }
 def c_or(word):
     # C.OR computes the bitwise OR of the values in registers rd'
@@ -344,6 +383,7 @@ def c_or(word):
         'rd': compressed_quadrant_01_rs1_prime_or_rd_prime(word),
         'word': word,
         'size': 2,
+        'mnemonic': 'C.OR',
     }
 def c_and(word):
     # C.AND computes the bitwise AND of the values in registers rd'
@@ -356,6 +396,7 @@ def c_and(word):
         'rd': compressed_quadrant_01_rs1_prime_or_rd_prime(word),
         'word': word,
         'size': 2,
+        'mnemonic': 'C.AND',
     }
 def c_subw(word):
     # C.SUBW is an RV64C/RV128C-only instruction that subtracts the value
@@ -369,6 +410,7 @@ def c_subw(word):
         'rd': compressed_quadrant_01_rs1_prime_or_rd_prime(word),
         'word': word,
         'size': 2,
+        'mnemonic': 'C.SUBW',
     }
 def c_addw(word):
     # C.ADDW is an RV64C/RV128C-only instruction that adds the values
@@ -382,6 +424,7 @@ def c_addw(word):
         'rd': compressed_quadrant_01_rs1_prime_or_rd_prime(word),
         'word': word,
         'size': 2,
+        'mnemonic': 'C.ADDW',
     }
 def c_li(word, **kwargs):
     # C.LI loads the sign-extended 6-bit immediate, imm, into register rd. C.LI
@@ -394,6 +437,7 @@ def c_li(word, **kwargs):
         'imm': kwargs.get('imm'),
         'word': word,
         'size': 2,
+        'mnemonic': 'C.LI',
     }
 def c_slli(word, **kwargs):
     # C.SLLI is a CI-format instruction that performs a logical left shift
@@ -409,6 +453,7 @@ def c_slli(word, **kwargs):
         'shamt': kwargs.get('imm'),
         'word': word,
         'size': 2,
+        'mnemonic': 'C.SLLI',
     }
 def c_srli(word, **kwargs):
     # C.SRLI is a CB-format instruction that performs a logical right shift
@@ -425,6 +470,7 @@ def c_srli(word, **kwargs):
         'shamt': kwargs.get('imm'),
         'word': word,
         'size': 2,
+        'mnemonic': 'C.SRLI',
     }
 def c_srai(word, **kwargs):
     # C.SRAI is defined analogously to C.SRLI, but instead performs an
@@ -436,6 +482,7 @@ def c_srai(word, **kwargs):
         'shamt': kwargs.get('imm'),
         'word': word,
         'size': 2,
+        'mnemonic': 'C.SRAI',
     }
 def c_andi(word, **kwargs):
     # C.ANDI is a CB-format instruction that computes the bitwise AND
@@ -448,6 +495,7 @@ def c_andi(word, **kwargs):
         'imm': kwargs.get('imm'),
         'word': word,
         'size': 2,
+        'mnemonic': 'C.ANDI',
     }
 def c_ebreak(word, **kwargs):
     # Debuggers can use the C.EBREAK instruction, which expands to ebreak,
@@ -458,6 +506,7 @@ def c_ebreak(word, **kwargs):
         'cmd': 'EBREAK',
         'word': word,
         'size': 2,
+        'mnemonic': 'C.EBREAK',
     }
 
 def lui(word):
@@ -705,6 +754,18 @@ def store(word):
             'size': 4,
         },
     }
+def fmv_x_d(word):
+    # 1110001 00000 rs1 000 rd 1010011 FMV.X.D
+    # https://riscv.org/wp-content/uploads/2019/06/riscv-spec.pdf (p. 134)
+    return {
+        'cmd': 'ADDI',
+        'imm': 0,
+        'rs1': 0x1000_0000 + uncompressed_rs1(word),
+        'rd': uncompressed_rd(word),
+        'word': word,
+        'size': 4,
+        'mnemonic': 'FMV.X.D',
+    }
 def atomic(word):
     # 00010 aq rl 00000 rs1 010 rd 0101111 LR.W
     # 00010 aq rl 00000 rs1 011 rd 0101111 LR.D
@@ -792,6 +853,7 @@ def compressed_quadrant(word):
 def compressed_quadrant_00(word):
     return {
         0b000: compressed_quadrant_00_opcode_000,
+        0b001: compressed_quadrant_00_opcode_001,
         0b010: compressed_quadrant_00_opcode_010,
         0b011: compressed_quadrant_00_opcode_011,
         0b110: compressed_quadrant_00_opcode_110,
@@ -810,6 +872,14 @@ def compressed_quadrant_00_opcode_000(word):
         _impl = compressed_illegal_instruction
     else:
         _impl = c_addi4spn
+    return _impl(word, imm=_imm)
+def compressed_quadrant_00_opcode_001(word):
+    # 001 uimm[5:3] rs1 ′ uimm[7:6] rd ′ 00 C.FLD (RV32/64)
+    # https://riscv.org/wp-content/uploads/2019/06/riscv-spec.pdf (p.110)
+    _impl = c_fld
+    _b0706   = (word >> 5) & 0b11
+    _b050403 = (word >> 10) & 0b111
+    _imm = (_b0706 << 6) | (_b050403 << 3)
     return _impl(word, imm=_imm)
 def compressed_quadrant_00_opcode_010(word):
     # 010 uimm[5:3] rs1' uimm[2|6] rd' 00 C.LW
@@ -1207,6 +1277,7 @@ def decode_uncompressed(word):
         0b001_1011: i_type,
         0b011_1011: r_type,
         0b011_0011: r_type,
+        0b101_0011: fmv_x_d,
         0b110_0011: b_type,
         0b111_0011: system,
     }.get(uncompressed_opcode(word), uncompressed_unimplemented_instruction)(word)
