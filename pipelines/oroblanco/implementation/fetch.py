@@ -27,8 +27,6 @@ def fetch_block(service, state, jp):
 def do_l1ic(service, state):
     _req = state.get('fetch_buffer')[0]
     _jp = int.from_bytes(_req.get('addr'), 'little')
-#    _decode_request = state.get('decode.requests')[0]
-#    _jp = int.from_bytes(_decode_request.get('addr'), 'little') + _decode_request.get('nbytes_sent_so_far')
     service.tx({'info': '_jp : {} ({})'.format(list(_jp.to_bytes(8, 'little')), _jp)})
     if state.get('l1ic').fits(_jp, state.get('fetch_size')):
         _data = state.get('l1ic').peek(_jp, state.get('fetch_size'))
@@ -62,15 +60,12 @@ def do_l1ic(service, state):
         'arrival': 1 + state.get('cycle'),
         'decode': {
             'addr': riscv.constants.integer_to_list_of_bytes(_jp, 64, 'little'),
-#            'data': _data,
             'data': _data,
         },
     }})
     state.update({'ante': None})
     state.update({'post': None})
     state.get('fetch_buffer').pop(0)
-#    _decode_request.update({'nbytes_sent_so_far': state.get('fetch_size') + _decode_request.get('nbytes_sent_so_far')})
-#    if _decode_request.get('nbytes_sent_so_far') == _decode_request.get('nbytes_requested'): state.get('decode.requests').pop(0)
     toolbox.report_stats(service, state, 'flat', 'l1ic_accesses')
 def do_tick(service, state, results, events):
     for _l2 in map(lambda y: y.get('l2'), filter(lambda x: x.get('l2'), results)):
@@ -90,14 +85,6 @@ def do_tick(service, state, results, events):
                     'addr': _fetch.get('addr'),
                     'size': _fetch.get('size'),
                 })
-#    for _decode_request in map(lambda y: y.get('decode.request'), filter(lambda x: x.get('decode.request'), events)):
-#        state.get('decode.requests').append({
-#            **_decode_request,
-#            **{'nbytes_sent_so_far': 0}
-#        })
-#    service.tx({'info': 'decode.requests         : {} ({})'.format(state.get('decode.requests'), len(state.get('decode.requests')))})
-#    service.tx({'info': 'fetch_size              : {}'.format(state.get('fetch_size'))})
-#    if not len(state.get('decode.requests')): return
     if not len(state.get('fetch_buffer')): return
     service.tx({'info': 'fetch_buffer : {}'.format(state.get('fetch_buffer'))})
     do_l1ic(service, state)
@@ -131,7 +118,6 @@ if '__main__' == __name__:
         'pending_fetch': [],
         'active': True,
         'running': False,
-#        'decode.requests': [],
         'ante': None,
         'post': None,
         'fetch_buffer': [],
