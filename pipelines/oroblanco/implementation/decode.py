@@ -134,10 +134,12 @@ def do_tick(service, state, results, events):
         if _retire and _retire.get('next_pc'):
             if _retire.get('speculative_next_pc') == _retire.get('next_pc'): continue
             if len(state.get('issued')) and state.get('issued')[0].get('%pc') == _retire.get('next_pc'): continue
-            if state.get('decode.request') and state.get('decode.request').get('addr') == _retire.get('next_pc'):
+#            if state.get('decode.request') and state.get('decode.request').get('addr') == _retire.get('next_pc'):
+            if state.get('pending_fetch') and state.get('pending_fetch').get('addr') == _retire.get('next_pc'):
                 state.get('buffer').clear()
                 state.get('decoded').clear()
-                state.update({'%pc': state.get('decode.request').get('addr')})
+#                state.update({'%pc': state.get('decode.request').get('addr')})
+                state.update({'%pc': state.get('pending_fetch').get('addr')})
                 continue
             if len(state.get('next_%pc')) and state.get('next_%pc') == _retire.get('next_pc'): continue
             if state.get('%pc') and state.get('%pc') == _retire.get('next_pc'): continue
@@ -149,9 +151,10 @@ def do_tick(service, state, results, events):
     for _dec in map(lambda y: y.get('decode'), filter(lambda x: x.get('decode'), events)):
         _addr = int.from_bytes(_dec.get('addr'), 'little')
         if state.get('btb'): state.get('btb').update(_addr, _dec.get('data'))
-        state.get('decode.request').update({'nbytes_received_so_far': state.get('decode.request').get('nbytes_received_so_far') + len(_dec.get('data'))})
-        if state.get('decode.request').get('nbytes_received_so_far') == state.get('decode.request').get('nbytes_requested'):
-            state.update({'decode.request': None})
+#        state.get('decode.request').update({'nbytes_received_so_far': state.get('decode.request').get('nbytes_received_so_far') + len(_dec.get('data'))})
+#        if state.get('decode.request').get('nbytes_received_so_far') == state.get('decode.request').get('nbytes_requested'):
+#            state.update({'decode.request': None})
+        state.update({'pending_fetch': None})
         service.tx({'info': '_dec                  : {}'.format(_dec)})
         if state.get('drop_until'):
             if _dec.get('addr') != state.get('drop_until'): continue
@@ -163,15 +166,27 @@ def do_tick(service, state, results, events):
         _next_pc += state.get('fetch_size')
         _next_pc  = riscv.constants.integer_to_list_of_bytes(_next_pc, 64, 'little')
         state.get('next_%pc').append(_next_pc)
-    if not state.get('decode.request') and len(state.get('buffer')) < state.get('config').get('buffer_capacity') >> 1:
-        state.update({'decode.request': {
+#    if not state.get('decode.request') and len(state.get('buffer')) < state.get('config').get('buffer_capacity') >> 1:
+#        state.update({'decode.request': {
+#            'addr': state.get('next_%pc').pop(0),
+#            'nbytes_requested': state.get('fetch_size'),
+#            'nbytes_received_so_far': 0,
+#        }})
+#        _service.tx({'event': {
+#            **{'arrival': 1 + state.get('cycle')},
+#            **{'decode.request': {k:v for k, v in state.get('decode.request').items() if 'nbytes_received_so_far' != k}},
+#        }})
+    if not state.get('pending_fetch'):
+        state.update({'pending_fetch': {
             'addr': state.get('next_%pc').pop(0),
-            'nbytes_requested': state.get('fetch_size'),
-            'nbytes_received_so_far': 0,
+            'size': state.get('fetch_size'),
         }})
         _service.tx({'event': {
-            **{'arrival': 1 + state.get('cycle')},
-            **{'decode.request': {k:v for k, v in state.get('decode.request').items() if 'nbytes_received_so_far' != k}},
+            'arrival': 1 + state.get('cycle'),
+            'fetch': {
+                **{'cmd': 'get'},
+                **state.get('pending_fetch'),
+            }
         }})
     if state.get('max_instructions_to_decode') > len(state.get('decoded')):
         for _insn in riscv.decode.do_decode(state.get('buffer'), state.get('max_instructions_to_decode') - len(state.get('decoded'))):
@@ -196,7 +211,8 @@ def do_tick(service, state, results, events):
     service.tx({'info': 'state.%pc              : {}'.format(state.get('%pc'))})
     service.tx({'info': 'state.next_%pc         : {}'.format(state.get('next_%pc'))})
     service.tx({'info': 'state.decoded          : {}'.format(state.get('decoded'))})
-    service.tx({'info': 'state.decode.request   : {}'.format(state.get('decode.request'))})
+#    service.tx({'info': 'state.decode.request   : {}'.format(state.get('decode.request'))})
+    service.tx({'info': 'pending_fetch          : {}'.format(state.get('pending_fetch'))})
     service.tx({'info': 'state.drop_until       : {}'.format(state.get('drop_until'))})
     service.tx({'info': 'forward                : {}'.format(state.get('forward'))})
 
@@ -231,7 +247,8 @@ if '__main__' == __name__:
         'next_%pc': [],
         'ack': True,
         'buffer': [],
-        'decode.request': None,
+        'pendind_fetch': None,
+#        'decode.request': None,
         'drop_until': None,
         'decoded': [],
         'remove_from_decoded': [],
@@ -266,19 +283,34 @@ if '__main__' == __name__:
                     state.get('config').get('btb_nbytesperentry'),
                     state.get('config').get('btb_evictionpolicy'),
                 )})
-                state.update({'decode.request': {
+#                state.update({'decode.request': {
+#                    'addr': state.get('%pc'),
+#                    'nbytes_requested': state.get('fetch_size'),
+#                    'nbytes_received_so_far': 0,
+#                }})
+#                _next_pc  = int.from_bytes(state.get('decode.request').get('addr'), 'little')
+#                _next_pc += state.get('decode.request').get('nbytes_requested')
+#                _next_pc  = riscv.constants.integer_to_list_of_bytes(_next_pc, 64, 'little')
+#                state.get('next_%pc').append(_next_pc)
+#                _service.tx({'event': {
+#                    **{'arrival': 2 + state.get('cycle')},
+#                    **{'decode.request': {k:v for k, v in state.get('decode.request').items() if 'nbytes_received_so_far' != k}},
+#                }})
+                state.update({'pending_fetch': {
                     'addr': state.get('%pc'),
-                    'nbytes_requested': state.get('fetch_size'),
-                    'nbytes_received_so_far': 0,
+                    'size': state.get('fetch_size'),
                 }})
-                _next_pc  = int.from_bytes(state.get('decode.request').get('addr'), 'little')
-                _next_pc += state.get('decode.request').get('nbytes_requested')
+                _service.tx({'event': {
+                    'arrival': 1 + state.get('cycle'),
+                    'fetch': {
+                        **{'cmd': 'get'},
+                        **state.get('pending_fetch'),
+                    }
+                }})
+                _next_pc  = int.from_bytes(state.get('pending_fetch').get('addr'), 'little')
+                _next_pc += state.get('pending_fetch').get('size')
                 _next_pc  = riscv.constants.integer_to_list_of_bytes(_next_pc, 64, 'little')
                 state.get('next_%pc').append(_next_pc)
-                _service.tx({'event': {
-                    **{'arrival': 2 + state.get('cycle')},
-                    **{'decode.request': {k:v for k, v in state.get('decode.request').items() if 'nbytes_received_so_far' != k}},
-                }})
             elif 'config' == k:
                 logging.debug('config : {}'.format(v))
                 if state.get('service') != v.get('service'): continue

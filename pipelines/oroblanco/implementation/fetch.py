@@ -25,8 +25,10 @@ def fetch_block(service, state, jp):
     }})
     toolbox.report_stats(service, state, 'flat', 'l1ic_misses')
 def do_l1ic(service, state):
-    _decode_request = state.get('decode.requests')[0]
-    _jp = int.from_bytes(_decode_request.get('addr'), 'little') + _decode_request.get('nbytes_sent_so_far')
+    _req = state.get('fetch_buffer')[0]
+    _jp = int.from_bytes(_req.get('addr'), 'little')
+#    _decode_request = state.get('decode.requests')[0]
+#    _jp = int.from_bytes(_decode_request.get('addr'), 'little') + _decode_request.get('nbytes_sent_so_far')
     service.tx({'info': '_jp : {} ({})'.format(list(_jp.to_bytes(8, 'little')), _jp)})
     if state.get('l1ic').fits(_jp, state.get('fetch_size')):
         _data = state.get('l1ic').peek(_jp, state.get('fetch_size'))
@@ -37,12 +39,13 @@ def do_l1ic(service, state):
             return
     else:
         _size = state.get('fetch_size') >> 1 # Why div-by-2? because RISC-V instructions are always 4B or 2B
-        _ante = state.get('l1ic').peek(_jp, _size)
+        _ante = (state.get('ante') if state.get('ante') else state.get('l1ic').peek(_jp, _size))
         if not _ante:
             if len(state.get('pending_fetch')): return # only 1 pending fetch at a time is primitive, but good enough for now
             fetch_block(service, state, _jp)
             return
-        _post = state.get('l1ic').peek(_jp + _size, _size)
+        state.update({'ante': _ante})
+        _post = (state.get('post') if state.get('post') else state.get('l1ic').peek(_jp + _size, _size))
         if not _post:
             if len(state.get('pending_fetch')): return # only 1 pending fetch at a time is primitive, but good enough for now
             fetch_block(service, state, _jp + _size)
@@ -52,17 +55,22 @@ def do_l1ic(service, state):
         #       _post... but an L1IC with only a single block would not be very
         #       useful in practice, so no effort will be made to handle that scenario.
         #       Like: No effort AT ALL.
+        state.update({'post': _post})
         _data = _ante + _post
         assert len(_data) == state.get('fetch_size')
     service.tx({'event': {
         'arrival': 1 + state.get('cycle'),
         'decode': {
             'addr': riscv.constants.integer_to_list_of_bytes(_jp, 64, 'little'),
+#            'data': _data,
             'data': _data,
         },
     }})
-    _decode_request.update({'nbytes_sent_so_far': state.get('fetch_size') + _decode_request.get('nbytes_sent_so_far')})
-    if _decode_request.get('nbytes_sent_so_far') == _decode_request.get('nbytes_requested'): state.get('decode.requests').pop(0)
+    state.update({'ante': None})
+    state.update({'post': None})
+    state.get('fetch_buffer').pop(0)
+#    _decode_request.update({'nbytes_sent_so_far': state.get('fetch_size') + _decode_request.get('nbytes_sent_so_far')})
+#    if _decode_request.get('nbytes_sent_so_far') == _decode_request.get('nbytes_requested'): state.get('decode.requests').pop(0)
     toolbox.report_stats(service, state, 'flat', 'l1ic_accesses')
 def do_tick(service, state, results, events):
     for _l2 in map(lambda y: y.get('l2'), filter(lambda x: x.get('l2'), results)):
@@ -72,16 +80,26 @@ def do_tick(service, state, results, events):
         state.get('l1ic').poke(_addr, _l2.get('data'))
         state.get('pending_fetch').remove(_addr)
     for _fetch in map(lambda y: y.get('fetch'), filter(lambda x: x.get('fetch'), events)):
-        if 'cmd' in _fetch.keys() and 'purge' == _fetch.get('cmd'):
-            state.get('l1ic').purge()
-    for _decode_request in map(lambda y: y.get('decode.request'), filter(lambda x: x.get('decode.request'), events)):
-        state.get('decode.requests').append({
-            **_decode_request,
-            **{'nbytes_sent_so_far': 0}
-        })
-    service.tx({'info': 'decode.requests         : {} ({})'.format(state.get('decode.requests'), len(state.get('decode.requests')))})
-    service.tx({'info': 'fetch_size              : {}'.format(state.get('fetch_size'))})
-    if not len(state.get('decode.requests')): return
+        if 'cmd' in _fetch.keys():
+            if 'purge' == _fetch.get('cmd'):
+                state.get('l1ic').purge()
+            elif 'get' == _fetch.get('cmd'):
+                assert _fetch.get('size') <= state.get('config').get('l1ic_nbytesperblock')
+                assert _fetch.get('size') == state.get('fetch_size') # HACK, but simplifies things for now
+                state.get('fetch_buffer').append({
+                    'addr': _fetch.get('addr'),
+                    'size': _fetch.get('size'),
+                })
+#    for _decode_request in map(lambda y: y.get('decode.request'), filter(lambda x: x.get('decode.request'), events)):
+#        state.get('decode.requests').append({
+#            **_decode_request,
+#            **{'nbytes_sent_so_far': 0}
+#        })
+#    service.tx({'info': 'decode.requests         : {} ({})'.format(state.get('decode.requests'), len(state.get('decode.requests')))})
+#    service.tx({'info': 'fetch_size              : {}'.format(state.get('fetch_size'))})
+#    if not len(state.get('decode.requests')): return
+    if not len(state.get('fetch_buffer')): return
+    service.tx({'info': 'fetch_buffer : {}'.format(state.get('fetch_buffer'))})
     do_l1ic(service, state)
     
 
@@ -113,7 +131,10 @@ if '__main__' == __name__:
         'pending_fetch': [],
         'active': True,
         'running': False,
-        'decode.requests': [],
+#        'decode.requests': [],
+        'ante': None,
+        'post': None,
+        'fetch_buffer': [],
         'fetch_size': 4, # HACK: hard-coded number of bytes to fetch
         '%jp': None, # This is the fetch pointer. Why %jp? Who knows?
         'ack': True,
