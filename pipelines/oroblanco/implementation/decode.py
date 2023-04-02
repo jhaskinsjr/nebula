@@ -18,6 +18,7 @@ def hazard(p, c):
     _conflict += ([c.get('rs2')] if ('rs2' in c.keys() and p.get('rd') == c.get('rs2')) else  [])
     return _conflict
 def do_issue(service, state):
+    _btb_entry = None
     for _dec in state.get('decoded'):
         _insn = _dec.get('insn')
         _pc = _dec.get('%pc')
@@ -25,7 +26,6 @@ def do_issue(service, state):
         service.tx({'info': '_hazards : {}'.format(_hazards)})
         if not all(map(lambda y: y in state.get('forward').keys(), _hazards)): break
         state.get('remove_from_decoded').append(_dec)
-#        if 'ECALL' != _insn.get('cmd'):
         if _insn.get('cmd') not in ['ECALL', 'FENCE']:
             if 'rs1' in _insn.keys():
                 if _insn.get('rs1') in _hazards and _insn.get('rs1') in state.get('forward').keys():
@@ -85,15 +85,17 @@ def do_issue(service, state):
         }})
         state.get('issued').append(_insn)
         toolbox.report_stats(service, state, 'histo', 'issued.insn', _insn.get('cmd'))
-        if _btb_entry:
-            service.tx({'info': '_btb_entry : {}'.format(_btb_entry)})
-            state.get('buffer').clear()
-            state.get('buffer').extend(_btb_entry.data)
-            state.get('next_%pc').clear()
-            state.get('next_%pc').append(riscv.constants.integer_to_list_of_bytes(_btb_entry.next_pc + len(_btb_entry.data), 64, 'little'))
-            state.update({'%pc': riscv.constants.integer_to_list_of_bytes(_btb_entry.next_pc, 64, 'little')})
-            state.update({'drop_until': state.get('next_%pc')[0]})
-            break
+        if _btb_entry: break
+    if _btb_entry:
+        service.tx({'info': '_btb_entry : {}'.format(_btb_entry)})
+        state.get('buffer').clear()
+        state.get('next_%pc').clear()
+        state.update({'%pc': riscv.constants.integer_to_list_of_bytes(_btb_entry.next_pc, 64, 'little')})
+        state.get('buffer').extend(_btb_entry.data)
+        state.get('next_%pc').append(riscv.constants.integer_to_list_of_bytes(_btb_entry.next_pc + len(_btb_entry.data), 64, 'little'))
+        state.update({'drop_until': state.get('next_%pc')[0]})
+        state.get('remove_from_decoded').clear()
+        state.get('remove_from_decoded').extend(state.get('decoded'))
     service.tx({'info': 'state.remove_from_decoded       : {}'.format(state.get('remove_from_decoded'))})
     for _dec in state.get('remove_from_decoded'): state.get('decoded').remove(_dec)
     state.get('remove_from_decoded').clear()
