@@ -28,15 +28,16 @@ def do_l1ic(service, state):
     _req = state.get('fetch_buffer')[0]
     _jp = int.from_bytes(_req.get('addr'), 'little')
     service.tx({'info': '_jp : {} ({})'.format(list(_jp.to_bytes(8, 'little')), _jp)})
-    if state.get('l1ic').fits(_jp, state.get('fetch_size')):
-        _data = state.get('l1ic').peek(_jp, state.get('fetch_size'))
+    if state.get('l1ic').fits(_jp, _req.get('size')):
+        _data = state.get('l1ic').peek(_jp, _req.get('size'))
         service.tx({'info': '_data : {}'.format(_data)})
         if not _data:
             if len(state.get('pending_fetch')): return # only 1 pending fetch at a time is primitive, but good enough for now
             fetch_block(service, state, _jp)
             return
     else:
-        _size = state.get('fetch_size') >> 1 # Why div-by-2? because RISC-V instructions are always 4B or 2B
+        _offset = state.get('l1ic').offset(_jp)
+        _size = state.get('config').get('l1ic_nbytesperblock') - _offset
         _ante = (state.get('ante') if state.get('ante') else state.get('l1ic').peek(_jp, _size))
         if not _ante:
             if len(state.get('pending_fetch')): return # only 1 pending fetch at a time is primitive, but good enough for now
@@ -55,7 +56,6 @@ def do_l1ic(service, state):
         #       Like: No effort AT ALL.
         state.update({'post': _post})
         _data = _ante + _post
-        assert len(_data) == state.get('fetch_size')
     service.tx({'event': {
         'arrival': 1 + state.get('cycle'),
         'decode': {
@@ -80,7 +80,6 @@ def do_tick(service, state, results, events):
                 state.get('l1ic').purge()
             elif 'get' == _fetch.get('cmd'):
                 assert _fetch.get('size') <= state.get('config').get('l1ic_nbytesperblock')
-                assert _fetch.get('size') == state.get('fetch_size') # HACK, but simplifies things for now
                 state.get('fetch_buffer').append({
                     'addr': _fetch.get('addr'),
                     'size': _fetch.get('size'),
@@ -121,7 +120,6 @@ if '__main__' == __name__:
         'ante': None,
         'post': None,
         'fetch_buffer': [],
-        'fetch_size': 4, # HACK: hard-coded number of bytes to fetch
         '%jp': None, # This is the fetch pointer. Why %jp? Who knows?
         'ack': True,
         'config': {
