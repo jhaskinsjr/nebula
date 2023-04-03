@@ -236,7 +236,7 @@ if '__main__' == __name__:
         'drop_until': None,
         'decoded': [],
         'remove_from_decoded': [],
-        'fetch_size': 4, # HACK: hard-coded number of bytes to fetch
+        'fetch_size': 4, # FIXME: hard-coded b/c only works with 4; should work with any value
         'issued': [],
         'forward': {},
         'iid': 0,
