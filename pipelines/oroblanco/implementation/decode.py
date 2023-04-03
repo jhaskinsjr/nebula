@@ -115,25 +115,24 @@ def do_tick(service, state, results, events):
         _commit = (_flush if _flush else _retire)
         assert state.get('issued')[0].get('iid') == _commit.get('iid')
         state.get('issued').pop(0)
-        if _retire and 'taken' in _retire.keys() and state.get('btb'):
+        if _retire and 'taken' in _retire.keys():
             _pc = int.from_bytes(_retire.get('%pc'), 'little')
             _next_pc = int.from_bytes(_retire.get('next_pc'), 'little')
-            if _retire.get('taken'):
-                state.get('btb').poke(_pc, _next_pc)
-                toolbox.report_stats(service, state, 'flat', 'btb_pokes')
-                _btb_entry = state.get('btb').peek(_pc)
-                _btb_entry.inc()
-            else:
-                _btb_entry = state.get('btb').peek(_pc)
-                toolbox.report_stats(service, state, 'flat', 'btb_peeks')
-                if not _btb_entry:
-                    toolbox.report_stats(service, state, 'flat', 'btb_peek_misses')
-                    continue
-                _btb_entry.dec()
-                if not _btb_entry.counter:
-                    state.get('btb').evict(_pc) # if strongly not-taken, why keep it around?
-                    toolbox.report_stats(service, state, 'flat', 'btb_strongly_not_taken')
-        if _retire and _retire.get('next_pc'):
+            if state.get('btb'):
+                if _retire.get('taken'):
+                    state.get('btb').poke(_pc, _next_pc)
+                    toolbox.report_stats(service, state, 'flat', 'btb_pokes')
+                    state.get('btb').peek(_pc).inc()
+                else:
+                    _btb_entry = state.get('btb').peek(_pc)
+                    toolbox.report_stats(service, state, 'flat', 'btb_peeks')
+                    if not _btb_entry:
+                        toolbox.report_stats(service, state, 'flat', 'btb_peek_misses')
+                    else:
+                        _btb_entry.dec()
+                        if not _btb_entry.counter:
+                            state.get('btb').evict(_pc) # if strongly not-taken, why keep it around?
+                            toolbox.report_stats(service, state, 'flat', 'btb_strongly_not_taken')
             if _retire.get('speculative_next_pc') == _retire.get('next_pc'): continue
             if len(state.get('issued')) and state.get('issued')[0].get('%pc') == _retire.get('next_pc'): continue
             if state.get('pending_fetch') and state.get('pending_fetch').get('addr') == _retire.get('next_pc'):
