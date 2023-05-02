@@ -1,10 +1,12 @@
 # Copyright (C) 2021, 2022 John Haskins Jr.
 
 import os
+import re
 import sys
 import argparse
 import logging
 import time
+import subprocess
 
 import service
 import toolbox
@@ -45,7 +47,14 @@ def do_tick(service, state, results, events):
         }})
     for insns in filter(lambda x: x, map(lambda y: y.get('insns'), results)):
         state.update({'pending_decode': False})
-        _pending = [{**x, **{'%pc': state.get('%pc')}} for x in insns.get('data')]
+        _pending = [{
+            **x,
+            **{
+                '%pc': state.get('%pc'),
+                '_pc': int.from_bytes(state.get('%pc'), 'little'),
+            },
+            **({'function': next(filter(lambda x: int.from_bytes(state.get('%pc'), 'little') < x[0], sorted(state.get('objmap').items())))[-1].get('name', '')} if state.get('objmap') else {}),
+        } for x in insns.get('data')]
         state.update({'pending_execute': _pending})
         service.tx({'event': {
             'arrival': 1 + state.get('cycle'),
@@ -131,6 +140,11 @@ if '__main__' == __name__:
         '%jp': None, # This is the fetch pointer. Why %jp? Who knows?
         '%pc': None,
         'ack': True,
+        'objmap': None,
+        'config': {
+            'toolchain': '',
+            'binary': '',
+        },
     }
     _service = service.Service(state.get('service'), _launcher.get('host'), _launcher.get('port'))
     while state.get('active'):
@@ -145,6 +159,32 @@ if '__main__' == __name__:
             elif {'text': 'run'} == {k: v}:
                 state.update({'running': True})
                 state.update({'ack': False})
+                if not state.get('config').get('toolchain'): continue
+                _toolchain = state.get('config').get('toolchain')
+                _binary = state.get('binary')
+                _files = next(iter(list(os.walk(_toolchain))))[-1]
+                _objdump = next(filter(lambda x: 'objdump' in x, _files))
+                _x = subprocess.run('{} -t {}'.format(os.path.join(_toolchain, _objdump), _binary).split(), capture_output=True)
+                if len(_x.stderr): continue
+                _objdump = _x.stdout.decode('ascii').split('\n')
+                _objdump = sorted(filter(lambda x: len(x), _objdump))
+                _objdump = filter(lambda x: re.search('^0', x), _objdump)
+                _objdump = map(lambda x: x.split(), _objdump)
+                state.update({'objmap': {
+                    int(x[0], 16): {
+                        'flags': x[1:-1],
+                        'name': x[-1]
+                    } for x in _objdump
+                }})
+            elif 'binary' == k:
+                state.update({'binary': v})
+            elif 'config' == k:
+                logging.debug('config : {}'.format(v))
+                if state.get('service') != v.get('service'): continue
+                _field = v.get('field')
+                _val = v.get('val')
+                assert _field in state.get('config').keys(), 'No such config field, {}, in service {}!'.format(_field, state.get('service'))
+                state.get('config').update({_field: _val})
             elif 'tick' == k:
                 state.update({'cycle': v.get('cycle')})
                 _results = v.get('results')

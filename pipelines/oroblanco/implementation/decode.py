@@ -77,7 +77,7 @@ def do_issue(service, state):
             **{'iid': state.get('iid')},
             **{'%pc': _pc},
             **{'_pc': int.from_bytes(_pc, 'little')},
-            **{'function': next(filter(lambda x: int.from_bytes(_pc, 'little') < x[0], sorted(state.get('objmap').items())))[-1].get('name', '')},
+            **({'function': next(filter(lambda x: int.from_bytes(_pc, 'little') < x[0], sorted(state.get('objmap').items())))[-1].get('name', '')} if state.get('objmap') else {}),
             **({'speculative_next_pc': riscv.constants.integer_to_list_of_bytes(_btb_entry.next_pc, 64, 'little')} if _btb_entry else {}),
         }
         state.update({'iid': 1 + state.get('iid')})
@@ -245,14 +245,14 @@ if '__main__' == __name__:
         'forward': {},
         'iid': 0,
         'max_instructions_to_decode': 1, # HACK: hard-coded max-instructions-to-decode of 1
-        'objmap': {},
+        'objmap': None,
+        'binary': '',
         'config': {
             'buffer_capacity': 16,
             'btb_nentries': 32,
             'btb_nbytesperentry': 16,
             'btb_evictionpolicy': 'lru',
             'toolchain': '',
-            'binary': '',
         },
     }
     _service = service.Service(state.get('service'), _launcher.get('host'), _launcher.get('port'))
@@ -291,7 +291,7 @@ if '__main__' == __name__:
                 state.get('next_%pc').append(_next_pc)
                 if not state.get('config').get('toolchain'): continue
                 _toolchain = state.get('config').get('toolchain')
-                _binary = state.get('config').get('binary')
+                _binary = state.get('binary')
                 _files = next(iter(list(os.walk(_toolchain))))[-1]
                 _objdump = next(filter(lambda x: 'objdump' in x, _files))
                 _x = subprocess.run('{} -t {}'.format(os.path.join(_toolchain, _objdump), _binary).split(), capture_output=True)
@@ -306,6 +306,8 @@ if '__main__' == __name__:
                         'name': x[-1]
                     } for x in _objdump
                 }})
+            elif 'binary' == k:
+                state.update({'binary': v})
             elif 'config' == k:
                 logging.debug('config : {}'.format(v))
                 if state.get('service') != v.get('service'): continue

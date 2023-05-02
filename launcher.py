@@ -409,7 +409,9 @@ if __name__ == '__main__':
                 config(state.get('connections'), 'mainmem', 'main_memory_filename', state.get('config').get('mainmem_filename'))
                 config(state.get('connections'), 'mainmem', 'main_memory_capacity', state.get('config').get('mainmem_capacity'))
                 config(state.get('connections'), 'decode', 'toolchain', state.get('config').get('toolchain'))
-                config(state.get('connections'), 'decode', 'binary', os.path.join(os.getcwd(), args.cmdline[0]))
+                tx(state.get('connections'), {
+                    'binary': os.path.join(os.getcwd(), args.cmdline[0]),
+                })
             else:
                 {
                     'service': lambda x: add_service(_services, args, x),
