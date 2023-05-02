@@ -352,6 +352,7 @@ if __name__ == '__main__':
         'config': {
             'mainmem_filename': None,
             'mainmem_capacity': None,
+            'toolchain': '',
         },
     }
     _mainmem_filename, _mainmem_capacity = args.mainmem.split(':')
@@ -407,6 +408,8 @@ if __name__ == '__main__':
                 # will get the job done for now.
                 config(state.get('connections'), 'mainmem', 'main_memory_filename', state.get('config').get('mainmem_filename'))
                 config(state.get('connections'), 'mainmem', 'main_memory_capacity', state.get('config').get('mainmem_capacity'))
+                config(state.get('connections'), 'decode', 'toolchain', state.get('config').get('toolchain'))
+                config(state.get('connections'), 'decode', 'binary', os.path.join(os.getcwd(), args.cmdline[0]))
             else:
                 {
                     'service': lambda x: add_service(_services, args, x),

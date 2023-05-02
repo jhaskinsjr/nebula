@@ -1,10 +1,12 @@
 # Copyright (C) 2021, 2022 John Haskins Jr.
 
 import os
+import re
 import sys
 import argparse
 import logging
 import time
+import subprocess
 
 import service
 import toolbox
@@ -74,6 +76,8 @@ def do_issue(service, state):
             **_insn,
             **{'iid': state.get('iid')},
             **{'%pc': _pc},
+            **{'_pc': int.from_bytes(_pc, 'little')},
+            **{'function': next(filter(lambda x: int.from_bytes(_pc, 'little') < x[0], sorted(state.get('objmap').items())))[-1].get('name', '')},
             **({'speculative_next_pc': riscv.constants.integer_to_list_of_bytes(_btb_entry.next_pc, 64, 'little')} if _btb_entry else {}),
         }
         state.update({'iid': 1 + state.get('iid')})
@@ -241,11 +245,14 @@ if '__main__' == __name__:
         'forward': {},
         'iid': 0,
         'max_instructions_to_decode': 1, # HACK: hard-coded max-instructions-to-decode of 1
+        'objmap': {},
         'config': {
             'buffer_capacity': 16,
             'btb_nentries': 32,
             'btb_nbytesperentry': 16,
             'btb_evictionpolicy': 'lru',
+            'toolchain': '',
+            'binary': '',
         },
     }
     _service = service.Service(state.get('service'), _launcher.get('host'), _launcher.get('port'))
@@ -282,6 +289,23 @@ if '__main__' == __name__:
                 _next_pc += state.get('pending_fetch').get('size')
                 _next_pc  = riscv.constants.integer_to_list_of_bytes(_next_pc, 64, 'little')
                 state.get('next_%pc').append(_next_pc)
+                if not state.get('config').get('toolchain'): continue
+                _toolchain = state.get('config').get('toolchain')
+                _binary = state.get('config').get('binary')
+                _files = next(iter(list(os.walk(_toolchain))))[-1]
+                _objdump = next(filter(lambda x: 'objdump' in x, _files))
+                _x = subprocess.run('{} -t {}'.format(os.path.join(_toolchain, _objdump), _binary).split(), capture_output=True)
+                if len(_x.stderr): continue
+                _objdump = _x.stdout.decode('ascii').split('\n')
+                _objdump = sorted(filter(lambda x: len(x), _objdump))
+                _objdump = filter(lambda x: re.search('^0', x), _objdump)
+                _objdump = map(lambda x: x.split(), _objdump)
+                state.update({'objmap': {
+                    int(x[0], 16): {
+                        'flags': x[1:-1],
+                        'name': x[-1]
+                    } for x in _objdump
+                }})
             elif 'config' == k:
                 logging.debug('config : {}'.format(v))
                 if state.get('service') != v.get('service'): continue
