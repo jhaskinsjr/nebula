@@ -542,7 +542,7 @@ def do_execute(service, state):
         service.tx({'info': '_insn : {}'.format(_insn)})
         _pc = int.from_bytes(_insn.get('%pc'), 'little')
         _word = ('{:08x}'.format(_insn.get('word')) if 4 == _insn.get('size') else '    {:04x}'.format(_insn.get('word')))
-        logging.info('do_execute(): {:8x}: {} : {:10} ({:12})'.format(_pc, _word, _insn.get('cmd'), state.get('cycle')))
+        logging.info('do_execute(): {:8x}: {} : {:10} ({:12}, {})'.format(_pc, _word, _insn.get('cmd'), state.get('cycle'), _insn.get('function', '')))
         _f = {
             'LUI': do_lui,
             'AUIPC': do_auipc,

@@ -564,7 +564,7 @@ def do_execute(service, state):
 #            logging.info('do_execute(): @{:8}     {:04x} : {}'.format(state.get('cycle'), insn.get('word'), insn.get('cmd')))
         _pc = int.from_bytes(insn.get('%pc'), 'little')
         _word = ('{:08x}'.format(insn.get('word')) if 4 == insn.get('size') else '    {:04x}'.format(insn.get('word')))
-        logging.info('do_execute(): {:8x}: {} : {:10} ({:12})'.format(_pc, _word, insn.get('cmd'), state.get('cycle')))
+        logging.info('do_execute(): {:8x}: {} : {:10} ({:12}, {})'.format(_pc, _word, insn.get('cmd'), state.get('cycle'), insn.get('function', '')))
         _f = {
             'LUI': do_lui,
             'AUIPC': do_auipc,
