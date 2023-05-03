@@ -88,13 +88,11 @@ def do_commit(service, state):
             if _insn.get('speculative_next_pc') == _insn.get('next_pc'):
                 toolbox.report_stats(service, state, 'flat', 'speculative_next_pc_correct')
         toolbox.report_stats(service, state, 'flat', 'retires')
-    for _insn in _commit:
         state.update({'ncommits': 1 + state.get('ncommits')})
         _pc = _insn.get('_pc')
-        _ncommits = state.get('ncommits')
         _word = ('{:08x}'.format(_insn.get('word')) if 4 == _insn.get('size') else '    {:04x}'.format(_insn.get('word')))
         logging.info('do_commit(): {:8x}: {} : {:10} ({:12}, {})'.format(_pc, _word, _insn.get('cmd'), state.get('cycle'), _insn.get('function', '')))
-        state.get('pending_commit').remove(_insn)
+    for _insn in _commit: state.get('pending_commit').remove(_insn)
 
 def do_tick(service, state, results, events):
     for _l1dc in map(lambda y: y.get('l1dc'), filter(lambda x: x.get('l1dc'), results)):
