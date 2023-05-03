@@ -36,6 +36,8 @@ class Harness:
             'srai': self.srai,
             'sraiw': self.sraiw,
             'andi': self.andi,
+            'ori': self.ori,
+            'xori': self.xori,
             'addi': self.addi,
             'addiw': self.addiw,
             'add': self.add,
@@ -371,6 +373,56 @@ class Harness:
 #        print('_const_2 : {:15} {}'.format(_const_2, list(map(lambda x: '{:08b}'.format(x), _const_2.to_bytes(8, 'little', signed=True)))))
         _correct_answer = int.from_bytes(map(
             lambda a, b: a & b,
+            _const_0.to_bytes(8, 'little', signed=True),
+            _const_2.to_bytes(8, 'little', signed=True),
+        ), 'little', signed=True)
+        _correct_answer = list(_correct_answer.to_bytes(8, 'little', signed=True))
+        return _correct_answer, _assembly
+    def ori(self):
+        _const_0 = random.randint(0, 2**20 - 1)
+#        _const_0 = 3614366011 >> 12
+#        _const_0 = 3614361915 >> 12
+#        _const_0 = 1614361915 >> 12
+        _assembly  = ['lui x30, {}'.format(_const_0)]
+        _const_0 <<= 12
+        _const_0 = int.from_bytes(struct.Struct('<I').pack(_const_0), 'little', signed=True)
+        _const_1 = random.randint(-2**11, 2**11 - 1)
+#        _const_1 = -1733
+        _assembly += ['addi x30, x30, {}'.format(_const_1)]
+        _const_0 += _const_1
+        _const_2 = random.randint(-2**11, 2**11 - 1)
+#        _const_2 = -2013
+        _assembly += ['ori x31, x30, {}'.format(_const_2)]
+#        print('_const_0 : {:15} {}'.format(_const_0, list(map(lambda x: '{:08b}'.format(x), _const_0.to_bytes(8, 'little', signed=True)))))
+#        print('_const_1 : {:15} {}'.format(_const_1, list(map(lambda x: '{:08b}'.format(x), _const_1.to_bytes(8, 'little', signed=True)))))
+#        print('_const_2 : {:15} {}'.format(_const_2, list(map(lambda x: '{:08b}'.format(x), _const_2.to_bytes(8, 'little', signed=True)))))
+        _correct_answer = int.from_bytes(map(
+            lambda a, b: a | b,
+            _const_0.to_bytes(8, 'little', signed=True),
+            _const_2.to_bytes(8, 'little', signed=True),
+        ), 'little', signed=True)
+        _correct_answer = list(_correct_answer.to_bytes(8, 'little', signed=True))
+        return _correct_answer, _assembly
+    def xori(self):
+        _const_0 = random.randint(0, 2**20 - 1)
+#        _const_0 = 3614366011 >> 12
+#        _const_0 = 3614361915 >> 12
+#        _const_0 = 1614361915 >> 12
+        _assembly  = ['lui x30, {}'.format(_const_0)]
+        _const_0 <<= 12
+        _const_0 = int.from_bytes(struct.Struct('<I').pack(_const_0), 'little', signed=True)
+        _const_1 = random.randint(-2**11, 2**11 - 1)
+#        _const_1 = -1733
+        _assembly += ['addi x30, x30, {}'.format(_const_1)]
+        _const_0 += _const_1
+        _const_2 = random.randint(-2**11, 2**11 - 1)
+#        _const_2 = -2013
+        _assembly += ['xori x31, x30, {}'.format(_const_2)]
+#        print('_const_0 : {:15} {}'.format(_const_0, list(map(lambda x: '{:08b}'.format(x), _const_0.to_bytes(8, 'little', signed=True)))))
+#        print('_const_1 : {:15} {}'.format(_const_1, list(map(lambda x: '{:08b}'.format(x), _const_1.to_bytes(8, 'little', signed=True)))))
+#        print('_const_2 : {:15} {}'.format(_const_2, list(map(lambda x: '{:08b}'.format(x), _const_2.to_bytes(8, 'little', signed=True)))))
+        _correct_answer = int.from_bytes(map(
+            lambda a, b: a ^ b,
             _const_0.to_bytes(8, 'little', signed=True),
             _const_2.to_bytes(8, 'little', signed=True),
         ), 'little', signed=True)
