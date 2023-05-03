@@ -77,7 +77,7 @@ def do_issue(service, state):
             **{'iid': state.get('iid')},
             **{'%pc': _pc},
             **{'_pc': int.from_bytes(_pc, 'little')},
-            **({'function': next(filter(lambda x: int.from_bytes(_pc, 'little') < x[0], sorted(state.get('objmap').items())))[-1].get('name', '')} if state.get('objmap') else {}),
+            **({'function': next(filter(lambda x: int.from_bytes(_pc, 'little') >= x[0], sorted(state.get('objmap').items(), reverse=True)))[-1].get('name', '')} if state.get('objmap') else {}),
             **({'speculative_next_pc': riscv.constants.integer_to_list_of_bytes(_btb_entry.next_pc, 64, 'little')} if _btb_entry else {}),
         }
         state.update({'iid': 1 + state.get('iid')})

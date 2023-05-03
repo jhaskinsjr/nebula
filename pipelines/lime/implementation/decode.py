@@ -63,7 +63,7 @@ def do_issue(service, state):
             **{'iid': state.get('iid')},
             **{'%pc': state.get('%pc')},
             **{'_pc': int.from_bytes(state.get('%pc'), 'little')},
-            **({'function': next(filter(lambda x: int.from_bytes(state.get('%pc'), 'little') < x[0], sorted(state.get('objmap').items())))[-1].get('name', '')} if state.get('objmap') else {}),
+            **({'function': next(filter(lambda x: int.from_bytes(state.get('%pc'), 'little') >= x[0], sorted(state.get('objmap').items(), reverse=True)))[-1].get('name', '')} if state.get('objmap') else {}),
         }
         state.update({'iid': 1 + state.get('iid')})
         state.update({'%pc': riscv.constants.integer_to_list_of_bytes(_insn.get('size') + int.from_bytes(state.get('%pc'), 'little'), 64, 'little')})

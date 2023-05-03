@@ -53,7 +53,7 @@ def do_tick(service, state, results, events):
                 '%pc': state.get('%pc'),
                 '_pc': int.from_bytes(state.get('%pc'), 'little'),
             },
-            **({'function': next(filter(lambda x: int.from_bytes(state.get('%pc'), 'little') < x[0], sorted(state.get('objmap').items())))[-1].get('name', '')} if state.get('objmap') else {}),
+            **({'function': next(filter(lambda x: int.from_bytes(state.get('%pc'), 'little') >= x[0], sorted(state.get('objmap').items(), reverse=True)))[-1].get('name', '')} if state.get('objmap') else {}),
         } for x in insns.get('data')]
         state.update({'pending_execute': _pending})
         service.tx({'event': {
