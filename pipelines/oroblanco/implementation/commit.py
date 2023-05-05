@@ -75,7 +75,6 @@ def do_commit(service, state):
                 '%pc': _insn.get('%pc'),
                 'word': _insn.get('word'),
                 'size': _insn.get('size'),
-                **({'speculative_next_pc_correct': _insn.get('speculative_next_pc') == _insn.get('next_pc')} if 'speculative_next_pc' in _insn.keys() else {}),
                 **({'speculative_next_pc': _insn.get('speculative_next_pc')} if 'speculative_next_pc' in _insn.keys() else {}),
                 **({'next_pc': _insn.get('next_pc')} if 'next_pc' in _insn.keys() else {}),
                 **({'ret_pc': _insn.get('ret_pc')} if 'ret_pc' in _insn.keys() else {}),
