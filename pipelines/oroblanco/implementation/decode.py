@@ -119,6 +119,18 @@ def do_tick(service, state, results, events):
         _commit = (_flush if _flush else _retire)
         assert state.get('issued')[0].get('iid') == _commit.get('iid')
         state.get('issued').pop(0)
+        if _flush:
+            _pc = int.from_bytes(_commit.get('%pc'), 'little')
+            if state.get('btb'):
+                _btb_entry = state.get('btb').peek(_pc)
+                toolbox.report_stats(service, state, 'flat', 'btb_peeks')
+                if not _btb_entry:
+                    toolbox.report_stats(service, state, 'flat', 'btb_peek_misses')
+                else:
+                    _btb_entry.dec()
+                    if not _btb_entry.counter:
+                        state.get('btb').evict(_pc) # if strongly not-taken, why keep it around?
+                        toolbox.report_stats(service, state, 'flat', 'btb_strongly_not_taken')
         if _retire and 'taken' in _retire.keys():
             _pc = int.from_bytes(_retire.get('%pc'), 'little')
             _next_pc = int.from_bytes(_retire.get('next_pc'), 'little')
