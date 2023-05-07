@@ -457,22 +457,15 @@ class System:
             },
         })
     def do_brk(self, a0, a1, a2, a3, a4, a5, **kwargs):
+        # [T]he actual Linux system call returns the new program break on success.
+        # On failure, the system call returns the current break. The glibc wrapper
+        # function does some work (i.e., checks whether the new break is less than
+        # addr) to provide the 0 and -1 return values described above.
+        #
+        # see: https://www.man7.org/linux/man-pages/man2/brk.2.html ("C library/kernel differences")
+        #      https://gist.github.com/nikAizuddin/f4132721126257ec4345
         _endds = int.from_bytes(a0, 'little')
-        if 0 == _endds:
-            self.state.update({'brk': 0x10000000})
-            _sys_ret = self.state.get('brk')
-        else:
-            # [T]he actual Linux system call returns the new program break on success.
-            # On failure, the system call returns the current break. The glibc wrapper
-            # function does some work (i.e., checks whether the new break is less than
-            # addr) to provide the 0 and -1 return values described above.
-            #
-            # see: https://www.man7.org/linux/man-pages/man2/brk.2.html
-            #      https://gist.github.com/nikAizuddin/f4132721126257ec4345
-            assert 'brk' in self.state.keys(), 'SYS_brk should have been called with parameter 0 first!'
-            _brk  = _endds
-            self.state.update({'brk': _brk})
-            _sys_ret = self.state.get('brk')
+        _sys_ret = _endds
         logging.info('brk({:08x}) -> {:08x}'.format(_endds, _sys_ret))
         return {
             'done': True,
