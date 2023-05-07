@@ -214,6 +214,7 @@ def snapshot(mainmem_filename, snapshot_filename, cycle):
 def restore(mainmem_filename, snapshot_filename):
     global state
     subprocess.run('cp {} {}'.format(snapshot_filename, mainmem_filename).split())
+    subprocess.run('chmod u+w {}'.format(mainmem_filename).split())
     fd = os.open(mainmem_filename, os.O_RDWR)
     os.lseek(fd, state.get('snapshot').get('addr').get('cycle'), os.SEEK_SET)
     cycle = int.from_bytes(os.read(fd, 8), 'little')
@@ -224,12 +225,14 @@ def restore(mainmem_filename, snapshot_filename):
     _res_evt.get('events').append({
         'register': {
             'cmd': 'restore',
-            'name': '{}'.format(snapshot_filename),
+            'name': '{}'.format(mainmem_filename),
             'data': state.get('snapshot').get('addr').get('register'),
         }
     })
     state.get('futures').update({cycle: _res_evt})
     register(state.get('connections'), 'set', '%pc', hex(pc))
+    config(state.get('connections'), 'mainmem', 'main_memory_filename', mainmem_filename)
+    config(state.get('connections'), 'mainmem', 'main_memory_capacity', os.stat(mainmem_filename).st_size)
     return cycle - 1
 def run(cycle, max_cycles, max_instructions, break_on_undefined, snapshot_frequency):
     global state
@@ -249,7 +252,7 @@ def run(cycle, max_cycles, max_instructions, break_on_undefined, snapshot_freque
           (state.get('running')) and \
           (None == state.get('undefined') if break_on_undefined else True):
         state.get('lock').acquire()
-        if snapshot_at and cycle >= snapshot_at:
+        if snapshot_frequency and snapshot_at and cycle >= snapshot_at:
             snapshot(
                 state.get('config').get('mainmem_filename'),
                 '{}.snapshot'.format(state.get('config').get('mainmem_filename')),
@@ -409,7 +412,7 @@ if __name__ == '__main__':
                 config(state.get('connections'), 'mainmem', 'main_memory_filename', state.get('config').get('mainmem_filename'))
                 config(state.get('connections'), 'mainmem', 'main_memory_capacity', state.get('config').get('mainmem_capacity'))
                 config(state.get('connections'), 'decode', 'toolchain', state.get('config').get('toolchain'))
-                tx(state.get('connections'), {
+                if len(args.cmdline): tx(state.get('connections'), {
                     'binary': os.path.join(os.getcwd(), args.cmdline[0]),
                 })
             else:
