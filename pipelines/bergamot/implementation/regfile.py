@@ -31,27 +31,6 @@ def do_tick(service, state, results, events):
                 }
             }})
             toolbox.report_stats(service, state, 'histo', 'get.register', _name)
-        elif 'snapshot' == _cmd:
-            fd = os.open(_name, os.O_RDWR)
-            os.lseek(fd, _data, os.SEEK_SET)
-            for k in ['%pc'] + sorted(filter(lambda x: not '%pc' == x, state.get('registers').keys()), key=str):
-                v = getregister(state.get('registers'), k)
-                os.write(fd, bytes(v))
-                os.lseek(fd, 8, os.SEEK_CUR)
-                service.tx({'info': 'snapshot: {} : {}'.format(k, v)})
-            os.fsync(fd)
-            os.close(fd)
-            toolbox.report_stats(service, state, 'flat', 'snapshot')
-        elif 'restore' == _cmd:
-            fd = os.open(_name, os.O_RDWR)
-            os.lseek(fd, _data, os.SEEK_SET)
-            for k in ['%pc'] + sorted(filter(lambda x: not '%pc' == x, state.get('registers').keys()), key=str):
-                v = list(os.read(fd, 8))
-                os.lseek(fd, 8, os.SEEK_CUR)
-                state.update({'registers': setregister(state.get('registers'), k, v)})
-                service.tx({'info': 'restore: {} : {}'.format(k, v)})
-            os.close(fd)
-            toolbox.report_stats(service, state, 'flat', 'restore')
         else:
             logging.fatal('ev   : {}'.format(ev))
             logging.fatal('_cmd : {}'.format(_cmd))
@@ -61,6 +40,18 @@ def setregister(registers, reg, val):
     return {x: y for x, y in tuple(registers.items()) + ((reg, val),)}
 def getregister(registers, reg):
     return registers.get(reg, None)
+def snapshot(service, state, addr, mainmem_filename):
+    logging.debug('snapshot({}, {})'.format(addr, mainmem_filename))
+    fd = os.open(mainmem_filename, os.O_RDWR)
+    os.lseek(fd, addr, os.SEEK_SET)
+    for k in ['%pc'] + sorted(filter(lambda x: not '%pc' == x, state.get('registers').keys()), key=str):
+        v = getregister(state.get('registers'), k)
+        os.write(fd, bytes(v))
+        os.lseek(fd, 8, os.SEEK_CUR)
+        service.tx({'info': 'snapshot: {} : {}'.format(k, v)})
+    os.fsync(fd)
+    os.close(fd)
+    toolbox.report_stats(service, state, 'flat', 'snapshot')
 
 if '__main__' == __name__:
     parser = argparse.ArgumentParser(description='μService-SIMulator: Register File')
@@ -110,9 +101,27 @@ if '__main__' == __name__:
                 state.update({'ack': False})
             elif 'tick' == k:
                 state.update({'cycle': v.get('cycle')})
+                if v.get('snapshot'):
+                    _addr = v.get('snapshot').get('addr')
+                    _mainmem_filename = v.get('snapshot').get('mainmem_filename')
+                    snapshot(_service, state, _addr.get('register'), _mainmem_filename)
                 _results = v.get('results')
                 _events = v.get('events')
                 do_tick(_service, state, _results, _events)
+            elif 'restore' == k:
+                assert not state.get('running'), 'Attempted restore while running!'
+                state.update({'cycle': v.get('cycle')})
+                _snapshot_filename = v.get('snapshot_filename')
+                _addr = v.get('addr')
+                fd = os.open(_snapshot_filename, os.O_RDWR)
+                os.lseek(fd, _addr.get('register'), os.SEEK_SET)
+                for k in ['%pc'] + sorted(filter(lambda x: not '%pc' == x, state.get('registers').keys()), key=str):
+                    v = list(os.read(fd, 8))
+                    os.lseek(fd, 8, os.SEEK_CUR)
+                    state.update({'registers': setregister(state.get('registers'), k, v)})
+                    _service.tx({'info': 'restore: {} : {}'.format(k, v)})
+                os.close(fd)
+                toolbox.report_stats(_service, state, 'flat', 'restore')
             elif 'register' == k:
                 _cmd = v.get('cmd')
                 _name = v.get('name')

@@ -71,7 +71,7 @@ def handler(conn, addr):
                 state.get('lock').release()
             elif 'result' == k:
                 _arr = v.pop('arrival')
-                assert _arr > state.get('cycle'), 'Attempting to schedule arrival in the past ({} vs. {})!'.format(_arr, state.get('cycle'))
+                assert _arr > state.get('cycle'), '{}.handler(): Attempting to schedule result arrival in the past ({} vs. {})!'.format(threading.current_thread().name, _arr, state.get('cycle'))
                 _res = v
                 state.get('lock').acquire()
                 _res_evt = state.get('futures').get(_arr, {'results': [], 'events': []})
@@ -80,12 +80,17 @@ def handler(conn, addr):
                 state.get('lock').release()
             elif 'event' == k:
                 _arr = v.pop('arrival')
-                assert _arr > state.get('cycle'), 'Attempting to schedule arrival in the past ({} vs. {})!'.format(_arr, state.get('cycle'))
+                assert _arr > state.get('cycle'), '{}.handler(): Attempting to schedule event arrival in the past ({} vs. {})!'.format(threading.current_thread().name, _arr, state.get('cycle'))
                 _evt = v
                 state.get('lock').acquire()
                 _res_evt = state.get('futures').get(_arr, {'results': [], 'events': []})
                 _res_evt.get('events').append(_evt)
                 state.get('futures').update({_arr: _res_evt})
+                state.get('lock').release()
+            elif 'register' == k:
+                logging.debug('{}.handler(): register : {}'.format(threading.current_thread().name, v))
+                state.get('lock').acquire()
+                tx(filter(lambda c: c != conn, state.get('connections')), msg)
                 state.get('lock').release()
             else:
                 state.get('lock').acquire()
@@ -101,7 +106,7 @@ def handler(conn, addr):
                     tx(filter(lambda c: c != conn, state.get('connections')), msg)
                     state.get('lock').release()
         except Exception as ex:
-            logging.fatal('Oopsie! {} (msg : {} ({}:{}), conn : {})'.format(ex, str(msg), type(msg), len(msg), conn))
+            logging.fatal('{}.handler(): Oopsie! {} (msg : {} ({}:{}), conn : {})'.format(threading.current_thread().name, ex, str(msg), type(msg), len(msg), conn))
             conn.close()
 def acceptor():
     while True:
@@ -193,44 +198,29 @@ def loadbin(connections, mainmem_filename, mainmem_capacity, sp, pc, start_symbo
     register(connections, 'set', 10, hex(_argc))
     register(connections, 'set', 11, hex(8 + sp))
     register(connections, 'set', '%pc', hex(_start_pc))
-def snapshot(mainmem_filename, snapshot_filename, cycle):
-    global state
-    subprocess.run('cp {} {}'.format(mainmem_filename, snapshot_filename).split())
-    fd = os.open(snapshot_filename, os.O_RDWR)
+def snapshot(state, mainmem_filename, cycle):
+    logging.info('snapshot(): state.cycle : {}'.format(cycle))
+    _snapshot_filename = '{}.{:015}.snapshot'.format(mainmem_filename, cycle)
+    subprocess.run('cp {} {}'.format(mainmem_filename, _snapshot_filename).split())
+    fd = os.open(_snapshot_filename, os.O_RDWR)
     os.lseek(fd, state.get('snapshot').get('addr').get('cycle'), os.SEEK_SET)
     os.write(fd, (1 + cycle).to_bytes(8, 'little'))
     os.lseek(fd, 8, os.SEEK_CUR)
     os.fsync(fd)
     os.close(fd)
-    _res_evt = state.get('futures').get(1 + cycle, {'results': [], 'events': []})
-    _res_evt.get('events').append({
-        'register': {
-            'cmd': 'snapshot',
-            'name': '{}'.format(snapshot_filename),
-            'data': state.get('snapshot').get('addr').get('register'),
-        }
-    })
-    state.get('futures').update({1 + cycle: _res_evt})
-def restore(mainmem_filename, snapshot_filename):
-    global state
+    # FIXME: make snapshots read-only after
+def restore(state, mainmem_filename, snapshot_filename):
     subprocess.run('cp {} {}'.format(snapshot_filename, mainmem_filename).split())
     subprocess.run('chmod u+w {}'.format(mainmem_filename).split())
     fd = os.open(mainmem_filename, os.O_RDWR)
     os.lseek(fd, state.get('snapshot').get('addr').get('cycle'), os.SEEK_SET)
     cycle = int.from_bytes(os.read(fd, 8), 'little')
-    os.lseek(fd, state.get('snapshot').get('addr').get('register'), os.SEEK_SET)
-    pc = int.from_bytes(os.read(fd, 8), 'little')
     os.close(fd)
-    _res_evt = state.get('futures').get(cycle, {'results': [], 'events': []})
-    _res_evt.get('events').append({
-        'register': {
-            'cmd': 'restore',
-            'name': '{}'.format(mainmem_filename),
-            'data': state.get('snapshot').get('addr').get('register'),
-        }
-    })
-    state.get('futures').update({cycle: _res_evt})
-    register(state.get('connections'), 'set', '%pc', hex(pc))
+    tx(state.get('connections'), {'restore': {
+        'cycle': cycle,
+        'snapshot_filename': snapshot_filename,
+        'addr': state.get('snapshot').get('addr'),
+    }})
     config(state.get('connections'), 'mainmem', 'main_memory_filename', mainmem_filename)
     config(state.get('connections'), 'mainmem', 'main_memory_capacity', os.stat(mainmem_filename).st_size)
     return cycle - 1
@@ -252,12 +242,14 @@ def run(cycle, max_cycles, max_instructions, break_on_undefined, snapshot_freque
           (state.get('running')) and \
           (None == state.get('undefined') if break_on_undefined else True):
         state.get('lock').acquire()
+        _snapshot = {}
         if snapshot_frequency and snapshot_at and cycle >= snapshot_at:
-            snapshot(
-                state.get('config').get('mainmem_filename'),
-                '{}.snapshot'.format(state.get('config').get('mainmem_filename')),
-                cycle
-            )
+            _snapshot = {
+                'snapshot': {
+                    'mainmem_filename': state.get('config').get('mainmem_filename'),
+                    'addr': state.get('snapshot').get('addr'),
+                }
+            }
             snapshot_at += snapshot_frequency
         logging.info('run(): @{:8}'.format(cycle))
         logging.info('\tinfo :\n\t\t{}'.format('\n\t\t'.join(state.get('info'))))
@@ -271,6 +263,7 @@ def run(cycle, max_cycles, max_instructions, break_on_undefined, snapshot_freque
         cycle = (min(state.get('futures').keys()) if len(state.get('futures').keys()) else 1 + cycle)
         tx(state.get('connections'), {'tick': {
             **{'cycle': cycle},
+            **_snapshot,
             **dict(state.get('futures').get(cycle, {'results': [], 'events': []})),
         }})
         if cycle in state.get('futures'): state.get('futures').pop(cycle)
@@ -282,6 +275,7 @@ def run(cycle, max_cycles, max_instructions, break_on_undefined, snapshot_freque
             state.get('lock').acquire()
             _ack = len(state.get('ack')) == len(state.get('connections'))
             state.get('lock').release()
+        if _snapshot: snapshot(state, state.get('config').get('mainmem_filename'), cycle)
     if state.get('undefined'): logging.info('*** Encountered undefined instruction! ***')
     return cycle
 def add_service(services, arguments, s):
@@ -419,7 +413,7 @@ if __name__ == '__main__':
                 {
                     'service': lambda x: add_service(_services, args, x),
                     'register': lambda x, y, z=None: register(state.get('connections'), x, y, z),
-                    'restore': lambda x, y: state.update({'cycle': restore(x, y)}),
+                    'restore': lambda x, y: state.update({'cycle': restore(state, x, y)}),
                     'cycle': lambda: logging.info(state.get('cycle')),
                     'state': lambda: logging.info(state),
                     'config': lambda x, y: config(state.get('connections'), *x.split(':'), y),
