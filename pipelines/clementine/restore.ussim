@@ -1,5 +1,4 @@
 # Sample μService-SIMulator script
-port 10000
 service implementation/regfile.py:localhost
 service implementation/mainmem.py:localhost
 service implementation/fetch.py:localhost
@@ -7,6 +6,7 @@ service implementation/decode.py:localhost
 service implementation/alu.py:localhost
 service implementation/lsu.py:localhost
 service implementation/commit.py:localhost
+service ../../toolbox/stats.py:localhost
 spawn
 cycle
 restore /tmp/mainmem.raw /tmp/mainmem.raw.snapshot

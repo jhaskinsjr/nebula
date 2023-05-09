@@ -171,6 +171,7 @@ if '__main__' == __name__:
     while state.get('active'):
         state.update({'ack': True})
         msg = _service.rx()
+        logging.info('msg : {}'.format(msg))
 #        _service.tx({'info': {'msg': msg, 'msg.size()': len(msg)}})
 #        print('msg : {}'.format(msg))
         for k, v in msg.items():
@@ -211,7 +212,12 @@ if '__main__' == __name__:
                 _results = v.get('results')
                 _events = v.get('events')
                 do_tick(_service, state, _results, _events)
+            elif 'restore' == k:
+                assert not state.get('running'), 'Attempted restore while running!'
+                state.update({'cycle': v.get('cycle')})
+                _service.tx({'ack': {'cycle': state.get('cycle')}})
             elif 'register' == k:
+                logging.info('register : {}'.format(v))
                 if not '%pc' == v.get('name'): continue
                 if not 'set' == v.get('cmd'): continue
                 _pc = v.get('data')

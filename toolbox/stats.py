@@ -82,6 +82,10 @@ if '__main__' == __name__:
                 _results = v.get('results')
                 _events = v.get('events')
                 do_tick(_service, state, _results, _events)
+            elif 'restore' == k:
+                assert not state.get('running'), 'Attempted restore while running!'
+                state.update({'cycle': v.get('cycle')})
+                _service.tx({'ack': {'cycle': state.get('cycle')}})
         if state.get('ack') and state.get('running'): _service.tx({'ack': {'cycle': state.get('cycle')}})
     _output_filename = state.get('config').get('output_filename')
     fp = (sys.stdout if not _output_filename else open(_output_filename, 'w'))

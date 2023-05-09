@@ -110,6 +110,7 @@ def handler(conn, addr):
             logging.fatal('{}.handler(): Initiating shutdown...')
             state.get('lock').acquire()
             state.update({'running': False})
+            tx(filter(lambda c: c != conn, state.get('connections')), {'text': 'bye'})
             state.get('lock').release()
 def acceptor():
     while True:
@@ -226,6 +227,13 @@ def restore(state, mainmem_filename, snapshot_filename):
     }})
     config(state.get('connections'), 'mainmem', 'main_memory_filename', mainmem_filename)
     config(state.get('connections'), 'mainmem', 'main_memory_capacity', os.stat(mainmem_filename).st_size)
+    _ack = False
+    while not _ack:
+        time.sleep(0.01)
+        logging.info('state.ack : {} ({})'.format(state.get('ack'), len(state.get('ack'))))
+        assert len(state.get('ack')) <= len(state.get('connections')), 'Something ACK\'d more than once!!!'
+        _ack = len(state.get('ack')) == len(state.get('connections'))
+#        _ack = len(set(map(lambda x: str(x), state.get('ack')))) == len(state.get('connections')) # HACK!!!
     return cycle - 1
 def run(cycle, max_cycles, max_instructions, break_on_undefined, snapshot_frequency):
     global state
@@ -278,6 +286,7 @@ def run(cycle, max_cycles, max_instructions, break_on_undefined, snapshot_freque
             state.get('lock').acquire()
             _ack = len(state.get('ack')) == len(state.get('connections'))
             state.get('lock').release()
+            logging.debug('state.ack : {} ({})'.format(state.get('ack'), len(state.get('ack'))))
         if _snapshot: snapshot(state, state.get('config').get('mainmem_filename'), cycle)
     if state.get('undefined'): logging.info('*** Encountered undefined instruction! ***')
     return cycle

@@ -111,6 +111,7 @@ if '__main__' == __name__:
             elif 'restore' == k:
                 assert not state.get('running'), 'Attempted restore while running!'
                 state.update({'cycle': v.get('cycle')})
+                _service.tx({'ack': {'cycle': state.get('cycle')}})
                 _snapshot_filename = v.get('snapshot_filename')
                 _addr = v.get('addr')
                 fd = os.open(_snapshot_filename, os.O_RDWR)

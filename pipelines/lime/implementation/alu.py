@@ -514,4 +514,8 @@ if '__main__' == __name__:
                 _results = v.get('results')
                 _events = v.get('events')
                 do_tick(_service, state, _results, _events)
+            elif 'restore' == k:
+                assert not state.get('running'), 'Attempted restore while running!'
+                state.update({'cycle': v.get('cycle')})
+                _service.tx({'ack': {'cycle': state.get('cycle')}})
         if state.get('ack') and state.get('running'): _service.tx({'ack': {'cycle': state.get('cycle')}})
