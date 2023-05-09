@@ -107,7 +107,10 @@ def handler(conn, addr):
                     state.get('lock').release()
         except Exception as ex:
             logging.fatal('{}.handler(): Oopsie! {} (msg : {} ({}:{}), conn : {})'.format(threading.current_thread().name, ex, str(msg), type(msg), len(msg), conn))
-            conn.close()
+            logging.fatal('{}.handler(): Initiating shutdown...')
+            state.get('lock').acquire()
+            state.update({'running': False})
+            state.get('lock').release()
 def acceptor():
     while True:
         _conn, _addr = _s.accept()
