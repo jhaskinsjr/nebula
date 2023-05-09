@@ -122,6 +122,11 @@ if '__main__' == __name__:
                     _service.tx({'info': 'restore: {} : {}'.format(k, v)})
                 os.close(fd)
                 toolbox.report_stats(_service, state, 'flat', 'restore')
+                _service.tx({'register': {
+                    'cmd': 'set',
+                    'name': '%pc',
+                    'data': getregister(state.get('registers'), '%pc'),
+                }})
             elif 'register' == k:
                 _cmd = v.get('cmd')
                 _name = v.get('name')
