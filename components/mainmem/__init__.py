@@ -9,48 +9,71 @@ import time
 import service
 import toolbox
 
-def do_tick(service, state, results, events):
-    for ev in filter(lambda x: x, map(lambda y: y.get('mem'), events)):
-        _cmd = ev.get('cmd')
-        _addr = ev.get('addr')
-        _size = ev.get('size')
-        _data = ev.get('data')
-        if 'poke' == _cmd:
-            poke(state, _addr, _size, _data)
-            toolbox.report_stats(service, state, 'histo', 'poke.size', _size)
-        elif 'peek' == _cmd:
-            service.tx({'result': {
-                'arrival': state.get('config').get('peek_latency_in_cycles') + state.get('cycle'),
-                'mem': {
-                    'addr': _addr,
-                    'size': _size,
-                    'data': peek(state, _addr, _size),
-                }
-            }})
-            toolbox.report_stats(service, state, 'histo', 'peek.size', _size)
-        else:
-            logging.fatal('ev : {}'.format(ev))
-            assert False
+class MainMemory:
+    def __init__(self, name, launcher, filename='/tmp/mainmem.raw', capacity=2**32, peek_latency_in_cycles=500):
+        self.name = name
+        self.service = service.Service(self.get('name'), launcher.get('host'), launcher.get('port'))
+        self.cycle = 0
+        self.active = True
+        self.running = False
+        self.ack = True
+        self.fd = None
+        self.config = {
+            'main_memory_filename': filename,
+            'main_memory_capacity': capacity,
+            'peek_latency_in_cycles': peek_latency_in_cycles,
+        }
+    def do_tick(self, results, events):
+        for ev in filter(lambda x: x, map(lambda y: y.get('mem'), events)):
+            _cmd = ev.get('cmd')
+            _addr = ev.get('addr')
+            _size = ev.get('size')
+            _data = ev.get('data')
+            if 'poke' == _cmd:
+                self.poke(_addr, _size, _data)
+                toolbox.report_stats(self.service, self.state(), 'histo', 'poke.size', _size)
+            elif 'peek' == _cmd:
+                self.service.tx({'result': {
+                    'arrival': self.get('config').get('peek_latency_in_cycles') + self.get('cycle'),
+                    'mem': {
+                        'addr': _addr,
+                        'size': _size,
+                        'data': self.peek(_addr, _size),
+                    }
+                }})
+                toolbox.report_stats(self.service, self.state(), 'histo', 'peek.size', _size)
+            else:
+                logging.fatal('ev : {}'.format(ev))
+                assert False
+    def state(self):
+        return {
+            'cycle': self.cycle,
+            'service': self.get('name'),
+        }
+    def poke(self, addr, size, data):
+        # data : list of unsigned char, e.g., to make an integer, X, into a list
+        # of N little-endian-formatted bytes -> list(X.to_bytes(N, 'little'))
+        _fd = self.get('fd')
+        try:
+            os.lseek(_fd, addr, os.SEEK_SET)
+            os.write(_fd, bytes(data))
+        except:
+            pass
+#        os.write(_fd, data.to_bytes(size, 'little'))
+    def peek(self, addr, size):
+        # return : list of unsigned char, e.g., to make an 8-byte quadword from
+        # a list, X, of N bytes -> int.from_bytes(X, 'little')
+        _fd = self.get('fd')
+        try:
+            os.lseek(_fd, addr, os.SEEK_SET)
+            return list(os.read(_fd, size))
+        except:
+            return []
+    def get(self, attribute, alternative=None):
+        return (self.__dict__[attribute] if attribute in dir(self) else alternative)
+    def update(self, d):
+        self.__dict__.update(d)
 
-def poke(state, addr, size, data):
-    # data : list of unsigned char, e.g., to make an integer, X, into a list
-    # of N little-endian-formatted bytes -> list(X.to_bytes(N, 'little'))
-    _fd = state.get('fd')
-    try:
-        os.lseek(_fd, addr, os.SEEK_SET)
-        os.write(_fd, bytes(data))
-    except:
-        pass
-#    os.write(_fd, data.to_bytes(size, 'little'))
-def peek(state, addr, size):
-    # return : list of unsigned char, e.g., to make an 8-byte quadword from
-    # a list, X, of N bytes -> int.from_bytes(X, 'little')
-    _fd = state.get('fd')
-    try:
-        os.lseek(_fd, addr, os.SEEK_SET)
-        return list(os.read(_fd, size))
-    except:
-        return []
 
 if '__main__' == __name__:
     parser = argparse.ArgumentParser(description='μService-SIMulator: Main Memory')
@@ -73,24 +96,11 @@ if '__main__' == __name__:
     _launcher = {x:y for x, y in zip(['host', 'port'], args.launcher.split(':'))}
     _launcher['port'] = int(_launcher['port'])
     logging.debug('_launcher : {}'.format(_launcher))
-    state = {
-        'service': 'mainmem',
-        'cycle': 0,
-        'active': True,
-        'running': False,
-        'ack': True,
-        'fd': None,
-        'config': {
-            'main_memory_filename': '/tmp/mainmem.raw',
-            'main_memory_capacity': 2**32,
-            'peek_latency_in_cycles': 500,
-        },
-    }
-    _service = service.Service(state.get('service'), _launcher.get('host'), _launcher.get('port'))
+    state = MainMemory('mainmem', _launcher)
     while state.get('active'):
         state.update({'ack': True})
-        msg = _service.rx()
-#        _service.tx({'info': {'msg': msg, 'msg.size()': len(msg)}})
+        msg = state.service.rx()
+#        state.service.tx({'info': {'msg': msg, 'msg.size()': len(msg)}})
 #        print('msg : {}'.format(msg))
         for k, v in msg.items():
             if {'text': 'bye'} == {k: v}:
@@ -101,9 +111,10 @@ if '__main__' == __name__:
                 os.ftruncate(state.get('fd'), state.get('config').get('main_memory_capacity'))
                 state.update({'running': True})
                 state.update({'ack': False})
+                state.service.tx({'info': 'state.config : {}'.format(state.get('config'))})
             elif 'config' == k:
                 logging.debug('config : {}'.format(v))
-                if state.get('service') != v.get('service'): continue
+                if state.get('name') != v.get('service'): continue
                 _field = v.get('field')
                 _val = v.get('val')
                 assert _field in state.get('config').keys(), 'No such config field, {}, in service {}!'.format(_field, state.get('service'))
@@ -112,10 +123,10 @@ if '__main__' == __name__:
                 state.update({'cycle': v.get('cycle')})
                 _results = v.get('results')
                 _events = v.get('events')
-                do_tick(_service, state, _results, _events)
+                state.do_tick(_results, _events)
             elif 'restore' == k:
                 assert not state.get('running'), 'Attempted restore while running!'
                 state.update({'cycle': v.get('cycle')})
-                _service.tx({'ack': {'cycle': state.get('cycle')}})
-        if state.get('ack') and state.get('running'): _service.tx({'ack': {'cycle': state.get('cycle')}})
+                state.service.tx({'ack': {'cycle': state.get('cycle')}})
+        if state.get('ack') and state.get('running'): state.service.tx({'ack': {'cycle': state.get('cycle')}})
     os.close(state.get('fd'))
