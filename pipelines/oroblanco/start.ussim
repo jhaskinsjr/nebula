@@ -7,7 +7,7 @@ service implementation/alu.py:localhost
 service implementation/lsu.py:localhost
 service implementation/commit.py:localhost
 service implementation/l2.py:localhost
-service ../../toolbox/stats.py:localhost
+service implementation/stats.py:localhost
 spawn
 config mainmem:peek_latency_in_cycles 25
 config fetch:l1ic_nsets 16

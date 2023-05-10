@@ -4,7 +4,7 @@ service implementation/regfile.py:localhost
 service implementation/mainmem.py:localhost
 service implementation/decode.py:localhost
 service implementation/execute.py:localhost
-service ../../toolbox/stats.py:localhost
+service implementation/stats.py:localhost
 spawn
 cycle
 restore /tmp/mainmem.raw /tmp/mainmem.raw.snapshot
