@@ -171,7 +171,6 @@ if '__main__' == __name__:
     while state.get('active'):
         state.update({'ack': True})
         msg = _service.rx()
-        logging.info('msg : {}'.format(msg))
 #        _service.tx({'info': {'msg': msg, 'msg.size()': len(msg)}})
 #        print('msg : {}'.format(msg))
         for k, v in msg.items():
