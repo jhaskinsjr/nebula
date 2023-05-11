@@ -31,7 +31,7 @@ def handler(conn, addr):
     state.get('lock').release()
     logging.info('handler(): {}:{}'.format(*addr))
     tx([conn], {'ack': 'launcher'})
-    while True:
+    while True: # FIXME: Break on {'shutdown': ...}, and send {'text': 'bye'} to conn
         try:
             msg = conn.recv(service.Service.MESSAGE_SIZE, socket.MSG_WAITALL)
             if not len(msg.strip()):
@@ -67,7 +67,7 @@ def handler(conn, addr):
             elif 'ack' == k:
                 state.get('lock').acquire()
                 state.get('ack').append((threading.current_thread().name, msg))
-                logging.debug('{}.handler(): ack: {} ({})'.format(threading.current_thread().name, state.get('ack'), len(state.get('ack'))))
+                logging.info('{}.handler(): ack: {} ({})'.format(threading.current_thread().name, state.get('ack'), len(state.get('ack'))))
                 state.get('lock').release()
             elif 'result' == k:
                 _arr = v.pop('arrival')
@@ -99,7 +99,7 @@ def handler(conn, addr):
                 logging.debug('{}.handler(): _running : {} ({})'.format(threading.current_thread().name, _running, msg))
                 if _running:
                     state.get('lock').acquire()
-                    state.get('events').append(msg)
+#                    state.get('events').append(msg)
                     state.get('lock').release()
                 else:
                     state.get('lock').acquire()
@@ -107,7 +107,7 @@ def handler(conn, addr):
                     state.get('lock').release()
         except Exception as ex:
             logging.fatal('{}.handler(): Oopsie! {} (msg : {} ({}:{}), conn : {})'.format(threading.current_thread().name, ex, str(msg), type(msg), len(msg), conn))
-            logging.fatal('{}.handler(): Initiating shutdown...')
+            logging.fatal('{}.handler(): Initiating shutdown...'.format(threading.current_thread().name))
             state.get('lock').acquire()
             state.update({'running': False})
             tx(filter(lambda c: c != conn, state.get('connections')), {'text': 'bye'})
@@ -281,12 +281,12 @@ def run(cycle, max_cycles, max_instructions, break_on_undefined, snapshot_freque
         state.get('ack').clear()
         state.get('lock').release()
         _ack = False
-        while not _ack:
+        while not _ack: # FIXME: exit if not all connections are present
             time.sleep(0.01)
             state.get('lock').acquire()
             _ack = len(state.get('ack')) == len(state.get('connections'))
             state.get('lock').release()
-            logging.debug('state.ack : {} ({})'.format(state.get('ack'), len(state.get('ack'))))
+            logging.debug('state.ack : {} ({} / {})'.format(state.get('ack'), len(state.get('ack')), len(state.get('connections'))))
         if _snapshot: snapshot(state, state.get('config').get('mainmem_filename'), cycle)
     if state.get('undefined'): logging.info('*** Encountered undefined instruction! ***')
     return cycle
