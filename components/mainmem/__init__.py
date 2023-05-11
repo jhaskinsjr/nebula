@@ -10,19 +10,24 @@ import service
 import toolbox
 
 class MainMemory:
-    def __init__(self, name, launcher, filename='/tmp/mainmem.raw', capacity=2**32, peek_latency_in_cycles=500):
+    def __init__(self, name, launcher, s=None):
         self.name = name
-        self.service = service.Service(self.get('name'), launcher.get('host'), launcher.get('port'))
+        self.service = (service.Service(self.get('name'), launcher.get('host'), launcher.get('port')) if not s else s)
         self.cycle = 0
         self.active = True
         self.running = False
         self.ack = True
         self.fd = None
         self.config = {
-            'main_memory_filename': filename,
-            'main_memory_capacity': capacity,
-            'peek_latency_in_cycles': peek_latency_in_cycles,
+            'main_memory_filename': None,
+            'main_memory_capacity': None,
+            'peek_latency_in_cycles': None,
         }
+#        self.fd = os.open(self.get('config').get('main_memory_filename'), os.O_RDWR|os.O_CREAT)
+#        os.ftruncate(self.get('fd'), self.get('config').get('main_memory_capacity'))
+    def boot(self):
+        self.fd = os.open(self.get('config').get('main_memory_filename'), os.O_RDWR|os.O_CREAT)
+        os.ftruncate(self.get('fd'), self.get('config').get('main_memory_capacity'))
     def state(self):
         return {
             'cycle': self.get('cycle'),
@@ -107,8 +112,9 @@ if '__main__' == __name__:
                 state.update({'active': False})
                 state.update({'running': False})
             elif {'text': 'run'} == {k: v}:
-                state.update({'fd': os.open(state.get('config').get('main_memory_filename'), os.O_RDWR|os.O_CREAT)})
-                os.ftruncate(state.get('fd'), state.get('config').get('main_memory_capacity'))
+#                state.update({'fd': os.open(state.get('config').get('main_memory_filename'), os.O_RDWR|os.O_CREAT)})
+#                os.ftruncate(state.get('fd'), state.get('config').get('main_memory_capacity'))
+                state.boot()
                 state.update({'running': True})
                 state.update({'ack': False})
                 state.service.tx({'info': 'state.config : {}'.format(state.get('config'))})

@@ -11,9 +11,9 @@ import toolbox
 import riscv.constants
 
 class RegisterFile:
-    def __init__(self, name, launcher):
+    def __init__(self, name, launcher, s=None):
         self.name = name
-        self.service = service.Service(self.get('name'), launcher.get('host'), launcher.get('port'))
+        self.service = (service.Service(self.get('name'), launcher.get('host'), launcher.get('port')) if not s else s)
         self.cycle = 0
         self.active = True
         self.running = False
@@ -40,8 +40,9 @@ class RegisterFile:
             if 'set' == _cmd:
                 assert _name in self.get('registers').keys()
                 assert isinstance(_data, list)
-                if 0 != _name:
-                    self.update({'registers': self.setregister(self.get('registers'), _name, _data)})
+#                if 0 != _name:
+#                    self.update({'registers': self.setregister(self.get('registers'), _name, _data)})
+                self.update({'registers': self.setregister(self.get('registers'), _name, _data)})
                 toolbox.report_stats(self.service, self.state(), 'histo', 'set.register', _name)
             elif 'get' == _cmd:
                 assert _name in self.get('registers').keys()
@@ -58,7 +59,8 @@ class RegisterFile:
                 logging.fatal('_cmd : {}'.format(_cmd))
                 assert False
     def setregister(self, registers, reg, val):
-        return {x: y for x, y in tuple(registers.items()) + ((reg, val),)}
+#        return {x: y for x, y in tuple(registers.items()) + ((reg, val),)}
+        return {x: y for x, y in tuple(registers.items()) + ((reg, val), (0, riscv.constants.integer_to_list_of_bytes(0, 64, 'little')))}
     def getregister(self, registers, reg):
         return registers.get(reg, None)
     def snapshot(self, addr, mainmem_filename):
@@ -108,6 +110,7 @@ if '__main__' == __name__:
             elif {'text': 'run'} == {k: v}:
                 state.update({'running': True})
                 state.update({'ack': False})
+                logging.info('state.registers : {}'.format(state.get('registers')))
             elif 'tick' == k:
                 state.update({'cycle': v.get('cycle')})
                 if v.get('snapshot'):
@@ -138,6 +141,7 @@ if '__main__' == __name__:
                     'data': state.getregister(state.get('registers'), '%pc'),
                 }})
             elif 'register' == k:
+                logging.info('register : {}'.format(v))
                 _cmd = v.get('cmd')
                 _name = v.get('name')
                 if 'set' == _cmd:
