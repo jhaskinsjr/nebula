@@ -23,6 +23,15 @@ class MainMemory:
             'main_memory_capacity': capacity,
             'peek_latency_in_cycles': peek_latency_in_cycles,
         }
+    def state(self):
+        return {
+            'cycle': self.get('cycle'),
+            'service': self.get('name'),
+        }
+    def get(self, attribute, alternative=None):
+        return (self.__dict__[attribute] if attribute in dir(self) else alternative)
+    def update(self, d):
+        self.__dict__.update(d)
     def do_tick(self, results, events):
         for ev in filter(lambda x: x, map(lambda y: y.get('mem'), events)):
             _cmd = ev.get('cmd')
@@ -45,11 +54,6 @@ class MainMemory:
             else:
                 logging.fatal('ev : {}'.format(ev))
                 assert False
-    def state(self):
-        return {
-            'cycle': self.cycle,
-            'service': self.get('name'),
-        }
     def poke(self, addr, size, data):
         # data : list of unsigned char, e.g., to make an integer, X, into a list
         # of N little-endian-formatted bytes -> list(X.to_bytes(N, 'little'))
@@ -69,10 +73,6 @@ class MainMemory:
             return list(os.read(_fd, size))
         except:
             return []
-    def get(self, attribute, alternative=None):
-        return (self.__dict__[attribute] if attribute in dir(self) else alternative)
-    def update(self, d):
-        self.__dict__.update(d)
 
 
 if '__main__' == __name__:
