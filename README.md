@@ -278,18 +278,20 @@ well on any Unix-like OS with a Python3 port.
 
 # Sample Pipelines
 
-At present, there are four sample pipeline implementations: Bergamot,
-Clementine, Lime, and Oroblanco.
+At present, there are five sample pipeline implementations: Amanatsu,
+Bergamot, Clementine, Lime, and Oroblanco.
 
 The Quick Start section above shows how to execute the examples/bin/sum program
-using the Oroblanco implementation; to use the Bergamot implementation, "cd"
-into the pipelines/bergamot subdirectory (instead of pipeilnes/oroblanco); to
-use the Clementine implementation, "cd" into the pipelines/clementine
+using the Oroblanco implementation; to use the Amanatsu implementation, "cd"
+into the pipelines/amanatsu subdirectory (instead of pipelines/oroblanco); to
+use the Bergamot implementation, "cd" into the pipelines/bergamot subdirectory;
+to use the Clementine implementation, "cd" into the pipelines/clementine
 subdirectory; to use the Lime implementation, "cd" into the
 pipelines/lime subdirectory.
 
 For a brief overview of each pipeline implmentation, follow the links below:
 
+* [Amanatsu](pipelines/amanatsu/README.md)
 * [Bergamot](pipelines/bergamot/README.md)
 * [Clementine](pipelines/clementine/README.md)
 * [Lime](pipelines/lime/README.md)
@@ -681,6 +683,8 @@ an exercise" for researchers.
 
 # Reaching The Author
 
-I can be reached at https://www.linkedin.com/in/john-haskins-jr-925235a1/
-and john.haskins.jr@gmail.com, and am available to consult on the framework's
-use, development, and deployment.
+I am available to consult on the framework's use, development, and
+deploymnt.
+
+Email: john.haskins.jr@gmail.com |
+LinkedIn: https://www.linkedin.com/in/john-haskins-jr-925235a1/
