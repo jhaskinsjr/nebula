@@ -33,7 +33,7 @@ class System:
     #         48: self.do_faccessat,
     #         49: self.do_chdir,
              56: self.do_openat,
-    #         57: self.do_close,
+             57: self.do_close,
              62: self.do_lseek,
     #         63: self.do_read,
              64: self.do_write,
@@ -116,6 +116,25 @@ class System:
                 },
             }
         return _retval
+    def do_close(self, a0, a1, a2, a3, a4, a5, **kwargs):
+        logging.info('do_close(): a0     : {}'.format(a0))
+        try:
+            _fd = int.from_bytes(a0, 'little')
+            os.close(_fd)
+            _retval = 0
+        except:
+            _retval = -1
+        logging.info('close() -> {}'.format(_retval))
+        return {
+            'done': True,
+            'output': {
+                'register': {
+                    'cmd': 'set',
+                    'name': 10,
+                    'data': list(_retval.to_bytes(8, 'little', signed=True))
+                },
+            },
+        }
     def do_lseek(self, a0, a1, a2, a3, a4, a5, **kwargs):
         logging.info('do_lseek(): a0     : {}'.format(a0))
         logging.info('do_lseek(): a1     : {}'.format(a1))
