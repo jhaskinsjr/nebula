@@ -16,13 +16,15 @@ def do_tick(service, state, results, events):
         _t = _stats.get('type')
         _n = _stats.get('name')
         _d = _stats.get('data')
+        _k = _stats.get('kwargs')
         if not _s in state.get('stats').keys(): state.get('stats').update({_s: {}})
         if not _n in state.get('stats').get(_s): state.get('stats').get(_s).update({_n : ({} if 'histo' == _t else 0)})
+        _increment = (_k.get('increment') if _k and _k.get('increment') else 1)
         if 'histo' == _t:
             assert _d != None, 'Histogram-type stat {}:{} requires "data" field ({})'.format(_s, _n, _stats)
-            state.get('stats').get(_s).get(_n).update({_d: 1 + state.get('stats').get(_s).get(_n).get(_d, 0)})
+            state.get('stats').get(_s).get(_n).update({_d: _increment + state.get('stats').get(_s).get(_n).get(_d, 0)})
         else:
-            state.get('stats').get(_s).update({_n: 1 + state.get('stats').get(_s).get(_n)})
+            state.get('stats').get(_s).update({_n: _increment + state.get('stats').get(_s).get(_n)})
 
 if '__main__' == __name__:
     parser = argparse.ArgumentParser(description='μService-SIMulator: Statistics')

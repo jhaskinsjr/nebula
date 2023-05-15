@@ -1,5 +1,6 @@
 # Sample μService-SIMulator script
 service implementation/fastcore.py:localhost
+service implementation/stats.py:localhost
 spawn
 config stats:output_filename /tmp/stats.json
 cycle

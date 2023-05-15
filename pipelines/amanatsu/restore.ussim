@@ -1,5 +1,6 @@
 # Sample μService-SIMulator script
 service implementation/fastcore.py:localhost
+service implementation/stats.py:localhost
 spawn
 cycle
 restore /tmp/mainmem.raw /tmp/mainmem.raw.snapshot

@@ -261,6 +261,24 @@ def do_ecall(insn, *args, **kwargs):
         **{'syscall_kwargs': _syscall_kwargs},
         **({'shutdown': None} if 'shutdown' in _side_effect.keys() else {}),
     }
+def do_csr(insn, *args, **kwargs):
+    _regfile = kwargs.get('regfile')
+    _operands = {
+        'rs1': getregister(_regfile, insn.get('rs1')),
+    }
+    # HACK: csr = 0x002 is the FRM (floating point dynamic rounding mode);
+    # this only handles a read from FRM by returning 0... not sure that's
+    # the right thing to do, though; see: https://cv32e40p.readthedocs.io/en/latest/control_status_registers.html
+    _result = {
+        2: 0 # CSR = 2 means FRM
+    }.get(insn.get('csr'), None)
+    setregister(_regfile, insn.get('rd'), _result)
+    setregister(_regfile, '%pc', riscv.constants.integer_to_list_of_bytes(int.from_bytes(insn.get('%pc'), 'little') + insn.get('size'), 64, 'little'))
+    return {
+        **insn,
+        **{'operands': _operands},
+        **{'result': _result},
+    }
 
 def fast(service, state, regfile, mainmem, system, N=10**100):
     logging.info('regfile : {}'.format(dir(regfile)))
@@ -335,7 +353,11 @@ def fast(service, state, regfile, mainmem, system, N=10**100):
         'SRLIW': do_shift,
         'SRAIW': do_shift,
         'ECALL': do_ecall,
+        'CSRRS': do_csr,
+        'CSRRSI': do_csr,
     }
+    _initial_instructions_committed = state.get('instructions_committed')
+    _result = None
     for _ in range(N):
         _pc = getregister(regfile, '%pc')
         _addr = int.from_bytes(_pc, 'little')
@@ -355,18 +377,18 @@ def fast(service, state, regfile, mainmem, system, N=10**100):
             logging.info('_size     : {}'.format(_size))
             logging.info('_decoded  : {}'.format(_decoded))
             break
-#        _f = _opcode.get(_insn.get('cmd'))
-#        _result = (_f(_insn, **{'regfile': regfile, 'mainmem': mainmem}) if _f else do_unimplemented(service, state, _insn))
         _result = _opcode.get(_insn.get('cmd'), do_unimplemented)(_insn, service, state, **{'regfile': regfile, 'mainmem': mainmem, 'system': system})
         logging.info('_result   : {}'.format(_result))
         state.update({'instructions_committed': 1 + state.get('instructions_committed')})
-        if 'shutdown' in _result.keys():
-            service.tx({'info': 'ECALL {}... graceful shutdown'.format(int.from_bytes(_result.get('operands').get('syscall_num'), 'little'))})
-            service.tx({'shutdown': _result.get('side_effect').get('shutdown')})
-            break
+        if 'shutdown' in _result.keys(): break
     logging.info('registers : {}'.format(regfile.registers))
-    logging.info('state.instructions_committed : {}'.format(state.get('instructions_committed')))
-#    logging.info('_insn     : {}'.format(_insn))
+    logging.info('state.instructions_committed    : {}'.format(state.get('instructions_committed')))
+    logging.info('_initial_instructions_committed : {}'.format(_initial_instructions_committed))
+    toolbox.report_stats(service, state, 'flat', 'instructions_committed', **{'increment': state.get('instructions_committed') - _initial_instructions_committed})
+    if 'shutdown' in _result.keys():
+        service.tx({'info': 'ECALL {}... graceful shutdown'.format(int.from_bytes(_result.get('operands').get('syscall_num'), 'little'))})
+        service.tx({'shutdown': 1 + state.get('cycle')})
+        state.update({'shutdown': True})
 
 if '__main__' == __name__:
     parser = argparse.ArgumentParser(description='μService-SIMulator: Simple Core')
@@ -398,6 +420,7 @@ if '__main__' == __name__:
         '%pc': None,
         'ack': True,
         'instructions_committed': 0,
+        'shutdown': None,
         'objmap': None,
         'config': {
             'toolchain': '',
@@ -443,7 +466,6 @@ if '__main__' == __name__:
                         }})
                 logging.info('_mainmem.config : {}'.format(_mainmem.get('config')))
                 _mainmem.boot()
-#                fast(_service, state, _regfile, _mainmem, _system, 10**5)
             elif 'binary' == k:
                 state.update({'binary': v})
             elif 'config' == k:
@@ -455,16 +477,14 @@ if '__main__' == __name__:
                     state.get('service'): state,
                 }
                 if v.get('service') not in _components.keys(): continue
-#                if v.get('service') != state.get('name'): continue
                 _target = _components.get(v.get('service'))
                 _field = v.get('field')
                 _val = v.get('val')
-#                assert _field in state.get('config').keys(), 'No such config field, {}, in service {}!'.format(_field, state.get('service'))
                 assert _field in _target.get('config').keys(), 'No such config field, {}, in service {}!'.format(_field, v.get('service'))
                 _target.get('config').update({_field: _val})
             elif 'tick' == k:
                 state.update({'cycle': v.get('cycle')})
-                fast(_service, state, _regfile, _mainmem, _system, 10**3)
+                if not state.get('shutdown'): fast(_service, state, _regfile, _mainmem, _system, 10**4)
 #                _results = v.get('results')
 #                _events = v.get('events')
 #                do_tick(_service, state, _results, _events)

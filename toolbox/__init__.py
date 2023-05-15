@@ -2,7 +2,7 @@
 
 import service
 
-def report_stats(service, state, type, name, data=None):
+def report_stats(service, state, type, name, data=None, **kwargs):
     service.tx({'event': {
         'arrival': 1 + state.get('cycle'),
         'stats': {
@@ -12,5 +12,6 @@ def report_stats(service, state, type, name, data=None):
                 'name': name,
             },
             **({'data': data} if None != data else {}),
+            **({'kwargs': kwargs} if len(kwargs.keys()) else {}),
         },
     }})

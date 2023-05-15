@@ -699,11 +699,21 @@ def system(word):
     }
 #    if not uncompressed_i_type_imm12(word) in _cmds.keys(): uncompressed_unimplemented_instruction(word)
 #    _cmd = _cmds.get(uncompressed_i_type_imm12(word))
-    _cmd = _cmds.get(uncompressed_i_type_imm12(word), 'Undefined')
+    _cmd = _cmds.get(uncompressed_i_type_imm12(word), None)
+    _additional_fields = {}
+    if not _cmd:
+        _cmd = ('CSRRS' if uncompressed_funct3(word) in [0b001, 0b010, 0b011] else 'CSSRSI')
+        _additional_fields = {
+            **({'rs1': uncompressed_rs1(word)} if 'CSRRS' == _cmd else {}),
+            **({'imm': uncompressed_rs1(word)} if 'CSRRSI' == _cmd else {}),
+            **{'rd': uncompressed_rd(word)},
+            **{'csr': (word >> 20) & 0b1111_1111_1111},
+        }
     return {
         'cmd': _cmd,
         'word': word,
         'size': 4,
+        **_additional_fields,
     }
 def load(word):
     # imm[11:0] rs1 000 rd 0000011 LB

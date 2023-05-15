@@ -48,7 +48,8 @@ def handler(conn, addr):
                 break
             elif 'shutdown' == k:
                 state.get('lock').acquire()
-                state.update({'running': False})
+                state.update({'shutdown': v})
+                if None == v: state.update({'running': False})
                 state.get('lock').release()
             elif 'undefined' == k:
                 state.get('lock').acquire()
@@ -249,6 +250,7 @@ def run(cycle, max_cycles, max_instructions, break_on_undefined, snapshot_freque
     state.get('lock').release()
     snapshot_at = cycle + snapshot_frequency
     while (cycle < max_cycles if max_cycles else True) and \
+          (not state.get('shutdown') or (cycle < state.get('shutdown'))) and \
           (state.get('instructions_committed') < max_instructions if max_instructions else True) and \
           (state.get('running')) and \
           (None == state.get('undefined') if break_on_undefined else True):
@@ -351,6 +353,7 @@ if __name__ == '__main__':
         'running': False,
         'cycle': 0,
         'instructions_committed': 0,
+        'shutdown': None,
         'undefined': None,
         'snapshot': {
             'addr': {
