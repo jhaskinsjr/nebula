@@ -1,1 +1,1 @@
-../../../components/mainmem/__init__.py
+../../../components/simplemainmem/__init__.py

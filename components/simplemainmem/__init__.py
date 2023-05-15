@@ -9,7 +9,7 @@ import time
 import service
 import toolbox
 
-class MainMemory:
+class SimpleMainMemory:
     def __init__(self, name, launcher, s=None):
         self.name = name
         self.service = (service.Service(self.get('name'), launcher.get('host'), launcher.get('port')) if not s else s)
@@ -101,7 +101,7 @@ if '__main__' == __name__:
     _launcher = {x:y for x, y in zip(['host', 'port'], args.launcher.split(':'))}
     _launcher['port'] = int(_launcher['port'])
     logging.debug('_launcher : {}'.format(_launcher))
-    state = MainMemory('mainmem', _launcher)
+    state = SimpleMainMemory('mainmem', _launcher)
     while state.get('active'):
         state.update({'ack': True})
         msg = state.service.rx()

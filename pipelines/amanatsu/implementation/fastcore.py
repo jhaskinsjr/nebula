@@ -431,8 +431,8 @@ if '__main__' == __name__:
         },
     }
     _service = service.Service(state.get('service'), _launcher.get('host'), _launcher.get('port'))
-    _regfile = regfile.RegisterFile('regfile', _launcher, _service)
-    _mainmem = mainmem.MainMemory('mainmem', _launcher, _service)
+    _regfile = regfile.SimpleRegisterFile('regfile', _launcher, _service)
+    _mainmem = mainmem.SimpleMainMemory('mainmem', _launcher, _service)
     _system = riscv.syscall.linux.System()
     while state.get('active'):
         state.update({'ack': True})
