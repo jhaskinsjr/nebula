@@ -1,1 +1,1 @@
-../../../components/regfile/__init__.py
+../../../components/simpleregfile/__init__.py
