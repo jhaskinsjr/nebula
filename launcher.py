@@ -228,14 +228,17 @@ def restore(state, mainmem_filename, snapshot_filename):
     }})
     config(state.get('connections'), 'mainmem', 'main_memory_filename', mainmem_filename)
     config(state.get('connections'), 'mainmem', 'main_memory_capacity', os.stat(mainmem_filename).st_size)
+    waitforack(state)
+    return cycle - 1
+def waitforack(state):
     _ack = False
     while not _ack:
         time.sleep(0.01)
-        logging.info('state.ack : {} ({})'.format(state.get('ack'), len(state.get('ack'))))
+        logging.debug('state.ack : {} ({})'.format(state.get('ack'), len(state.get('ack'))))
         assert len(state.get('ack')) <= len(state.get('connections')), 'Something ACK\'d more than once!!!'
         _ack = len(state.get('ack')) == len(state.get('connections'))
 #        _ack = len(set(map(lambda x: str(x), state.get('ack')))) == len(state.get('connections')) # HACK!!!
-    return cycle - 1
+#    return cycle - 1
 def run(cycle, max_cycles, max_instructions, break_on_undefined, snapshot_frequency):
     global state
     # {
@@ -282,13 +285,14 @@ def run(cycle, max_cycles, max_instructions, break_on_undefined, snapshot_freque
         if cycle in state.get('futures'): state.get('futures').pop(cycle)
         state.get('ack').clear()
         state.get('lock').release()
-        _ack = False
-        while not _ack: # FIXME: exit if not all connections are present
-            time.sleep(0.01)
-            state.get('lock').acquire()
-            _ack = len(state.get('ack')) == len(state.get('connections'))
-            state.get('lock').release()
-            logging.debug('state.ack : {} ({} / {})'.format(state.get('ack'), len(state.get('ack')), len(state.get('connections'))))
+        waitforack(state)
+#        _ack = False
+#        while not _ack: # FIXME: exit if not all connections are present
+#            time.sleep(0.01)
+#            state.get('lock').acquire()
+#            _ack = len(state.get('ack')) == len(state.get('connections'))
+#            state.get('lock').release()
+#            logging.debug('state.ack : {} ({} / {})'.format(state.get('ack'), len(state.get('ack')), len(state.get('connections'))))
         if _snapshot: snapshot(state, state.get('config').get('mainmem_filename'), cycle)
     if state.get('undefined'): logging.info('*** Encountered undefined instruction! ***')
     return cycle
