@@ -75,6 +75,24 @@ class SimpleRegisterFile:
         os.fsync(fd)
         os.close(fd)
         toolbox.report_stats(self.service, self.state(), 'flat', 'snapshot')
+    def restore(self, addr, snapshot_filename):
+#        assert not state.get('running'), 'Attempted restore while running!'
+#        self.update({'cycle': v.get('cycle')})
+#        self.service.tx({'ack': {'cycle': state.get('cycle')}})
+        fd = os.open(snapshot_filename, os.O_RDWR)
+        os.lseek(fd, addr.get('register'), os.SEEK_SET)
+        for k in ['%pc'] + sorted(filter(lambda x: not '%pc' == x, self.get('registers').keys()), key=str):
+            v = list(os.read(fd, 8))
+            os.lseek(fd, 8, os.SEEK_CUR)
+            self.update({'registers': self.setregister(self.get('registers'), k, v)})
+            self.service.tx({'info': 'restore: {} : {}'.format(k, v)})
+        os.close(fd)
+        toolbox.report_stats(self.service, self.state(), 'flat', 'restore')
+        self.service.tx({'register': {
+            'cmd': 'set',
+            'name': '%pc',
+            'data': self.getregister(self.get('registers'), '%pc'),
+        }})
 
 if '__main__' == __name__:
     parser = argparse.ArgumentParser(description='μService-SIMulator: Register File')
@@ -123,23 +141,25 @@ if '__main__' == __name__:
             elif 'restore' == k:
                 assert not state.get('running'), 'Attempted restore while running!'
                 state.update({'cycle': v.get('cycle')})
-                state.service.tx({'ack': {'cycle': state.get('cycle')}})
                 _snapshot_filename = v.get('snapshot_filename')
                 _addr = v.get('addr')
-                fd = os.open(_snapshot_filename, os.O_RDWR)
-                os.lseek(fd, _addr.get('register'), os.SEEK_SET)
-                for k in ['%pc'] + sorted(filter(lambda x: not '%pc' == x, state.get('registers').keys()), key=str):
-                    v = list(os.read(fd, 8))
-                    os.lseek(fd, 8, os.SEEK_CUR)
-                    state.update({'registers': state.setregister(state.get('registers'), k, v)})
-                    state.service.tx({'info': 'restore: {} : {}'.format(k, v)})
-                os.close(fd)
-                toolbox.report_stats(state.service, state.state(), 'flat', 'restore')
-                state.service.tx({'register': {
-                    'cmd': 'set',
-                    'name': '%pc',
-                    'data': state.getregister(state.get('registers'), '%pc'),
-                }})
+                logging.info('restore - v : {}'.format(v))
+                state.restore(_addr, _snapshot_filename)
+#                fd = os.open(_snapshot_filename, os.O_RDWR)
+#                os.lseek(fd, _addr.get('register'), os.SEEK_SET)
+#                for k in ['%pc'] + sorted(filter(lambda x: not '%pc' == x, state.get('registers').keys()), key=str):
+#                    v = list(os.read(fd, 8))
+#                    os.lseek(fd, 8, os.SEEK_CUR)
+#                    state.update({'registers': state.setregister(state.get('registers'), k, v)})
+#                    state.service.tx({'info': 'restore: {} : {}'.format(k, v)})
+#                os.close(fd)
+#                toolbox.report_stats(state.service, state.state(), 'flat', 'restore')
+#                state.service.tx({'register': {
+#                    'cmd': 'set',
+#                    'name': '%pc',
+#                    'data': state.getregister(state.get('registers'), '%pc'),
+#                }})
+                state.service.tx({'ack': {'cycle': state.get('cycle')}})
             elif 'register' == k:
                 logging.info('register : {}'.format(v))
                 _cmd = v.get('cmd')
