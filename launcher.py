@@ -29,7 +29,7 @@ def handler(conn, addr):
     state.get('lock').acquire()
     state.get('connections').append(conn)
     state.get('lock').release()
-    logging.info('handler(): {}:{}'.format(*addr))
+    logging.debug('handler(): {}:{}'.format(*addr))
     tx([conn], {'ack': 'launcher'})
     while True: # FIXME: Break on {'shutdown': ...}, and send {'text': 'bye'} to conn
         try:
@@ -68,7 +68,7 @@ def handler(conn, addr):
             elif 'ack' == k:
                 state.get('lock').acquire()
                 state.get('ack').append((threading.current_thread().name, msg))
-                logging.info('{}.handler(): ack: {} ({})'.format(threading.current_thread().name, state.get('ack'), len(state.get('ack'))))
+                logging.debug('{}.handler(): ack: {} ({})'.format(threading.current_thread().name, state.get('ack'), len(state.get('ack'))))
                 state.get('lock').release()
             elif 'result' == k:
                 _arr = v.pop('arrival')
@@ -203,29 +203,47 @@ def loadbin(connections, mainmem_filename, mainmem_capacity, sp, pc, start_symbo
     register(connections, 'set', 10, hex(_argc))
     register(connections, 'set', 11, hex(8 + sp))
     register(connections, 'set', '%pc', hex(_start_pc))
-def snapshot(state, mainmem_filename, cycle):
-    logging.info('snapshot(): state.cycle : {}'.format(cycle))
-    _snapshot_filename = '{}.{:015}.snapshot'.format(mainmem_filename, cycle)
+def snapshot(state, mainmem_filename):
+#    logging.info('snapshot(): state.cycle : {}'.format(state.get('cycle')))
+    _snapshot_filename = '{}.{:015}.snapshot'.format(mainmem_filename, state.get('instructions_committed'))
     subprocess.run('cp {} {}'.format(mainmem_filename, _snapshot_filename).split())
     fd = os.open(_snapshot_filename, os.O_RDWR)
     os.lseek(fd, state.get('snapshot').get('addr').get('cycle'), os.SEEK_SET)
-    os.write(fd, (1 + cycle).to_bytes(8, 'little'))
-    os.lseek(fd, 8, os.SEEK_CUR)
+    os.write(fd, (1 + state.get('cycle')).to_bytes(8, 'little'))
+#    os.lseek(fd, 8, os.SEEK_CUR)
+    os.lseek(fd, state.get('snapshot').get('addr').get('instructions_committed'), os.SEEK_SET)
+    os.write(fd, state.get('instructions_committed').to_bytes(8, 'little'))
+    os.lseek(fd, state.get('snapshot').get('addr').get('cmdline_length'), os.SEEK_SET)
+    os.write(fd, len(state.get('cmdline')).to_bytes(8, 'little'))
+    os.lseek(fd, state.get('snapshot').get('addr').get('cmdline'), os.SEEK_SET)
+    os.write(fd, bytes(state.get('cmdline'), 'ascii'))
     os.fsync(fd)
     os.close(fd)
-    # FIXME: make snapshots read-only after
+    # FIXME: make snapshots read-only after creation
 def restore(state, mainmem_filename, snapshot_filename):
     subprocess.run('cp {} {}'.format(snapshot_filename, mainmem_filename).split())
     subprocess.run('chmod u+w {}'.format(mainmem_filename).split())
     fd = os.open(mainmem_filename, os.O_RDWR)
     os.lseek(fd, state.get('snapshot').get('addr').get('cycle'), os.SEEK_SET)
     cycle = int.from_bytes(os.read(fd, 8), 'little')
+    os.lseek(fd, state.get('snapshot').get('addr').get('instructions_committed'), os.SEEK_SET)
+    state.update({'instructions_committed': int.from_bytes(os.read(fd, 8), 'little')})
+    os.lseek(fd, state.get('snapshot').get('addr').get('cmdline_length'), os.SEEK_SET)
+    state.update({'cmdline_length': int.from_bytes(os.read(fd, 8), 'little')})
+    os.lseek(fd, state.get('snapshot').get('addr').get('cmdline'), os.SEEK_SET)
+    state.update({'cmdline': os.read(fd, state.get('cmdline_length')).decode('ascii')})
     os.close(fd)
     tx(state.get('connections'), {'restore': {
         'cycle': cycle,
+        'instructions_committed': state.get('instructions_committed'),
         'snapshot_filename': snapshot_filename,
         'addr': state.get('snapshot').get('addr'),
     }})
+    logging.info('restore(): mainmem_filename             : {}'.format(mainmem_filename))
+    logging.info('restore(): snapshot_filename            : {}'.format(snapshot_filename))
+    logging.info('restore(): cycle                        : {}'.format(cycle))
+    logging.info('restore(): state.instructions_committed : {}'.format(state.get('instructions_committed')))
+    logging.info('restore(): state.cmdline                : {}'.format(state.get('cmdline')))
     config(state.get('connections'), 'mainmem', 'main_memory_filename', mainmem_filename)
     config(state.get('connections'), 'mainmem', 'main_memory_capacity', os.stat(mainmem_filename).st_size)
     waitforack(state)
@@ -251,7 +269,7 @@ def run(cycle, max_cycles, max_instructions, break_on_undefined, snapshot_freque
     state.get('lock').acquire()
     tx(state.get('connections'), 'run')
     state.get('lock').release()
-    snapshot_at = cycle + snapshot_frequency
+    snapshot_at = state.get('instructions_committed') + snapshot_frequency
     while (cycle < max_cycles if max_cycles else True) and \
           (not state.get('shutdown') or (cycle < state.get('shutdown'))) and \
           (state.get('instructions_committed') < max_instructions if max_instructions else True) and \
@@ -259,7 +277,7 @@ def run(cycle, max_cycles, max_instructions, break_on_undefined, snapshot_freque
           (None == state.get('undefined') if break_on_undefined else True):
         state.get('lock').acquire()
         _snapshot = {}
-        if snapshot_frequency and snapshot_at and cycle >= snapshot_at:
+        if snapshot_frequency and snapshot_at and state.get('instructions_committed') >= snapshot_at:
             _snapshot = {
                 'snapshot': {
                     'mainmem_filename': state.get('config').get('mainmem_filename'),
@@ -293,7 +311,9 @@ def run(cycle, max_cycles, max_instructions, break_on_undefined, snapshot_freque
 #            _ack = len(state.get('ack')) == len(state.get('connections'))
 #            state.get('lock').release()
 #            logging.debug('state.ack : {} ({} / {})'.format(state.get('ack'), len(state.get('ack')), len(state.get('connections'))))
-        if _snapshot: snapshot(state, state.get('config').get('mainmem_filename'), cycle)
+        if _snapshot:
+            state.update({'cycle': cycle})
+            snapshot(state, state.get('config').get('mainmem_filename'))
     if state.get('undefined'): logging.info('*** Encountered undefined instruction! ***')
     return cycle
 def add_service(services, arguments, s):
@@ -330,7 +350,7 @@ if __name__ == '__main__':
     parser.add_argument('--log', type=str, dest='log', default='/tmp', help='logging output directory')
     parser.add_argument('--max_cycles', type=int, dest='max_cycles', default=None, help='maximum number of cycles to run for')
     parser.add_argument('--max_instructions', type=int, dest='max_instructions', default=None, help='maximum number of instructions to execute')
-    parser.add_argument('--snapshots', type=int, dest='snapshots', default=0, help='number of cycles per snapshot')
+    parser.add_argument('--snapshots', type=int, dest='snapshots', default=0, help='number of instructions per snapshot')
     parser.add_argument('port', type=int, help='port for accepting connections')
     parser.add_argument('script', type=str, help='script to be executed by μService-SIMulator')
     parser.add_argument('cmdline', nargs='*', help='binary to be executed and parameters')
@@ -359,10 +379,14 @@ if __name__ == '__main__':
         'instructions_committed': 0,
         'shutdown': None,
         'undefined': None,
+        'cmdline': None,
         'snapshot': {
             'addr': {
-                'register': 0x90000000,
-                'cycle': 0x91000000,
+                'register': 0x9000_0000,
+                'cycle': 0x9000_1000,
+                'instructions_committed': 0x9000_2000,
+                'cmdline_length': 0x9000_3000,
+                'cmdline': 0x9000_3100,
             },
         },
         'config': {
@@ -403,6 +427,7 @@ if __name__ == '__main__':
                 state.update({'cycle': run(state.get('cycle'), args.max_cycles, args.max_instructions, args.break_on_undefined, args.snapshots)})
                 state.update({'running': False})
             elif 'loadbin' == cmd:
+                state.update({'cmdline': ' '.join(args.cmdline)})
                 _sp = integer(params[0])
                 _pc = integer(params[1])
                 _start_symbol = params[2]

@@ -490,7 +490,12 @@ if '__main__' == __name__:
 #                do_tick(_service, state, _results, _events)
             elif 'restore' == k:
                 assert not state.get('running'), 'Attempted restore while running!'
+                _regfile.update({'cycle': v.get('cycle')})
                 state.update({'cycle': v.get('cycle')})
+                state.update({'instructions_committed': v.get('instructions_committed')})
+                _snapshot_filename = v.get('snapshot_filename')
+                _addr = v.get('addr')
+                _regfile.restore(_addr, _snapshot_filename)
                 _service.tx({'ack': {'cycle': state.get('cycle')}})
             elif 'register' == k:
                 logging.debug('register : {}'.format(v))
