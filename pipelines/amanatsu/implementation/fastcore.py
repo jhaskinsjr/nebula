@@ -384,7 +384,9 @@ def fast(service, state, regfile, mainmem, system, N=10**100):
     logging.info('registers : {}'.format(regfile.registers))
     logging.info('state.instructions_committed    : {}'.format(state.get('instructions_committed')))
     logging.info('_initial_instructions_committed : {}'.format(_initial_instructions_committed))
-    toolbox.report_stats(service, state, 'flat', 'instructions_committed', **{'increment': state.get('instructions_committed') - _initial_instructions_committed})
+    _increment = state.get('instructions_committed') - _initial_instructions_committed
+    toolbox.report_stats(service, state, 'flat', 'instructions_committed', **{'increment': _increment})
+    service.tx({'committed': _increment})
     if 'shutdown' in _result.keys():
         service.tx({'info': 'ECALL {}... graceful shutdown'.format(int.from_bytes(_result.get('operands').get('syscall_num'), 'little'))})
         service.tx({'shutdown': 1 + state.get('cycle')})

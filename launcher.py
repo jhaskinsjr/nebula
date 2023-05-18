@@ -57,7 +57,7 @@ def handler(conn, addr):
                 state.get('lock').release()
             elif 'committed' == k:
                 state.get('lock').acquire()
-                state.update({'instructions_committed': 1 + state.get('instructions_committed')})
+                state.update({'instructions_committed': v + state.get('instructions_committed')})
                 state.get('lock').release()
             elif 'name' == k:
                 threading.current_thread().name = v
