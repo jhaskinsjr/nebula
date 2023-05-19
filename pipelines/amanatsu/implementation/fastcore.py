@@ -485,7 +485,13 @@ if '__main__' == __name__:
                 assert _field in _target.get('config').keys(), 'No such config field, {}, in service {}!'.format(_field, v.get('service'))
                 _target.get('config').update({_field: _val})
             elif 'tick' == k:
+                _regfile.update({'cycle': v.get('cycle')})
+                _mainmem.update({'cycle': v.get('cycle')})
                 state.update({'cycle': v.get('cycle')})
+                if v.get('snapshot'):
+                    _addr = v.get('snapshot').get('addr')
+                    _mainmem_filename = v.get('snapshot').get('mainmem_filename')
+                    _regfile.snapshot(_addr.get('register'), _mainmem_filename)
                 if not state.get('shutdown'): fast(_service, state, _regfile, _mainmem, _system, 10**4)
 #                _results = v.get('results')
 #                _events = v.get('events')
@@ -493,6 +499,7 @@ if '__main__' == __name__:
             elif 'restore' == k:
                 assert not state.get('running'), 'Attempted restore while running!'
                 _regfile.update({'cycle': v.get('cycle')})
+                _mainmem.update({'cycle': v.get('cycle')})
                 state.update({'cycle': v.get('cycle')})
                 state.update({'instructions_committed': v.get('instructions_committed')})
                 _snapshot_filename = v.get('snapshot_filename')
