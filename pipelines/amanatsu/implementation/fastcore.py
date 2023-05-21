@@ -194,6 +194,7 @@ def do_store(insn, *args, **kwargs):
         **{'operands': _operands},
     }
 def do_nop(insn, *args, **kwargs):
+    setregister(_regfile, '%pc', riscv.constants.integer_to_list_of_bytes(int.from_bytes(insn.get('%pc'), 'little') + insn.get('size'), 64, 'little'))
     return insn
 def do_shift(insn, *args, **kwargs):
     _regfile = kwargs.get('regfile')
