@@ -489,9 +489,10 @@ if '__main__' == __name__:
                 _mainmem.update({'cycle': v.get('cycle')})
                 state.update({'cycle': v.get('cycle')})
                 if v.get('snapshot'):
+                    logging.info('tick.v : {}'.format(v))
                     _addr = v.get('snapshot').get('addr')
-                    _mainmem_filename = v.get('snapshot').get('mainmem_filename')
-                    _regfile.snapshot(_addr.get('register'), _mainmem_filename)
+                    _snapshot_filename = v.get('snapshot').get('snapshot_filename')
+                    _regfile.snapshot(_addr.get('register'), _snapshot_filename)
                 if not state.get('shutdown'): fast(_service, state, _regfile, _mainmem, _system, 10**4)
 #                _results = v.get('results')
 #                _events = v.get('events')

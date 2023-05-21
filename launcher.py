@@ -203,11 +203,11 @@ def loadbin(connections, mainmem_filename, mainmem_capacity, sp, pc, start_symbo
     register(connections, 'set', 10, hex(_argc))
     register(connections, 'set', 11, hex(8 + sp))
     register(connections, 'set', '%pc', hex(_start_pc))
-def snapshot(state, mainmem_filename):
+def snapshot(state, mainmem_filename, snapshot_filename):
 #    logging.info('snapshot(): state.cycle : {}'.format(state.get('cycle')))
-    _snapshot_filename = '{}.{:015}.snapshot'.format(mainmem_filename, state.get('instructions_committed'))
-    subprocess.run('cp {} {}'.format(mainmem_filename, _snapshot_filename).split())
-    fd = os.open(_snapshot_filename, os.O_RDWR)
+#    _snapshot_filename = '{}.{:015}.snapshot'.format(mainmem_filename, state.get('instructions_committed'))
+    subprocess.run('cp {} {}'.format(mainmem_filename, snapshot_filename).split())
+    fd = os.open(snapshot_filename, os.O_RDWR)
     os.lseek(fd, state.get('snapshot').get('addr').get('cycle'), os.SEEK_SET)
     os.write(fd, (1 + state.get('cycle')).to_bytes(8, 'little'))
 #    os.lseek(fd, 8, os.SEEK_CUR)
@@ -278,13 +278,18 @@ def run(cycle, max_cycles, max_instructions, break_on_undefined, snapshot_freque
         state.get('lock').acquire()
         _snapshot = {}
         if snapshot_frequency and snapshot_at and state.get('instructions_committed') >= snapshot_at:
+            state.update({'cycle': cycle})
+            _mainmem_filename = state.get('config').get('mainmem_filename')
+            _snapshot_filename = '{}.{:015}.snapshot'.format(_mainmem_filename, state.get('instructions_committed'))
             _snapshot = {
                 'snapshot': {
-                    'mainmem_filename': state.get('config').get('mainmem_filename'),
+                    'mainmem_filename': _mainmem_filename,
+                    'snapshot_filename': _snapshot_filename,
                     'addr': state.get('snapshot').get('addr'),
                 }
             }
             snapshot_at += snapshot_frequency
+            snapshot(state, _mainmem_filename, _snapshot_filename)
         logging.info('run(): @{:8}'.format(cycle))
         logging.info('\tinfo :\n\t\t{}'.format('\n\t\t'.join(state.get('info'))))
         state.get('info').clear()
@@ -311,9 +316,9 @@ def run(cycle, max_cycles, max_instructions, break_on_undefined, snapshot_freque
 #            _ack = len(state.get('ack')) == len(state.get('connections'))
 #            state.get('lock').release()
 #            logging.debug('state.ack : {} ({} / {})'.format(state.get('ack'), len(state.get('ack')), len(state.get('connections'))))
-        if _snapshot:
-            state.update({'cycle': cycle})
-            snapshot(state, state.get('config').get('mainmem_filename'))
+###        if _snapshot:
+###            state.update({'cycle': cycle})
+###            snapshot(state, state.get('config').get('mainmem_filename'))
     if state.get('undefined'): logging.info('*** Encountered undefined instruction! ***')
     return cycle
 def add_service(services, arguments, s):

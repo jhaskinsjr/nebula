@@ -63,9 +63,9 @@ class SimpleRegisterFile:
         return {x: y for x, y in tuple(registers.items()) + ((reg, val), (0, riscv.constants.integer_to_list_of_bytes(0, 64, 'little')))}
     def getregister(self, registers, reg):
         return registers.get(reg, None)
-    def snapshot(self, addr, mainmem_filename):
-        logging.debug('snapshot({}, {})'.format(addr, mainmem_filename))
-        fd = os.open(mainmem_filename, os.O_RDWR)
+    def snapshot(self, addr, snapshot_filename):
+        logging.debug('snapshot({}, {})'.format(addr, snapshot_filename))
+        fd = os.open(snapshot_filename, os.O_RDWR)
         os.lseek(fd, addr, os.SEEK_SET)
         for k in ['%pc'] + sorted(filter(lambda x: not '%pc' == x, self.get('registers').keys()), key=str):
             v = self.getregister(self.get('registers'), k)
@@ -133,8 +133,8 @@ if '__main__' == __name__:
                 state.update({'cycle': v.get('cycle')})
                 if v.get('snapshot'):
                     _addr = v.get('snapshot').get('addr')
-                    _mainmem_filename = v.get('snapshot').get('mainmem_filename')
-                    state.snapshot(_addr.get('register'), _mainmem_filename)
+                    _snapshot_filename = v.get('snapshot').get('snapshot_filename')
+                    state.snapshot(_addr.get('register'), _snapshot_filename)
                 _results = v.get('results')
                 _events = v.get('events')
                 state.do_tick(_results, _events)
