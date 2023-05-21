@@ -17,7 +17,6 @@ main(int argc, char ** argv)
 {
 	int fd = 0;
 	char buf[BUFLEN];
-	ssize_t n = 0;
 	if (1 == argc) {
 		do_cat(fd, buf, BUFLEN);
 	} else {
