@@ -35,7 +35,7 @@ class System:
              56: self.do_openat,
              57: self.do_close,
              62: self.do_lseek,
-    #         63: self.do_read,
+             63: self.do_read,
              64: self.do_write,
              66: self.do_writev,
              78: self.do_readlinkat,
@@ -53,6 +53,7 @@ class System:
             214: self.do_brk,
             215: self.do_munmap,
             222: self.do_mmap,
+           1024: self.do_open, 
         }.get(int.from_bytes(syscall_num, 'little'), self.null)
         if 'null' == f.__name__: kwargs.update({
             'log': '*** Syscall ({}) not implemented! ***'.format(int.from_bytes(syscall_num, 'little')),
@@ -160,6 +161,34 @@ class System:
                     'name': 10,
                     'data': list(_retval.to_bytes(8, 'little', signed=True)),
                 },
+            },
+        }
+    def do_read(self, a0, a1, a2, a3, a4, a5, **kwargs):
+        logging.info('do_read(): a0     : {}'.format(a0))
+        logging.info('do_read(): a1     : {}'.format(a1))
+        logging.info('do_read(): a2     : {}'.format(a2))
+        logging.info('do_read(): kwargs : {}'.format(kwargs))
+        try:
+            _fd = int.from_bytes(a0, 'little')
+            _buf = int.from_bytes(a1, 'little')
+            _count = int.from_bytes(a2, 'little')
+            _data = os.read(_fd, _count)
+            _retval = len(_data)
+        except:
+            _retval = -1
+        logging.info('read({}, {}, {}) -> {}'.format(_fd, _buf, _count, _retval))
+        return {
+            'done': True,
+            'output': {
+                'register': {
+                    'cmd': 'set',
+                    'name': 10,
+                    'data': list(_retval.to_bytes(8, 'little', signed=True)),
+                },
+            },
+            'poke': {
+                'addr': a1, # FIXME: convert this (i.e.: int.from_bytes(a3, 'little')) here
+                'data': list(_data),
             },
         }
     def do_write(self, a0, a1, a2, a3, a4, a5, **kwargs):
@@ -532,3 +561,40 @@ class System:
             }
         logging.info('mmap({:08x}, {:08x}, {}, {}, {}, {})'.format(_addr, _length, _prot, _flags, _fd, _offset))
         return self.null(a0, a1, a2, a3, a4, a5, **kwargs)
+    def do_open(self, a0, a1, a2, a3, a4, a5, **kwargs):
+        if 'arg' in kwargs.keys():
+            kwargs.get('arg')[0] += bytes([0])
+            _pathname = kwargs.get('arg')[0][:kwargs.get('arg')[0].index(0)].decode('ascii')
+            _flags = int.from_bytes(a1, 'little')
+            try:
+                _fd = os.open(_pathname, _flags)
+            except:
+                logging.info('do_open(): a0        : {}'.format(a0))
+                logging.info('do_open(): a1        : {}'.format(a1))
+                logging.info('do_open(): _pathname : {} ({})'.format(_pathname, len(_pathname)))
+                _fd = -1
+            logging.info('open({}, {}) -> {}'.format(_pathname, _flags, _fd))
+            _retval = {
+                'done': True,
+                'output': {
+                    'register': {
+                        'cmd': 'set',
+                        'name': 10,
+                        'data': list(_fd.to_bytes(8, 'little', signed=True)),
+                    },
+                },
+            }
+        else:
+            _len = 256 # HACK: This is the pathname of SYS_open, which has
+                    # function prototype open(const char * pathname, int flags);
+                    # see: https://man7.org/linux/man-pages/man2/open.2.html. How long is
+                    # the pathname? Who knows? It could, in theory, be much more than 256
+                    # bytes, but I can't be bothered with making this general-purpose right now.
+            _retval = {
+                'done': False,
+                'peek': {
+                    'addr': int.from_bytes(a0, 'little'),
+                    'size': _len,
+                },
+            }
+        return _retval
