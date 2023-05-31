@@ -7,7 +7,6 @@ import json
 import argparse
 import threading
 import subprocess
-#import itertools
 import logging
 import time
 
@@ -147,79 +146,6 @@ def config(connections, service, field, val):
         'field': field,
         'val': _val,
     }})
-#def loadbin(connections, mainmem_filename, mainmem_capacity, sp, pc, start_symbol, binary, *args):
-#    global state
-#    fd = os.open(mainmem_filename, os.O_RDWR | os.O_CREAT)
-#    os.ftruncate(fd, 0)
-#    os.ftruncate(fd, mainmem_capacity) # HACK: hard-wired memory size is dumb, but I don't want to focus on that right now
-#    _start_pc = pc
-#    with open(binary, 'rb') as fp:
-#        elffile = elftools.elf.elffile.ELFFile(fp)
-##        for section in map(lambda n: elffile.get_section_by_name(n), ['.text', '.data', '.rodata', '.bss', '.got', '.sdata', '.sbss']):
-#        for section in filter(lambda x: x.header.sh_addr, elffile.iter_sections()):
-#            if not section: continue
-#            _addr = pc + section.header.sh_addr
-#            logging.info('{} : 0x{:08x} ({})'.format(section.name, _addr, section.data_size))
-#            os.lseek(fd, _addr, os.SEEK_SET)
-#            os.write(fd, section.data())
-#        _symbol_tables = [s for s in elffile.iter_sections() if isinstance(s, elftools.elf.elffile.SymbolTableSection)]
-#        _start = sum([list(filter(lambda s: start_symbol == s.name, tab.iter_symbols())) for tab in _symbol_tables], [])
-#        assert 0 < len(_start), 'No {} symbol!'.format(start_symbol)
-#        assert 2 > len(_start), 'More than one {} symbol?!?!?!?'.format(start_symbol)
-#        _start = next(iter(_start))
-#        _start_pc = pc + _start.entry.st_value
-#    # The value of the argc argument is the number of command line
-#    # arguments. The argv argument is a vector of C strings; its elements
-#    # are the individual command line argument strings. The file name of
-#    # the program being run is also included in the vector as the first
-#    # element; the value of argc counts this element. A null pointer
-#    # always follows the last element: argv[argc] is this null pointer.
-#    #
-#    # For the command ‘cat foo bar’, argc is 3 and argv has three
-#    # elements, "cat", "foo" and "bar". 
-#    #
-#    # https://www.gnu.org/software/libc/manual/html_node/Program-Arguments.html
-#    #
-#    # see also: https://refspecs.linuxbase.org/LSB_3.1.1/LSB-Core-generic/LSB-Core-generic/baselib---libc-start-main-.html
-#    _argc = len(args)      # binary name is argv[0]
-#    _args = list(map(lambda a: '{}\0'.format(a), args))
-#    _fp  = sp
-#    _fp += 8               # 8 bytes for argc
-#    _fp += 8 * (1 + _argc) # 8 bytes for each argv * plus 1 NULL pointer
-#    _addr = list(itertools.accumulate([8 + _fp] + list(map(lambda a: len(a), _args))))
-#    logging.info('loadbin(): argc : {}'.format(_argc))
-#    logging.info('loadbin(): len(_args) : {}'.format(sum(map(lambda a: len(a), _args))))
-#    for x, y in zip(_addr, _args):
-#        logging.info('loadbin(): @{:08x} : {} ({})'.format(x, y, len(y)))
-#    os.lseek(fd, sp, os.SEEK_SET)
-#    os.write(fd, _argc.to_bytes(8, 'little'))       # argc
-#    for a in _addr:                                 # argv pointers
-#        os.write(fd, a.to_bytes(8, 'little'))
-#    os.lseek(fd, 8, os.SEEK_CUR)                    # NULL pointer
-#    os.write(fd, bytes(''.join(_args), 'ascii'))    # argv data
-#    os.close(fd)
-#    register(connections, 'set', 2, hex(sp))
-#    register(connections, 'set', 4, '0xffff0000')
-#    register(connections, 'set', 10, hex(_argc))
-#    register(connections, 'set', 11, hex(8 + sp))
-#    register(connections, 'set', '%pc', hex(_start_pc))
-#def snapshot(state, mainmem_filename, snapshot_filename):
-##    logging.info('snapshot(): state.cycle : {}'.format(state.get('cycle')))
-##    _snapshot_filename = '{}.{:015}.snapshot'.format(mainmem_filename, state.get('instructions_committed'))
-#    subprocess.run('cp {} {}'.format(mainmem_filename, snapshot_filename).split())
-#    fd = os.open(snapshot_filename, os.O_RDWR)
-#    os.lseek(fd, state.get('snapshot').get('addr').get('cycle'), os.SEEK_SET)
-#    os.write(fd, (1 + state.get('cycle')).to_bytes(8, 'little'))
-##    os.lseek(fd, 8, os.SEEK_CUR)
-#    os.lseek(fd, state.get('snapshot').get('addr').get('instructions_committed'), os.SEEK_SET)
-#    os.write(fd, state.get('instructions_committed').to_bytes(8, 'little'))
-#    os.lseek(fd, state.get('snapshot').get('addr').get('cmdline_length'), os.SEEK_SET)
-#    os.write(fd, len(state.get('cmdline')).to_bytes(8, 'little'))
-#    os.lseek(fd, state.get('snapshot').get('addr').get('cmdline'), os.SEEK_SET)
-#    os.write(fd, bytes(state.get('cmdline'), 'ascii'))
-#    os.fsync(fd)
-#    os.close(fd)
-#    # FIXME: make snapshots read-only after creation
 def restore(state, snapshot_filename):
     fd = os.open(snapshot_filename, os.O_RDWR)
     os.lseek(fd, state.get('snapshot').get('addr').get('cycle'), os.SEEK_SET)
@@ -246,34 +172,6 @@ def restore(state, snapshot_filename):
     })
     waitforack(state)
     return cycle - 1
-#def restore_0(state, mainmem_filename, snapshot_filename):
-#    subprocess.run('cp {} {}'.format(snapshot_filename, mainmem_filename).split())
-#    subprocess.run('chmod u+w {}'.format(mainmem_filename).split())
-#    fd = os.open(mainmem_filename, os.O_RDWR)
-#    os.lseek(fd, state.get('snapshot').get('addr').get('cycle'), os.SEEK_SET)
-#    cycle = int.from_bytes(os.read(fd, 8), 'little')
-#    os.lseek(fd, state.get('snapshot').get('addr').get('instructions_committed'), os.SEEK_SET)
-#    state.update({'instructions_committed': int.from_bytes(os.read(fd, 8), 'little')})
-#    os.lseek(fd, state.get('snapshot').get('addr').get('cmdline_length'), os.SEEK_SET)
-#    state.update({'cmdline_length': int.from_bytes(os.read(fd, 8), 'little')})
-#    os.lseek(fd, state.get('snapshot').get('addr').get('cmdline'), os.SEEK_SET)
-#    state.update({'cmdline': os.read(fd, state.get('cmdline_length')).decode('ascii')})
-#    os.close(fd)
-#    tx(state.get('connections'), {'restore': {
-#        'cycle': cycle,
-#        'instructions_committed': state.get('instructions_committed'),
-#        'snapshot_filename': snapshot_filename,
-#        'addr': state.get('snapshot').get('addr'),
-#    }})
-#    logging.info('restore(): mainmem_filename             : {}'.format(mainmem_filename))
-#    logging.info('restore(): snapshot_filename            : {}'.format(snapshot_filename))
-#    logging.info('restore(): cycle                        : {}'.format(cycle))
-#    logging.info('restore(): state.instructions_committed : {}'.format(state.get('instructions_committed')))
-#    logging.info('restore(): state.cmdline                : {}'.format(state.get('cmdline')))
-#    config(state.get('connections'), 'mainmem', 'filename', mainmem_filename)
-#    config(state.get('connections'), 'mainmem', 'capacity', os.stat(mainmem_filename).st_size)
-#    waitforack(state)
-#    return cycle - 1
 def waitforack(state):
     _ack = False
     while not _ack:
@@ -281,8 +179,6 @@ def waitforack(state):
         logging.debug('state.ack : {} ({})'.format(state.get('ack'), len(state.get('ack'))))
         assert len(state.get('ack')) <= len(state.get('connections')), 'Something ACK\'d more than once!!!'
         _ack = len(state.get('ack')) == len(state.get('connections'))
-#        _ack = len(set(map(lambda x: str(x), state.get('ack')))) == len(state.get('connections')) # HACK!!!
-#    return cycle - 1
 def run(cycle, max_cycles, max_instructions, break_on_undefined, snapshot_frequency):
     global state
     # {
@@ -305,12 +201,8 @@ def run(cycle, max_cycles, max_instructions, break_on_undefined, snapshot_freque
         _snapshot = {}
         if snapshot_frequency and snapshot_at and state.get('instructions_committed') >= snapshot_at:
             state.update({'cycle': cycle})
-#            _mainmem_filename = state.get('config').get('mainmem_filename')
-#            _snapshot_filename = '{}.{:015}.snapshot'.format(_mainmem_filename, state.get('instructions_committed'))
             _snapshot = {
                 'snapshot': {
-#                    'mainmem_filename': _mainmem_filename,
-#                    'snapshot_filename': _snapshot_filename,
                     'addr': state.get('snapshot').get('addr'),
                     'data': {
                         'cycle': state.get('cycle'),
@@ -320,7 +212,6 @@ def run(cycle, max_cycles, max_instructions, break_on_undefined, snapshot_freque
                 }
             }
             snapshot_at += snapshot_frequency
-#            snapshot(state, _mainmem_filename, _snapshot_filename)
         logging.info('snapshot_frequency : {}'.format(snapshot_frequency))
         logging.info('snapshot_at        : {}'.format(snapshot_at))
         logging.info('state.instructions_committed : {}'.format(state.get('instructions_committed')))
@@ -343,16 +234,6 @@ def run(cycle, max_cycles, max_instructions, break_on_undefined, snapshot_freque
         state.get('ack').clear()
         state.get('lock').release()
         waitforack(state)
-#        _ack = False
-#        while not _ack: # FIXME: exit if not all connections are present
-#            time.sleep(0.01)
-#            state.get('lock').acquire()
-#            _ack = len(state.get('ack')) == len(state.get('connections'))
-#            state.get('lock').release()
-#            logging.debug('state.ack : {} ({} / {})'.format(state.get('ack'), len(state.get('ack')), len(state.get('connections'))))
-###        if _snapshot:
-###            state.update({'cycle': cycle})
-###            snapshot(state, state.get('config').get('mainmem_filename'))
     if state.get('undefined'): logging.info('*** Encountered undefined instruction! ***')
     return cycle
 def add_service(services, arguments, s):
@@ -394,7 +275,6 @@ if __name__ == '__main__':
     parser.add_argument('--break_on_undefined', '-B', dest='break_on_undefined', action='store_true', help='cease execution on undefined instruction')
     parser.add_argument('--services', dest='services', nargs='+', help='code:host')
     parser.add_argument('--config', dest='config', nargs='+', help='service:field:val')
-#    parser.add_argument('--mainmem', dest='mainmem', default='/tmp/mainmem.raw:{}'.format(2**32), help='filename:capacity')
     parser.add_argument('--loadbin', dest='loadbin', nargs=3, default=['0x80000000', '0x00000000', '_start'], help='initial_sp initial_pc start_symbol')
     parser.add_argument('--restore', dest='restore', type=str, help='snapshot filename to be restored')
     parser.add_argument('--log', type=str, dest='log', default='/tmp', help='logging output directory')
@@ -445,11 +325,6 @@ if __name__ == '__main__':
             'toolchain': '',
         },
     }
-#    _mainmem_filename, _mainmem_capacity = args.mainmem.split(':')
-#    state.get('config').update({'mainmem_filename': _mainmem_filename})
-#    state.get('config').update({'mainmem_capacity': integer(_mainmem_capacity)})
-#    logging.info('cmdline : {}'.format(args.cmdline))
-#    logging.info('loadbin : {}'.format(args.loadbin))
     _s = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
     _s.setsockopt(socket.SOL_SOCKET, socket.SO_REUSEADDR, 1)
     _s.bind(('0.0.0.0', args.port))
@@ -473,8 +348,6 @@ if __name__ == '__main__':
                     }
                 })
             elif 'run' == cmd:
-#                if args.config:
-#                    for c in args.config: config(state.get('connections'), *c.split(':'))
                 assert not (len(args.cmdline) and args.restore), 'Both command line and --restore given!'
                 if len(args.cmdline):
                     state.update({'cmdline': ' '.join(args.cmdline)})
@@ -500,55 +373,13 @@ if __name__ == '__main__':
                     logging.info('implied loadbin')
                 elif args.restore:
                     restore(state, args.restore)
-#                    tx(state.get('connections'), {
-#                        'restore.mainmem': {
-#                            'snapshot_filename': args.restore,
-#                            'addr': state.get('snapshot').get('addr'),
-#                        }
-#                    })
-#                    waitforack(state)
                 else:
                     assert False, 'Neither command line nor --restore!'
                 state.update({'running': True})
                 state.update({'cycle': run(state.get('cycle'), args.max_cycles, args.max_instructions, args.break_on_undefined, args.snapshots)})
                 state.update({'running': False})
-#            elif 'loadbin' == cmd:
-#                state.update({'cmdline': ' '.join(args.cmdline)})
-#                _sp = integer(params[0])
-#                _pc = integer(params[1])
-#                _start_symbol = params[2]
-#                _binary = os.path.join(os.getcwd(), args.cmdline[0])
-#                _args = tuple(args.cmdline[1:])
-#                loadbin(
-#                    state.get('connections'),
-#                    state.get('config').get('mainmem_filename'),
-#                    state.get('config').get('mainmem_capacity'),
-#                    _sp, _pc, _start_symbol,
-#                    _binary,
-#                    *((_binary,) + _args)
-#                ),
-#                tx(state.get('connections'), {
-#                    'loadbin': {
-#                        'start_symbol': _start_symbol,
-#                        'sp': _sp,
-#                        'pc': _pc,
-#                        'binary': _binary,
-#                        'args': ((_binary,) + _args),
-#                    }
-#                })
-#                register(state.get('connections'), 'set', 2, hex(_sp))
-#                register(state.get('connections'), 'set', 4, '0xffff0000') # FIXME: is this necessary???
-#                register(state.get('connections'), 'set', 10, hex(1 + len(_args)))
-#                register(state.get('connections'), 'set', 11, hex(8 + _sp))
-#                register(state.get('connections'), 'set', '%pc', hex(_pc + get_startsymbol(_binary, _start_symbol)))
             elif 'spawn' == cmd:
                 spawn(_services, args)
-                # since main memory is configured from launcher.py, the filename and capacity
-                # need to be reported to the mainmem.py service... this kinda FORCES pipeline
-                # implementations to have a mainmem.py service. That's not super-elegant, but
-                # will get the job done for now.
-#                config(state.get('connections'), 'mainmem', 'filename', state.get('config').get('mainmem_filename'))
-#                config(state.get('connections'), 'mainmem', 'capacity', state.get('config').get('mainmem_capacity'))
                 config(state.get('connections'), 'decode', 'toolchain', state.get('config').get('toolchain'))
                 if len(args.cmdline): tx(state.get('connections'), {
                     'binary': os.path.join(os.getcwd(), args.cmdline[0]),
@@ -559,7 +390,6 @@ if __name__ == '__main__':
                 {
                     'service': lambda x: add_service(_services, args, x),
                     'register': lambda x, y, z=None: register(state.get('connections'), x, y, z),
-#                    'restore': lambda x, y: state.update({'cycle': restore(state, x, y)}),
                     'cycle': lambda: logging.info(state.get('cycle')),
                     'state': lambda: logging.info(state),
                     'config': lambda x, y: config(state.get('connections'), *x.split(':'), y),

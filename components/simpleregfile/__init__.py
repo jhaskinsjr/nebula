@@ -40,8 +40,6 @@ class SimpleRegisterFile:
             if 'set' == _cmd:
                 assert _name in self.get('registers').keys()
                 assert isinstance(_data, list)
-#                if 0 != _name:
-#                    self.update({'registers': self.setregister(self.get('registers'), _name, _data)})
                 self.update({'registers': self.setregister(self.get('registers'), _name, _data)})
                 toolbox.report_stats(self.service, self.state(), 'histo', 'set.register', _name)
             elif 'get' == _cmd:
@@ -59,7 +57,6 @@ class SimpleRegisterFile:
                 logging.fatal('_cmd : {}'.format(_cmd))
                 assert False
     def setregister(self, registers, reg, val):
-#        return {x: y for x, y in tuple(registers.items()) + ((reg, val),)}
         return {x: y for x, y in tuple(registers.items()) + ((reg, val), (0, riscv.constants.integer_to_list_of_bytes(0, 64, 'little')))}
     def getregister(self, registers, reg):
         return registers.get(reg, None)
@@ -76,9 +73,6 @@ class SimpleRegisterFile:
         os.close(fd)
         toolbox.report_stats(self.service, self.state(), 'flat', 'snapshot')
     def restore(self, snapshot_filename, addr):
-#        assert not state.get('running'), 'Attempted restore while running!'
-#        self.update({'cycle': v.get('cycle')})
-#        self.service.tx({'ack': {'cycle': state.get('cycle')}})
         fd = os.open(snapshot_filename, os.O_RDWR)
         os.lseek(fd, addr.get('register'), os.SEEK_SET)
         for k in ['%pc'] + sorted(filter(lambda x: not '%pc' == x, self.get('registers').keys()), key=str):
@@ -145,20 +139,6 @@ if '__main__' == __name__:
                 _addr = v.get('addr')
                 logging.info('restore - v : {}'.format(v))
                 state.restore(_snapshot_filename, _addr)
-#                fd = os.open(_snapshot_filename, os.O_RDWR)
-#                os.lseek(fd, _addr.get('register'), os.SEEK_SET)
-#                for k in ['%pc'] + sorted(filter(lambda x: not '%pc' == x, state.get('registers').keys()), key=str):
-#                    v = list(os.read(fd, 8))
-#                    os.lseek(fd, 8, os.SEEK_CUR)
-#                    state.update({'registers': state.setregister(state.get('registers'), k, v)})
-#                    state.service.tx({'info': 'restore: {} : {}'.format(k, v)})
-#                os.close(fd)
-#                toolbox.report_stats(state.service, state.state(), 'flat', 'restore')
-#                state.service.tx({'register': {
-#                    'cmd': 'set',
-#                    'name': '%pc',
-#                    'data': state.getregister(state.get('registers'), '%pc'),
-#                }})
                 state.service.tx({'ack': {'cycle': state.get('cycle')}})
             elif 'register' == k:
                 logging.info('register : {}'.format(v))

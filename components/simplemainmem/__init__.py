@@ -31,16 +31,11 @@ class SimpleMainMemory:
         self.fd = os.open(self.get('config').get('filename'), os.O_RDWR|os.O_CREAT)
         os.ftruncate(self.get('fd'), self.get('config').get('capacity'))
     def loadbin(self, start_symbol, sp, pc, binary, *args):
-#        global state
         logging.info('loadbin(): binary : {} ({})'.format(binary, type(binary)))
         logging.info('loadbin(): args   : {} ({})'.format(args, type(args)))
-#        fd = os.open(self.get('config').get('filename'), os.O_RDWR)
-#        os.ftruncate(fd, 0)
-#        os.ftruncate(fd, self.get('config').get('capacity')) # HACK: hard-wired memory size is dumb, but I don't want to focus on that right now
-#        _start_pc = pc
+        _start_pc = pc
         with open(binary, 'rb') as fp:
             elffile = elftools.elf.elffile.ELFFile(fp)
-    #        for section in map(lambda n: elffile.get_section_by_name(n), ['.text', '.data', '.rodata', '.bss', '.got', '.sdata', '.sbss']):
             for section in filter(lambda x: x.header.sh_addr, elffile.iter_sections()):
                 if not section: continue
                 _addr = pc + section.header.sh_addr
@@ -82,13 +77,7 @@ class SimpleMainMemory:
             os.write(self.get('fd'), a.to_bytes(8, 'little'))
         os.lseek(self.get('fd'), 8, os.SEEK_CUR)                    # NULL pointer
         os.write(self.get('fd'), bytes(''.join(_args), 'ascii'))    # argv data
-#        os.close(self.get('fd'))
         return _start_pc
-#        register(connections, 'set', 2, hex(sp))
-#        register(connections, 'set', 4, '0xffff0000')
-#        register(connections, 'set', 10, hex(_argc))
-#        register(connections, 'set', 11, hex(8 + sp))
-#        register(connections, 'set', '%pc', hex(_start_pc))
     def snapshot(self, addr, data):
         _snapshot_filename = '{}.{:015}.snapshot'.format(self.get('config').get('filename'), data.get('instructions_committed'))
         subprocess.run('cp {} {}'.format(self.get('config').get('filename'), _snapshot_filename).split())
@@ -108,32 +97,6 @@ class SimpleMainMemory:
     def restore(self, snapshot_filename, addr):
         subprocess.run('cp {} {}'.format(snapshot_filename, self.get('config').get('filename')).split())
         subprocess.run('chmod u+w {}'.format(self.get('config').get('filename')).split())
-#        fd = os.open(self.get('config').get('filename'), os.O_RDWR)
-#        os.lseek(fd, addr.get('cycle'), os.SEEK_SET)
-#        _cycle = int.from_bytes(os.read(fd, 8), 'little')
-#        os.lseek(fd, addr.get('instructions_committed'), os.SEEK_SET)
-#        _instructions_committed = int.from_bytes(os.read(fd, 8), 'little')
-#        os.lseek(fd, addr.get('cmdline_length'), os.SEEK_SET)
-#        _cmdline_length = int.from_bytes(os.read(fd, 8), 'little')
-#        os.lseek(fd, addr.get('cmdline'), os.SEEK_SET)
-#        _cmdline = os.read(fd, _cmdline_length.decode('ascii'))
-#        os.close(fd)
-#        self.service.tx(state.get('connections'), {'restore': {
-#            'cycle': _cycle,
-#            'instructions_committed': _instructions_committed,
-#            'snapshot_filename': snapshot_filename,
-#            'cmdline': _cmdline,
-#            'addr': addr,
-#        }})
-#        logging.info('restore(): mainmem_filename             : {}'.format(mainmem_filename))
-#        logging.info('restore(): snapshot_filename            : {}'.format(snapshot_filename))
-#        logging.info('restore(): cycle                        : {}'.format(cycle))
-#        logging.info('restore(): state.instructions_committed : {}'.format(state.get('instructions_committed')))
-#        logging.info('restore(): state.cmdline                : {}'.format(state.get('cmdline')))
-#        config(state.get('connections'), 'mainmem', 'filename', mainmem_filename)
-#        config(state.get('connections'), 'mainmem', 'capacity', os.stat(mainmem_filename).st_size)
-#        waitforack(state)
-#        return cycle - 1
     def state(self):
         return {
             'cycle': self.get('cycle'),
