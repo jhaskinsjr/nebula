@@ -66,7 +66,7 @@ class SimpleRegisterFile:
     def snapshot(self, addr, snapshot_filename):
         logging.debug('snapshot({}, {})'.format(addr, snapshot_filename))
         fd = os.open(snapshot_filename, os.O_RDWR)
-        os.lseek(fd, addr, os.SEEK_SET)
+        os.lseek(fd, addr.get('register'), os.SEEK_SET)
         for k in ['%pc'] + sorted(filter(lambda x: not '%pc' == x, self.get('registers').keys()), key=str):
             v = self.getregister(self.get('registers'), k)
             os.write(fd, bytes(v))
@@ -75,7 +75,7 @@ class SimpleRegisterFile:
         os.fsync(fd)
         os.close(fd)
         toolbox.report_stats(self.service, self.state(), 'flat', 'snapshot')
-    def restore(self, addr, snapshot_filename):
+    def restore(self, snapshot_filename, addr):
 #        assert not state.get('running'), 'Attempted restore while running!'
 #        self.update({'cycle': v.get('cycle')})
 #        self.service.tx({'ack': {'cycle': state.get('cycle')}})
@@ -144,7 +144,7 @@ if '__main__' == __name__:
                 _snapshot_filename = v.get('snapshot_filename')
                 _addr = v.get('addr')
                 logging.info('restore - v : {}'.format(v))
-                state.restore(_addr, _snapshot_filename)
+                state.restore(_snapshot_filename, _addr)
 #                fd = os.open(_snapshot_filename, os.O_RDWR)
 #                os.lseek(fd, _addr.get('register'), os.SEEK_SET)
 #                for k in ['%pc'] + sorted(filter(lambda x: not '%pc' == x, state.get('registers').keys()), key=str):
@@ -169,6 +169,5 @@ if '__main__' == __name__:
                 elif 'get' == _cmd:
                     _ret = state.getregister(state.get('registers'), _name)
                     state.service.tx({'result': {'register': _ret}})
-        if state.get('ack') and state.get('running'): state.service.tx({'ack': {'cycle': state.get('cycle')}})
     for k, v in state.get('registers').items():
         logging.info('register {:2} : {}'.format(k, v))

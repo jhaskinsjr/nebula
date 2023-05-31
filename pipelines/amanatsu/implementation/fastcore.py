@@ -286,8 +286,8 @@ def fast(service, state, regfile, mainmem, system, N=10**100):
     logging.info('mainmem : {}'.format(dir(mainmem)))
     logging.info('mainmem.name : {}'.format(mainmem.get('name')))
     logging.info('mainmem.fd : {}'.format(mainmem.get('fd')))
-    logging.info('mainmem.config.main_memory_filename : {}'.format(mainmem.get('config').get('main_memory_filename')))
-    logging.info('mainmem.config.main_memory_capacity : {}'.format(mainmem.get('config').get('main_memory_capacity')))
+    logging.info('mainmem.config.filename : {}'.format(mainmem.get('config').get('filename')))
+    logging.info('mainmem.config.capacity : {}'.format(mainmem.get('config').get('capacity')))
     logging.info('registers : {}'.format(regfile.registers))
     _opcode = {
         'LUI': do_lui,
@@ -428,8 +428,8 @@ if '__main__' == __name__:
         'config': {
             'toolchain': '',
             'binary': '',
-            'main_memory_filename': '/tmp/mainmem.raw',
-            'main_memory_capacity': 2**32,
+            'filename': '/tmp/mainmem.raw',
+            'capacity': 2**32,
             'peek_latency_in_cycles': 500,
         },
     }
@@ -485,6 +485,27 @@ if '__main__' == __name__:
                 _val = v.get('val')
                 assert _field in _target.get('config').keys(), 'No such config field, {}, in service {}!'.format(_field, v.get('service'))
                 _target.get('config').update({_field: _val})
+            elif 'loadbin' == k:
+                logging.info('loadbin : {}'.format(v))
+                _start_symbol = v.get('start_symbol')
+                _sp = v.get('sp')
+                _pc = v.get('pc')
+                _binary = v.get('binary')
+                _args = v.get('args')
+                _mainmem.boot()
+                _mainmem.loadbin(_start_symbol, _sp, _pc, _binary, *_args)
+            elif 'restore' == k:
+                assert not state.get('running'), 'Attempted restore while running!'
+                logging.info('restore : {}'.format(v))
+                _regfile.update({'cycle': v.get('cycle')})
+                _mainmem.update({'cycle': v.get('cycle')})
+                state.update({'cycle': v.get('cycle')})
+                state.update({'instructions_committed': v.get('instructions_committed')})
+                _snapshot_filename = v.get('snapshot_filename')
+                _addr = v.get('addr')
+                _mainmem.restore(_snapshot_filename, _addr)
+                _regfile.restore(_snapshot_filename, _addr)
+                _service.tx({'ack': {'cycle': state.get('cycle')}})
             elif 'tick' == k:
                 _regfile.update({'cycle': v.get('cycle')})
                 _mainmem.update({'cycle': v.get('cycle')})
@@ -492,24 +513,15 @@ if '__main__' == __name__:
                 if v.get('snapshot'):
                     logging.info('tick.v : {}'.format(v))
                     _addr = v.get('snapshot').get('addr')
-                    _snapshot_filename = v.get('snapshot').get('snapshot_filename')
-                    _regfile.snapshot(_addr.get('register'), _snapshot_filename)
-                if not state.get('shutdown'): fast(_service, state, _regfile, _mainmem, _system, 10**4)
+                    _data = v.get('snapshot').get('data')
+                    _snapshot_filename = _mainmem.snapshot(_addr, _data)
+                    _regfile.snapshot(_addr, _snapshot_filename)
+                if not state.get('shutdown'): fast(_service, state, _regfile, _mainmem, _system, 10**5)
 #                _results = v.get('results')
 #                _events = v.get('events')
 #                do_tick(_service, state, _results, _events)
-            elif 'restore' == k:
-                assert not state.get('running'), 'Attempted restore while running!'
-                _regfile.update({'cycle': v.get('cycle')})
-                _mainmem.update({'cycle': v.get('cycle')})
-                state.update({'cycle': v.get('cycle')})
-                state.update({'instructions_committed': v.get('instructions_committed')})
-                _snapshot_filename = v.get('snapshot_filename')
-                _addr = v.get('addr')
-                _regfile.restore(_addr, _snapshot_filename)
-                _service.tx({'ack': {'cycle': state.get('cycle')}})
             elif 'register' == k:
-                logging.debug('register : {}'.format(v))
+                logging.info('register : {}'.format(v))
                 _cmd = v.get('cmd')
                 _name = v.get('name')
                 if 'set' == _cmd:

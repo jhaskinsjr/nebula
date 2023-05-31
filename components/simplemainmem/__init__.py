@@ -3,8 +3,12 @@
 import os
 import sys
 import argparse
+import itertools
 import logging
 import time
+import subprocess
+
+import elftools.elf.elffile
 
 import service
 import toolbox
@@ -19,15 +23,117 @@ class SimpleMainMemory:
         self.ack = True
         self.fd = None
         self.config = {
-            'main_memory_filename': None,
-            'main_memory_capacity': None,
+            'filename': None,
+            'capacity': None,
             'peek_latency_in_cycles': None,
         }
-#        self.fd = os.open(self.get('config').get('main_memory_filename'), os.O_RDWR|os.O_CREAT)
-#        os.ftruncate(self.get('fd'), self.get('config').get('main_memory_capacity'))
     def boot(self):
-        self.fd = os.open(self.get('config').get('main_memory_filename'), os.O_RDWR|os.O_CREAT)
-        os.ftruncate(self.get('fd'), self.get('config').get('main_memory_capacity'))
+        self.fd = os.open(self.get('config').get('filename'), os.O_RDWR|os.O_CREAT)
+        os.ftruncate(self.get('fd'), self.get('config').get('capacity'))
+    def loadbin(self, start_symbol, sp, pc, binary, *args):
+#        global state
+        logging.info('loadbin(): binary : {} ({})'.format(binary, type(binary)))
+        logging.info('loadbin(): args   : {} ({})'.format(args, type(args)))
+#        fd = os.open(self.get('config').get('filename'), os.O_RDWR)
+#        os.ftruncate(fd, 0)
+#        os.ftruncate(fd, self.get('config').get('capacity')) # HACK: hard-wired memory size is dumb, but I don't want to focus on that right now
+#        _start_pc = pc
+        with open(binary, 'rb') as fp:
+            elffile = elftools.elf.elffile.ELFFile(fp)
+    #        for section in map(lambda n: elffile.get_section_by_name(n), ['.text', '.data', '.rodata', '.bss', '.got', '.sdata', '.sbss']):
+            for section in filter(lambda x: x.header.sh_addr, elffile.iter_sections()):
+                if not section: continue
+                _addr = pc + section.header.sh_addr
+                logging.info('{} : 0x{:08x} ({})'.format(section.name, _addr, section.data_size))
+                os.lseek(self.get('fd'), _addr, os.SEEK_SET)
+                os.write(self.get('fd'), section.data())
+            _symbol_tables = [s for s in elffile.iter_sections() if isinstance(s, elftools.elf.elffile.SymbolTableSection)]
+            _start = sum([list(filter(lambda s: start_symbol == s.name, tab.iter_symbols())) for tab in _symbol_tables], [])
+            assert 0 < len(_start), 'No {} symbol!'.format(start_symbol)
+            assert 2 > len(_start), 'More than one {} symbol?!?!?!?'.format(start_symbol)
+            _start = next(iter(_start))
+            _start_pc = pc + _start.entry.st_value
+        # The value of the argc argument is the number of command line
+        # arguments. The argv argument is a vector of C strings; its elements
+        # are the individual command line argument strings. The file name of
+        # the program being run is also included in the vector as the first
+        # element; the value of argc counts this element. A null pointer
+        # always follows the last element: argv[argc] is this null pointer.
+        #
+        # For the command ‘cat foo bar’, argc is 3 and argv has three
+        # elements, "cat", "foo" and "bar". 
+        #
+        # https://www.gnu.org/software/libc/manual/html_node/Program-Arguments.html
+        #
+        # see also: https://refspecs.linuxbase.org/LSB_3.1.1/LSB-Core-generic/LSB-Core-generic/baselib---libc-start-main-.html
+        _argc = len(args)      # binary name is argv[0]
+        _args = list(map(lambda a: '{}\0'.format(a), args))
+        _fp  = sp
+        _fp += 8               # 8 bytes for argc
+        _fp += 8 * (1 + _argc) # 8 bytes for each argv * plus 1 NULL pointer
+        _addr = list(itertools.accumulate([8 + _fp] + list(map(lambda a: len(a), _args))))
+        logging.info('loadbin(): argc : {}'.format(_argc))
+        logging.info('loadbin(): len(_args) : {}'.format(sum(map(lambda a: len(a), _args))))
+        for x, y in zip(_addr, _args):
+            logging.info('loadbin(): @{:08x} : {} ({})'.format(x, y, len(y)))
+        os.lseek(self.get('fd'), sp, os.SEEK_SET)
+        os.write(self.get('fd'), _argc.to_bytes(8, 'little'))       # argc
+        for a in _addr:                                 # argv pointers
+            os.write(self.get('fd'), a.to_bytes(8, 'little'))
+        os.lseek(self.get('fd'), 8, os.SEEK_CUR)                    # NULL pointer
+        os.write(self.get('fd'), bytes(''.join(_args), 'ascii'))    # argv data
+#        os.close(self.get('fd'))
+        return _start_pc
+#        register(connections, 'set', 2, hex(sp))
+#        register(connections, 'set', 4, '0xffff0000')
+#        register(connections, 'set', 10, hex(_argc))
+#        register(connections, 'set', 11, hex(8 + sp))
+#        register(connections, 'set', '%pc', hex(_start_pc))
+    def snapshot(self, addr, data):
+        _snapshot_filename = '{}.{:015}.snapshot'.format(self.get('config').get('filename'), data.get('instructions_committed'))
+        subprocess.run('cp {} {}'.format(self.get('config').get('filename'), _snapshot_filename).split())
+        fd = os.open(_snapshot_filename, os.O_RDWR | os.O_CREAT)
+        os.lseek(fd, addr.get('cycle'), os.SEEK_SET)
+        os.write(fd, (1 + data.get('cycle')).to_bytes(8, 'little'))
+        os.lseek(fd, addr.get('instructions_committed'), os.SEEK_SET)
+        os.write(fd, data.get('instructions_committed').to_bytes(8, 'little'))
+        os.lseek(fd, addr.get('cmdline_length'), os.SEEK_SET)
+        os.write(fd, len(data.get('cmdline')).to_bytes(8, 'little'))
+        os.lseek(fd, addr.get('cmdline'), os.SEEK_SET)
+        os.write(fd, bytes(data.get('cmdline'), 'ascii'))
+        os.fsync(fd)
+        os.close(fd)
+        # FIXME: make snapshots read-only after creation
+        return _snapshot_filename
+    def restore(self, snapshot_filename, addr):
+        subprocess.run('cp {} {}'.format(snapshot_filename, self.get('config').get('filename')).split())
+        subprocess.run('chmod u+w {}'.format(self.get('config').get('filename')).split())
+#        fd = os.open(self.get('config').get('filename'), os.O_RDWR)
+#        os.lseek(fd, addr.get('cycle'), os.SEEK_SET)
+#        _cycle = int.from_bytes(os.read(fd, 8), 'little')
+#        os.lseek(fd, addr.get('instructions_committed'), os.SEEK_SET)
+#        _instructions_committed = int.from_bytes(os.read(fd, 8), 'little')
+#        os.lseek(fd, addr.get('cmdline_length'), os.SEEK_SET)
+#        _cmdline_length = int.from_bytes(os.read(fd, 8), 'little')
+#        os.lseek(fd, addr.get('cmdline'), os.SEEK_SET)
+#        _cmdline = os.read(fd, _cmdline_length.decode('ascii'))
+#        os.close(fd)
+#        self.service.tx(state.get('connections'), {'restore': {
+#            'cycle': _cycle,
+#            'instructions_committed': _instructions_committed,
+#            'snapshot_filename': snapshot_filename,
+#            'cmdline': _cmdline,
+#            'addr': addr,
+#        }})
+#        logging.info('restore(): mainmem_filename             : {}'.format(mainmem_filename))
+#        logging.info('restore(): snapshot_filename            : {}'.format(snapshot_filename))
+#        logging.info('restore(): cycle                        : {}'.format(cycle))
+#        logging.info('restore(): state.instructions_committed : {}'.format(state.get('instructions_committed')))
+#        logging.info('restore(): state.cmdline                : {}'.format(state.get('cmdline')))
+#        config(state.get('connections'), 'mainmem', 'filename', mainmem_filename)
+#        config(state.get('connections'), 'mainmem', 'capacity', os.stat(mainmem_filename).st_size)
+#        waitforack(state)
+#        return cycle - 1
     def state(self):
         return {
             'cycle': self.get('cycle'),
@@ -112,8 +218,6 @@ if '__main__' == __name__:
                 state.update({'active': False})
                 state.update({'running': False})
             elif {'text': 'run'} == {k: v}:
-#                state.update({'fd': os.open(state.get('config').get('main_memory_filename'), os.O_RDWR|os.O_CREAT)})
-#                os.ftruncate(state.get('fd'), state.get('config').get('main_memory_capacity'))
                 state.boot()
                 state.update({'running': True})
                 state.update({'ack': False})
@@ -125,8 +229,26 @@ if '__main__' == __name__:
                 _val = v.get('val')
                 assert _field in state.get('config').keys(), 'No such config field, {}, in service {}!'.format(_field, state.get('service'))
                 state.get('config').update({_field: _val})
+            elif 'loadbin' == k:
+                _start_symbol = v.get('start_symbol')
+                _sp = v.get('sp')
+                _pc = v.get('pc')
+                _binary = v.get('binary')
+                _args = v.get('args')
+                state.boot()
+                state.loadbin(_start_symbol, _sp, _pc, _binary, *_args)
+            elif 'restore' == k:
+                _snapshot_filename = v.get('snapshot_filename')
+                _addr = v.get('addr')
+                state.boot()
+                state.restore(_snapshot_filename, _addr)
+                state.service.tx({'ack': {'cycle': state.get('cycle')}})
             elif 'tick' == k:
                 state.update({'cycle': v.get('cycle')})
+                if v.get('snapshot'):
+                    _addr = v.get('snapshot').get('addr')
+                    _data = v.get('snapshot').get('data')
+                    state.snapshot(_addr, _data)
                 _results = v.get('results')
                 _events = v.get('events')
                 state.do_tick(_results, _events)

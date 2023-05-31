@@ -1,9 +1,9 @@
-# μService-SIMulator: The Cloud-Native Microarchitecture Simulation Framework!
+# Nebula: The Cloud-Native Microarchitecture Simulation Framework!
 
-μService-SIMulator (ussim) is a framework for developing cyce-accurate
-microprocessor simulators. Python libraries for decoding and executing
-statically linked RISC-V binaries, as well as several sample pipeline
-implementations using the framework are included.
+Nebula (formerly: μService-SIMulator (ussim)) is a framework for
+developing cyce-accurate microprocessor simulators. Python libraries for
+decoding and executing statically linked RISC-V binaries, as well as
+several sample pipeline implementations using the framework are included.
 
 # Quick Start
 
@@ -37,21 +37,21 @@ example, we will use the Oroblanco pipeline:
         --log /tmp/oroblanco/sum \
         --mainmem /tmp/oroblanco/sum/mainmem.raw:$((2**32)) \
         --config stats:output_filename:/tmp/oroblanco/sum/stats.json \
-        --max_cycles 100000 \
-        --snapshots 10000 \
+        mainmem:filename:/tmp/oroblanco/sum/mainmem.raw \
+        mainmem:capacity:$(( 2**32 )) \
+        --max_instructions $(( 10**5 )) \
         -- \
         12345 \
-        main.ussim \
+        init.ussim \
         ../../examples/bin/sum 2 3 5 7 11 13
 
 The "python3" command executes the launcher module (launcher.py),
-which begins by opening a socket and accepting connections on port 12,345,
-executing the script main.ussim, and loading the binary
+which begins by opening a socket and accepting connections on port 12345,
+executing the script init.ussim, and loading the binary
 (${HOME}/src/ussim/examples/bin/sum) together with its command-line
 parameters "2 3 5 7 11 13", into the simulated main memory. With this
 foundation established, the simulator will execute a maximum of 100,000
-simulated cycles, taking snapshots (of the simulated main memory and
-register file) every 10,000 simulated cycles.
+simulated instructions.
 
 ## Simulator Output Artifacts
 
@@ -172,13 +172,13 @@ register was read/written, number of instructions retired/flushed, etc.
 
 ## Philosophy: Simplicity And Flexibility Through Independence
 
-The central design feature of ussim is that each simulator is
-comprised of an army of microservices... independent processes... transmit
-what resources that they require, what information they wish to communicate,
-onto the network where all other microservices will receive it. If something
-tarnsmitted onto the network matters to one or more peer microservices,
-those microservices are free to act upon it and transmit
-something back in response.
+The central design feature of Nebula is that each simulator is
+comprised of an army of microservices... independent processes... that
+transmit what resources that they require, what information they wish
+to communicate, onto the network where all other microservices will
+receive it. If something tarnsmitted onto the network matters to one or
+more peer microservices, those microservices are free to act upon it and
+transmit something back in response.
 
 While it might be faster to do point-to-point communication, where
 microservices connect directly to the microservice(s) that matter to
@@ -250,7 +250,7 @@ to echo debug or informational output, e.g.,
 
     service.tx({'info': '_insn : {}'.format(_insn)})
 
-and the `shutdown` channel used to cleanly cease all ussim processes and
+and the `shutdown` channel used to cleanly cease all Nebula processes and
 gracefully exit, e.g., 
 
     service.tx({'shutdown': None})
@@ -300,7 +300,7 @@ For a brief overview of each pipeline implmentation, follow the links below:
 # Simulator Scripts
 
 The simulator executes according to instructions in an execute script.
-Consider the script pipelines/oroblanco/main.ussim:
+Consider the script pipelines/oroblanco/init.ussim:
 
     # Sample μService-SIMulator script
     service implementation/regfile.py:localhost
@@ -333,43 +333,19 @@ Consider the script pipelines/oroblanco/main.ussim:
     config l2:l2_evictionpolicy lru # random
     config l2:l2_hitlatency 5
     config stats:output_filename /tmp/stats.json
-    # Memory hierarhchy peek latencies...
-    # - L1 peek-hit latency: 5**0 cycles
-    # - L2 peek-hit latency: 5**1 cycles
-    # - MM peek     latency: 5**2 cycles
-    cycle
-    loadbin 0x80000000 0x00000000 _start    # set x2 to 0x80000000 and %pc to 0x00000000, then
-                                            # load binary (e.g., ../../examples/bin/sum), and
-                                            # execute beginning from the "_start" symbol in the
-                                            # binary's .text section
     run
-    cycle
-    state
     shutdown
 
 The script is comprised of commands
 
     config A B C                    change configuration of service A field B to value C
     cycle                           print the cycle count to stdout
-    loadbin A B X                   locate stack at address A; locate code at address B; and begin execution from .text section label X
-    restore A B                     restore previously captured state in B to main memory file A
     register set A B                set register A to value B
     run                             begin execution
     service A:B                     stage service A on machine B
     spawn                           execute all staged services
     state                           print launcher's state (i.e., variables, etc) to stdout
     shutdown                        send shutdown signal to services, exit launcher
-
-The script pipelines/bergamot/restore.ussim is very similar to
-pipelines/bergamot/main.ussim, but, rather than a `loadbin` command,
-instead features a `restore` command:
-
-    ...
-    restore /tmp/mainmem.raw /tmp/mainmem.raw.snapshot
-    ...
-
-The simulator places the state of the register file into an unused address
-inside the main memory snapshot.
 
 # Distributed Simulations
 
@@ -378,7 +354,7 @@ services that communicate over a TCP network, the services need not execute
 on the same machine. This is what makes μService-SIMulator
 **the world's first cloud-native microarchitecture simulation framework**!
 
-Consider the following modified main.ussim file that
+Consider the following modified init.ussim file that
 spawns just two services on the local machine, and the rest on several
 different machines on my network:
 
@@ -413,18 +389,7 @@ different machines on my network:
     config l2:l2_evictionpolicy lru # random
     config l2:l2_hitlatency 5
     config stats:output_filename /tmp/stats.json
-    # Memory hierarhchy peek latencies...
-    # - L1 peek-hit latency: 5**0 cycles
-    # - L2 peek-hit latency: 5**1 cycles
-    # - MM peek     latency: 5**2 cycles
-    cycle
-    loadbin 0x80000000 0x00000000 _start    # set x2 to 0x80000000 and %pc to 0x00000000, then
-                                            # load binary (e.g., ../../examples/bin/sum), and
-                                            # execute beginning from the "_start" symbol in the
-                                            # binary's .text section
     run
-    cycle
-    state
     shutdown
 
 Note that the mainmem.py and stats.py services both execute on the local
@@ -499,7 +464,7 @@ l1ic_size.exec:
         "max_cycles": 32000,
         "snapshots": 1000,
         "break_on_undefined": true,
-        "script": "main.ussim",
+        "script": "init.ussim",
         "command": "../../examples/bin/sum 2 3 -5 7"
     },
     "pipelines/oroblanco": {
@@ -514,7 +479,7 @@ l1ic_size.exec:
         "max_cycles": 32000,
         "snapshots": 1000,
         "break_on_undefined": true,
-        "script": "main.ussim",
+        "script": "init.ussim",
         "command": "../../examples/bin/sum 2 3 -5 7"
     }
 }
@@ -565,14 +530,14 @@ python3 ./executor.py \
     --basepath /tmp/runs \
     --max_cpu_utilization 80 \
     --stochastic 0.5 \
-    --mongodb mongodb://citrus.local:27017 ussim experiments \
+    --mongodb mongodb://citrus.local:27017 nebula experiments \
     -- \
     l1ic_size.exec
 ```
 
 This command line operates identically to the preceding, but also inserts
 documents into the MongoDB server running on my internal network named
-`citrus.local` at port `27017`, in a database named `ussim`, in a collection
+`citrus.local` at port `27017`, in a database named `nebula`, in a collection
 named `experiments`. It inserts one document per configuration, and the
 documents contain all the data generated by the simulation execution
 (i.e., its stats.json) and important metadata about the simulation
@@ -580,7 +545,7 @@ including the date, time, the Git SHA of the source tree, the branch of
 the source tree, the exit code, the log files generated by the execution,
 the configuration used by the simulation, the path within which the
 execution artifacts were deposited during the execution, the pipeline
-that executed, the simulator execution script (e.g., main.ussim), and the
+that executed, the simulator execution script (e.g., init.ussim), and the
 command line to invoke the simulation.
 
 # Simulator Speed
@@ -620,14 +585,14 @@ test harness, `test.py`.
 
 An example execution would be elucidative:
 
-    mkdir -p /tmp/ussim/test
+    mkdir -p /tmp/nebula/test
     python3 ./test.py \
         --loop 5
         --insns addi slli c.addi16sp \
         -- \
         10000 \
         /opt/riscv/bin/riscv-unknown-elf-gcc
-        /tmp/ussim/test
+        /tmp/nebula/test
 
 The `mkdir` command just creates a location for all the artifacts of
 the test harness's execution. The `--loop` parameter tells the test
@@ -669,6 +634,7 @@ extend and enhance the simulator:
 1. implement new eviction policies (e.g., least frequently used) for SimpleCache
 and SimpleBTB
 1. multi-core support with cache sharing
+1. ARM instruction set support
 1. MIPS instruction set support
 1. x86_64 instruction set support
 1. SPARC v9 instruction set support

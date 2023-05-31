@@ -3,9 +3,5 @@ service implementation/fastcore.py:localhost
 service implementation/stats.py:localhost
 spawn
 config stats:output_filename /tmp/stats.json
-cycle
-restore /tmp/mainmem.raw /tmp/mainmem.raw.snapshot
 run
-cycle
-state
 shutdown

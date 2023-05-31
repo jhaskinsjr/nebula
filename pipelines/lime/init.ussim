@@ -15,10 +15,6 @@ config fetch:l1ic_nways 2
 config fetch:l1ic_nbytesperblock 16
 config fetch:l1ic_evictionpolicy lru # random
 config decode:buffer_capacity 16
-config decode:btb_nentries 8
-config decode:btb_nbytesperentry 8
-config decode:btb_evictionpolicy lru # random
-config alu:forwarding True
 config lsu:l1dc_nsets 16
 config lsu:l1dc_nways 2
 config lsu:l1dc_nbytesperblock 16
@@ -33,12 +29,5 @@ config stats:output_filename /tmp/stats.json
 # - L1 peek-hit latency: 5**0 cycles
 # - L2 peek-hit latency: 5**1 cycles
 # - MM peek     latency: 5**2 cycles
-cycle
-loadbin 0x80000000 0x00000000 _start  # set x2 to 0x80000000 and %pc to 0x00000000, then
-                                      # load binary (e.g., ../../examples/bin/sum), and
-                                      # execute beginning from the "_start" symbol in the
-                                      # binary's .text section
 run
-cycle
-state
 shutdown
