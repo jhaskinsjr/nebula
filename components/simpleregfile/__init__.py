@@ -149,5 +149,6 @@ if '__main__' == __name__:
                 elif 'get' == _cmd:
                     _ret = state.getregister(state.get('registers'), _name)
                     state.service.tx({'result': {'register': _ret}})
+        if state.get('ack') and state.get('running'): state.service.tx({'ack': {'cycle': state.get('cycle')}})
     for k, v in state.get('registers').items():
         logging.info('register {:2} : {}'.format(k, v))
