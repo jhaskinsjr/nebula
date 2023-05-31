@@ -212,9 +212,9 @@ def run(cycle, max_cycles, max_instructions, break_on_undefined, snapshot_freque
                 }
             }
             snapshot_at += snapshot_frequency
-        logging.info('snapshot_frequency : {}'.format(snapshot_frequency))
-        logging.info('snapshot_at        : {}'.format(snapshot_at))
-        logging.info('state.instructions_committed : {}'.format(state.get('instructions_committed')))
+        logging.debug('snapshot_frequency : {}'.format(snapshot_frequency))
+        logging.debug('snapshot_at        : {}'.format(snapshot_at))
+        logging.debug('state.instructions_committed : {}'.format(state.get('instructions_committed')))
         logging.info('run(): @{:8}'.format(cycle))
         logging.info('\tinfo :\n\t\t{}'.format('\n\t\t'.join(state.get('info'))))
         state.get('info').clear()
