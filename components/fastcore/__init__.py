@@ -184,7 +184,7 @@ class FastCore:
         }
     def do_jalr(self, insn, *args, **kwargs):
         _operands = {
-            'rs1': self.getregister(_regfile, insn.get('rs1')),
+            'rs1': self.getregister(self.regfile, insn.get('rs1')),
         }
         _next_pc, _ret_pc = riscv.execute.jalr(insn.get('%pc'), insn.get('imm'), _operands.get('rs1'), insn.get('size'))
         self.setregister(self.regfile, '%pc', _next_pc)
@@ -217,7 +217,7 @@ class FastCore:
         }
     def do_itype(self, insn, *args, **kwargs):
         _operands = {
-            'rs1': self.getregister(_regfile, insn.get('rs1')),
+            'rs1': self.getregister(self.regfile, insn.get('rs1')),
         }
         _result = {
             'ADDI': riscv.execute.addi,
@@ -237,8 +237,8 @@ class FastCore:
         }
     def do_rtype(self, insn, *args, **kwargs):
         _operands = {
-            'rs1': self.getregister(_regfile, insn.get('rs1')),
-            'rs2': self.getregister(_regfile, insn.get('rs2')),
+            'rs1': self.getregister(self.regfile, insn.get('rs1')),
+            'rs2': self.getregister(self.regfile, insn.get('rs2')),
         }
         _result = {
             'ADD': riscv.execute.add,
@@ -320,11 +320,11 @@ class FastCore:
             **{'operands': _operands},
         }
     def do_nop(self, insn, *args, **kwargs):
-        self.setregister(_regfile, '%pc', riscv.constants.integer_to_list_of_bytes(int.from_bytes(insn.get('%pc'), 'little') + insn.get('size'), 64, 'little'))
+        self.setregister(self.regfile, '%pc', riscv.constants.integer_to_list_of_bytes(int.from_bytes(insn.get('%pc'), 'little') + insn.get('size'), 64, 'little'))
         return insn
     def do_shift(self, insn, *args, **kwargs):
         _operands = {
-            'rs1': self.getregister(_regfile, insn.get('rs1')),
+            'rs1': self.getregister(self.regfile, insn.get('rs1')),
         }
         _result = {
             'SLLI': riscv.execute.slli,
@@ -376,7 +376,7 @@ class FastCore:
             _register = _side_effect.get('output').get('register')
             if _register:
                 self.setregister(self.regfile, _register.get('name'), _register.get('data'))
-        self.setregister(_regfile, '%pc', riscv.constants.integer_to_list_of_bytes(int.from_bytes(insn.get('%pc'), 'little') + insn.get('size'), 64, 'little'))
+        self.setregister(self.regfile, '%pc', riscv.constants.integer_to_list_of_bytes(int.from_bytes(insn.get('%pc'), 'little') + insn.get('size'), 64, 'little'))
         return {
             **insn,
             **{'operands': _operands},
@@ -386,7 +386,7 @@ class FastCore:
         }
     def do_csr(self, insn, *args, **kwargs):
         _operands = {
-            'rs1': self.getregister(_regfile, insn.get('rs1')),
+            'rs1': self.getregister(self.regfile, insn.get('rs1')),
         }
         # HACK: csr = 0x002 is the FRM (floating point dynamic rounding mode);
         # this only handles a read from FRM by returning 0... not sure that's
