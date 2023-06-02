@@ -7,7 +7,7 @@
         "max_cycles": 32000,
         "snapshots": 1000,
         "break_on_undefined": true,
-        "script": "main.ussim",
+        "script": "init.nebula",
         "command": "../../examples/bin/sum 2 3"
     },
     "pipelines/clementine": {
@@ -19,7 +19,7 @@
         "max_cycles": 32000,
         "snapshots": 1000,
         "break_on_undefined": true,
-        "script": "main.ussim",
+        "script": "init.nebula",
         "command": "../../examples/bin/sum 2 3"
     },
     "pipelines/lime": {
@@ -43,7 +43,7 @@
         "max_cycles": 32000,
         "snapshots": 1000,
         "break_on_undefined": true,
-        "script": "main.ussim",
+        "script": "init.nebula",
         "command": "../../examples/bin/sum 2 3"
     },
     "pipelines/oroblanco": {
@@ -71,7 +71,7 @@
         "max_cycles": 32000,
         "snapshots": 1000,
         "break_on_undefined": true,
-        "script": "main.ussim",
+        "script": "init.nebula",
         "command": "../../examples/bin/sum 2 3"
     }
 }

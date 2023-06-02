@@ -826,12 +826,12 @@ class Harness:
 #        _script += ['config max_instructions {}'.format(_n_instruction)]
         _script += ['run']
         _script += ['shutdown']
-        with open(os.path.join(args.dir, 'test.ussim'), 'w+') as fp: fp.write('\n'.join(_script))
+        with open(os.path.join(args.dir, 'test.nebula'), 'w+') as fp: fp.write('\n'.join(_script))
         _cmd = 'python3 launcher.py --log {} --max_instructions {} -- {} {} {}'.format(
             args.dir,
             _n_instruction,
             args.port,
-            os.path.join(args.dir, 'test.ussim'),
+            os.path.join(args.dir, 'test.nebula'),
             os.path.join(args.dir, 'bin', '{}'.format(test))
         )
         if args.debug: print('_cmd : {}'.format(_cmd))

@@ -65,7 +65,7 @@ if '__main__' == __name__:
     parser.add_argument('--debug', '-D', dest='debug', action='store_true', help='output debug messages')
     parser.add_argument('--purge_successful', '-P', dest='purge_successful', action='store_true', help='purge files of successful runs')
     parser.add_argument('--basepath', type=str, dest='basepath', default='/tmp', help='directory to hold runtime artifacts')
-    parser.add_argument('--script', type=str, dest='script', default='main.ussim', help='script to be executed by μService-SIMulator')
+    parser.add_argument('--script', type=str, dest='script', default='init.nebula', help='script to be executed by μService-SIMulator')
     parser.add_argument('--max_cpu_utilization', type=int, dest='max_cpu_utilization', default=90, help='CPU utilization ceiling')
     parser.add_argument('--stochastic', type=float, dest='stochastic', default=1, help='Fraction (0, 1] of runs to execute')
     parser.add_argument('--mongodb', type=str, nargs=3, dest='mongodb', default=None, help='MongoDB server, database, collection')
