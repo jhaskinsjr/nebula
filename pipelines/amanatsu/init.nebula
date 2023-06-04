@@ -1,5 +1,5 @@
 # Sample μService-SIMulator script
-service implementation/fastcore.py:localhost
+service implementation/fastcore.py:localhost:0
 spawn
 config stats:output_filename /tmp/stats.json
 run
