@@ -32,6 +32,7 @@ def do_tick(service, state, results, events):
     if not state.get('%jp'): return
     service.tx({'event': {
         'arrival': 1 + state.get('cycle'),
+        'coreid': state.get('coreid'),
         'mem': {
             'cmd': 'peek',
             'addr': int.from_bytes(state.get('%jp'), 'little'),
@@ -40,6 +41,7 @@ def do_tick(service, state, results, events):
     }})
     service.tx({'event': {
         'arrival': 1 + state.get('cycle'),
+        'coreid': state.get('coreid'),
         'decode': {
             'addr': int.from_bytes(state.get('%jp'), 'little'),
             'size': state.get('fetch_size'),
@@ -54,6 +56,7 @@ if '__main__' == __name__:
     parser = argparse.ArgumentParser(description='μService-SIMulator: Simple Core')
     parser.add_argument('--debug', '-D', dest='debug', action='store_true', help='output debug messages')
     parser.add_argument('--log', type=str, dest='log', default='/tmp', help='logging output directory (absolute path!)')
+    parser.add_argument('--coreid', type=int, dest='coreid', default=0, help='core ID number')
     parser.add_argument('launcher', help='host:port of μService-SIMulator launcher')
     args = parser.parse_args()
     assert not os.path.isfile(args.log), '--log must point to directory, not file'
@@ -63,7 +66,7 @@ if '__main__' == __name__:
         except:
             time.sleep(0.1)
     logging.basicConfig(
-        filename=os.path.join(args.log, '{}.log'.format(os.path.basename(__file__))),
+        filename=os.path.join(args.log, '{:04}_{}.log'.format(args.coreid, os.path.basename(__file__))),
         format='%(message)s',
         level=(logging.DEBUG if args.debug else logging.INFO),
     )
@@ -74,6 +77,7 @@ if '__main__' == __name__:
     state = {
         'service': 'fetch',
         'cycle': 0,
+        'coreid': args.coreid,
         'stall_until': 0,
         'active': True,
         'running': False,
@@ -82,7 +86,7 @@ if '__main__' == __name__:
         '%jp': None, # This is the fetch pointer. Why %jp? Who knows?
         'ack': True,
     }
-    _service = service.Service(state.get('service'), _launcher.get('host'), _launcher.get('port'))
+    _service = service.Service(state.get('service'), state.get('coreid'), _launcher.get('host'), _launcher.get('port'))
     while state.get('active'):
         state.update({'ack': True})
         msg = _service.rx()
@@ -97,8 +101,8 @@ if '__main__' == __name__:
                 state.update({'ack': False})
             elif 'tick' == k:
                 state.update({'cycle': v.get('cycle')})
-                _results = v.get('results')
-                _events = v.get('events')
+                _results = tuple(filter(lambda x: state.get('coreid') == x.get('coreid'), v.get('results')))
+                _events = tuple(filter(lambda x: state.get('coreid') == x.get('coreid'), v.get('events')))
                 do_tick(_service, state, _results, _events)
             elif 'restore' == k:
                 assert not state.get('running'), 'Attempted restore while running!'

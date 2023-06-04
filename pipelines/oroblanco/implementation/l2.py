@@ -20,6 +20,7 @@ def fetch_block(service, state, addr):
     state.get('pending_fetch').append(_blockaddr)
     service.tx({'event': {
         'arrival': 1 + state.get('cycle'),
+        'coreid': state.get('coreid'),
         'mem': {
             'cmd': 'peek',
             'addr': _blockaddr,
@@ -63,6 +64,7 @@ def do_l2(service, state, addr, size, data=None):
         # POKE
         service.tx({'result': {
             'arrival': state.get('config').get('l2_hitlatency') + state.get('cycle'),
+            'coreid': state.get('coreid'),
             'l2': {
                 'addr': addr,
                 'size': size,
@@ -77,6 +79,7 @@ def do_l2(service, state, addr, size, data=None):
         # writethrough
         service.tx({'event': {
             'arrival': 1 + state.get('cycle'),
+            'coreid': state.get('coreid'),
             'mem': {
                 'cmd': 'poke',
                 'addr': addr,
@@ -88,6 +91,7 @@ def do_l2(service, state, addr, size, data=None):
         # PEEK
         service.tx({'result': {
             'arrival': state.get('config').get('l2_hitlatency') + state.get('cycle'), # must not arrive in commit the same cycle as the LOAD instruction
+            'coreid': state.get('coreid'),
             'l2': {
                 'addr': addr,
                 'size': size,
@@ -124,6 +128,7 @@ if '__main__' == __name__:
     parser = argparse.ArgumentParser(description='μService-SIMulator: Load-Store Unit')
     parser.add_argument('--debug', '-D', dest='debug', action='store_true', help='output debug messages')
     parser.add_argument('--log', type=str, dest='log', default='/tmp', help='logging output directory (absolute path!)')
+    parser.add_argument('--coreid', type=int, dest='coreid', default=0, help='core ID number')
     parser.add_argument('launcher', help='host:port of μService-SIMulator launcher')
     args = parser.parse_args()
     assert not os.path.isfile(args.log), '--log must point to directory, not file'
@@ -133,7 +138,7 @@ if '__main__' == __name__:
         except:
             time.sleep(0.1)
     logging.basicConfig(
-        filename=os.path.join(args.log, '{}.log'.format(os.path.basename(__file__))),
+        filename=os.path.join(args.log, '{:04}_{}.log'.format(args.coreid, os.path.basename(__file__))),
         format='%(message)s',
         level=(logging.DEBUG if args.debug else logging.INFO),
     )
@@ -144,6 +149,7 @@ if '__main__' == __name__:
     state = {
         'service': 'l2',
         'cycle': 0,
+        'coreid': args.coreid,
         'l2': None,
         'pending_fetch': [],
         'active': True,
@@ -160,7 +166,7 @@ if '__main__' == __name__:
             'l2_hitlatency': 5,
         },
     }
-    _service = service.Service(state.get('service'), _launcher.get('host'), _launcher.get('port'))
+    _service = service.Service(state.get('service'), state.get('coreid'), _launcher.get('host'), _launcher.get('port'))
     while state.get('active'):
         state.update({'ack': True})
         msg = _service.rx()
@@ -189,8 +195,8 @@ if '__main__' == __name__:
                 state.get('config').update({_field: _val})
             elif 'tick' == k:
                 state.update({'cycle': v.get('cycle')})
-                _results = v.get('results')
-                _events = v.get('events')
+                _results = tuple(filter(lambda x: state.get('coreid') == x.get('coreid'), v.get('results')))
+                _events = tuple(filter(lambda x: state.get('coreid') == x.get('coreid'), v.get('events')))
                 do_tick(_service, state, _results, _events)
             elif 'restore' == k:
                 assert not state.get('running'), 'Attempted restore while running!'

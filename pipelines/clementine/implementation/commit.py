@@ -32,6 +32,7 @@ def do_commit(service, state):
             service.tx({'info': 'flushing {}'.format(_insn)})
             service.tx({'result': {
                 'arrival': 1 + state.get('cycle'),
+                'coreid': state.get('coreid'),
                 'flush': {
                     'iid': _insn.get('iid'),
                 },
@@ -43,6 +44,7 @@ def do_commit(service, state):
         if _insn.get('next_pc') and _insn.get('taken'):
             service.tx({'result': {
                 'arrival': 1 + state.get('cycle'),
+                'coreid': state.get('coreid'),
                 'register': {
                     'name': '%pc',
                     'data': _insn.get('next_pc'),
@@ -52,6 +54,7 @@ def do_commit(service, state):
         if _insn.get('ret_pc'):
             service.tx({'event': {
                 'arrival': 1 + state.get('cycle'),
+                'coreid': state.get('coreid'),
                 'register': {
                     'cmd': 'set',
                     'name': _insn.get('rd'),
@@ -61,6 +64,7 @@ def do_commit(service, state):
         if _insn.get('result') and _insn.get('rd'):
             service.tx({'event': {
                 'arrival': 1 + state.get('cycle'),
+                'coreid': state.get('coreid'),
                 'register': {
                     'cmd': 'set',
                     'name': _insn.get('rd'),
@@ -69,6 +73,7 @@ def do_commit(service, state):
             }})
         service.tx({'result': {
             'arrival': 1 + state.get('cycle'),
+            'coreid': state.get('coreid'),
             'retire': {
                 'iid': _insn.get('iid'),
             },
@@ -123,6 +128,7 @@ if '__main__' == __name__:
     parser = argparse.ArgumentParser(description='μService-SIMulator: Commit')
     parser.add_argument('--debug', '-D', dest='debug', action='store_true', help='output debug messages')
     parser.add_argument('--log', type=str, dest='log', default='/tmp', help='logging output directory (absolute path!)')
+    parser.add_argument('--coreid', type=int, dest='coreid', default=0, help='core ID number')
     parser.add_argument('launcher', help='host:port of μService-SIMulator launcher')
     args = parser.parse_args()
     assert not os.path.isfile(args.log), '--log must point to directory, not file'
@@ -132,7 +138,7 @@ if '__main__' == __name__:
         except:
             time.sleep(0.1)
     logging.basicConfig(
-        filename=os.path.join(args.log, '{}.log'.format(os.path.basename(__file__))),
+        filename=os.path.join(args.log, '{:04}_{}.log'.format(args.coreid, os.path.basename(__file__))),
         format='%(message)s',
         level=(logging.DEBUG if args.debug else logging.INFO),
     )
@@ -143,13 +149,14 @@ if '__main__' == __name__:
     state = {
         'service': 'commit',
         'cycle': 0,
+        'coreid': args.coreid,
         'active': True,
         'running': False,
         'ack': True,
         'flush_until': None,
         'pending_commit': [],
     }
-    _service = service.Service(state.get('service'), _launcher.get('host'), _launcher.get('port'))
+    _service = service.Service(state.get('service'), state.get('coreid'), _launcher.get('host'), _launcher.get('port'))
     while state.get('active'):
         state.update({'ack': True})
         msg = _service.rx()
@@ -164,8 +171,8 @@ if '__main__' == __name__:
                 state.update({'ack': False})
             elif 'tick' == k:
                 state.update({'cycle': v.get('cycle')})
-                _results = v.get('results')
-                _events = v.get('events')
+                _results = tuple(filter(lambda x: state.get('coreid') == x.get('coreid'), v.get('results')))
+                _events = tuple(filter(lambda x: state.get('coreid') == x.get('coreid'), v.get('events')))
                 do_tick(_service, state, _results, _events)
             elif 'restore' == k:
                 assert not state.get('running'), 'Attempted restore while running!'

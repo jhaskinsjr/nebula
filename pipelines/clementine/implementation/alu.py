@@ -18,6 +18,7 @@ def do_unimplemented(service, state, insn):
     service.tx({'undefined': insn})
     service.tx({'event': {
         'arrival': 2 + state.get('cycle'),
+        'coreid': state.get('coreid'),
         'commit': {
             'insn': {
                 **insn,
@@ -33,6 +34,7 @@ def do_lui(service, state, insn):
     _result = riscv.execute.lui(insn.get('imm'))
     service.tx({'event': {
         'arrival': 2 + state.get('cycle'),
+        'coreid': state.get('coreid'),
         'commit': {
             'insn': {
                 **insn,
@@ -47,6 +49,7 @@ def do_auipc(service, state, insn):
     _result = riscv.execute.auipc(insn.get('%pc'), insn.get('imm'))
     service.tx({'event': {
         'arrival': 2 + state.get('cycle'),
+        'coreid': state.get('coreid'),
         'commit': {
             'insn': {
                 **insn,
@@ -61,6 +64,7 @@ def do_jal(service, state, insn):
     _next_pc, _ret_pc = riscv.execute.jal(insn.get('%pc'), insn.get('imm'), insn.get('size'))
     service.tx({'event': {
         'arrival': 2 + state.get('cycle'),
+        'coreid': state.get('coreid'),
         'commit': {
             'insn': {
                 **insn,
@@ -78,6 +82,7 @@ def do_jalr(service, state, insn):
     _next_pc, _ret_pc = riscv.execute.jalr(insn.get('%pc'), insn.get('imm'), _rs1, insn.get('size'))
     service.tx({'event': {
         'arrival': 2 + state.get('cycle'),
+        'coreid': state.get('coreid'),
         'commit': {
             'insn': {
                 **insn,
@@ -107,6 +112,7 @@ def do_branch(service, state, insn):
     insn.update({'taken': _taken})
     service.tx({'event': {
         'arrival': 2 + state.get('cycle'),
+        'coreid': state.get('coreid'),
         'commit': {
             'insn': {
                 **insn,
@@ -135,6 +141,7 @@ def do_itype(service, state, insn):
     }.get(insn.get('cmd'))(_rs1, insn.get('imm'))
     service.tx({'event': {
         'arrival': 2 + state.get('cycle'),
+        'coreid': state.get('coreid'),
         'commit': {
             'insn': {
                 **insn,
@@ -183,6 +190,7 @@ def do_rtype(service, state, insn):
     }.get(insn.get('cmd'))(_rs1, _rs2)
     service.tx({'event': {
         'arrival': 2 + state.get('cycle'),
+        'coreid': state.get('coreid'),
         'commit': {
             'insn': {
                 **insn,
@@ -201,6 +209,7 @@ def do_load(service, state, insn):
     _rs1 = state.get('operands').get(insn.get('rs1'))
     service.tx({'event': {
         'arrival': 1 + state.get('cycle'),
+        'coreid': state.get('coreid'),
         'lsu': {
             'insn': {
                 **insn,
@@ -219,6 +228,7 @@ def do_store(service, state, insn):
     _rs2 = state.get('operands').get(insn.get('rs2'))
     service.tx({'event': {
         'arrival': 1 + state.get('cycle'),
+        'coreid': state.get('coreid'),
         'lsu': {
             'insn': {
                 **insn,
@@ -236,6 +246,7 @@ def do_store(service, state, insn):
 def do_nop(service, state, insn):
     service.tx({'event': {
         'arrival': 2 + state.get('cycle'),
+        'coreid': state.get('coreid'),
         'commit': {
             'insn': {
                 **insn,
@@ -259,6 +270,7 @@ def do_shift(service, state, insn):
     }.get(insn.get('cmd'))(_rs1, _shamt)
     service.tx({'event': {
         'arrival': 2 + state.get('cycle'),
+        'coreid': state.get('coreid'),
         'commit': {
             'insn': {
                 **insn,
@@ -302,6 +314,7 @@ def do_ecall(service, stats, insn):
         _data = _side_effect.get('poke').get('data')
         service.tx({'event': {
             'arrival': 1 + state.get('cycle'),
+            'coreid': state.get('coreid'),
             'mem': {
                 'cmd': 'poke',
                 'addr': _addr,
@@ -321,6 +334,7 @@ def do_ecall(service, stats, insn):
             _size = _side_effect.get('peek').get('size')
             service.tx({'event': {
                 'arrival': 1 + state.get('cycle'),
+                'coreid': state.get('coreid'),
                 'mem': {
                     'cmd': 'peek',
                     'addr': _addr,
@@ -341,10 +355,12 @@ def do_ecall(service, stats, insn):
         if 'output' in _side_effect.keys():
             service.tx({'event': {
                 **{'arrival': 1 + state.get('cycle')},
+                **{'coreid': state.get('coreid')},
                 **_side_effect.get('output'),
             }})
         service.tx({'event': {
             'arrival': 2 + state.get('cycle'),
+            'coreid': state.get('coreid'),
             'commit': {
                 'insn': {
                     **insn,
@@ -357,6 +373,7 @@ def do_fence(service, state, insn):
     # HACK: in a complex pipeline, this needs to be more than a NOP
     service.tx({'event': {
         'arrival': 2 + state.get('cycle'),
+        'coreid': state.get('coreid'),
         'commit': {
             'insn': {
                 **insn,
@@ -466,6 +483,7 @@ if '__main__' == __name__:
     parser = argparse.ArgumentParser(description='μService-SIMulator: Execute')
     parser.add_argument('--debug', '-D', dest='debug', action='store_true', help='output debug messages')
     parser.add_argument('--log', type=str, dest='log', default='/tmp', help='logging output directory (absolute path!)')
+    parser.add_argument('--coreid', type=int, dest='coreid', default=0, help='core ID number')
     parser.add_argument('launcher', help='host:port of μService-SIMulator launcher')
     args = parser.parse_args()
     assert not os.path.isfile(args.log), '--log must point to directory, not file'
@@ -475,7 +493,7 @@ if '__main__' == __name__:
         except:
             time.sleep(0.1)
     logging.basicConfig(
-        filename=os.path.join(args.log, '{}.log'.format(os.path.basename(__file__))),
+        filename=os.path.join(args.log, '{:04}_{}.log'.format(args.coreid, os.path.basename(__file__))),
         format='%(message)s',
         level=(logging.DEBUG if args.debug else logging.INFO),
     )
@@ -486,6 +504,7 @@ if '__main__' == __name__:
     state = {
         'service': 'alu',
         'cycle': 0,
+        'coreid': args.coreid,
         'active': True,
         'running': False,
         'ack': True,
@@ -496,7 +515,7 @@ if '__main__' == __name__:
             **{x: riscv.constants.integer_to_list_of_bytes(0, 64, 'little') for x in range(32)},
         },
     }
-    _service = service.Service(state.get('service'), _launcher.get('host'), _launcher.get('port'))
+    _service = service.Service(state.get('service'), state.get('coreid'), _launcher.get('host'), _launcher.get('port'))
     while state.get('active'):
         state.update({'ack': True})
         msg = _service.rx()
@@ -511,8 +530,8 @@ if '__main__' == __name__:
                 state.update({'ack': False})
             elif 'tick' == k:
                 state.update({'cycle': v.get('cycle')})
-                _results = v.get('results')
-                _events = v.get('events')
+                _results = tuple(filter(lambda x: state.get('coreid') == x.get('coreid'), v.get('results')))
+                _events = tuple(filter(lambda x: state.get('coreid') == x.get('coreid'), v.get('events')))
                 do_tick(_service, state, _results, _events)
             elif 'restore' == k:
                 assert not state.get('running'), 'Attempted restore while running!'

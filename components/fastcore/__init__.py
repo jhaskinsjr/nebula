@@ -18,8 +18,9 @@ import riscv.constants
 import riscv.syscall.linux
 
 class FastCore:
-    def __init__(self, name, svc, reg, mem, sys):
+    def __init__(self, name, coreid, svc, reg, mem, sys):
         self.name = name
+        self.coreid = coreid
         self.service = svc
         self.regfile = reg
         self.mainmem = mem
@@ -113,8 +114,9 @@ class FastCore:
         logging.info('FastCore.__init__(): self.registers               : {}'.format(self.regfile.registers))
     def state(self):
         return {
-            'cycle': self.get('cycle'),
             'service': self.get('name'),
+            'cycle': self.get('cycle'),
+            'coreid': self.get('coreid'),
         }
     def get(self, attribute, alternative=None):
         return (self.__dict__[attribute] if attribute in dir(self) else alternative)
@@ -406,6 +408,7 @@ if '__main__' == __name__:
     parser = argparse.ArgumentParser(description='μService-SIMulator: Simple Core')
     parser.add_argument('--debug', '-D', dest='debug', action='store_true', help='output debug messages')
     parser.add_argument('--log', type=str, dest='log', default='/tmp', help='logging output directory (absolute path!)')
+    parser.add_argument('--coreid', type=int, dest='coreid', default=0, help='core ID number')
     parser.add_argument('launcher', help='host:port of μService-SIMulator launcher')
     args = parser.parse_args()
     assert not os.path.isfile(args.log), '--log must point to directory, not file'
@@ -415,7 +418,7 @@ if '__main__' == __name__:
         except:
             time.sleep(0.1)
     logging.basicConfig(
-        filename=os.path.join(args.log, '{}.log'.format(os.path.basename(__file__))),
+        filename=os.path.join(args.log, '{:04}_{}.log'.format(args.coreid, os.path.basename(__file__))),
         format='%(message)s',
         level=(logging.DEBUG if args.debug else logging.INFO),
     )
@@ -423,11 +426,11 @@ if '__main__' == __name__:
     _launcher = {x:y for x, y in zip(['host', 'port'], args.launcher.split(':'))}
     _launcher['port'] = int(_launcher['port'])
     logging.debug('_launcher : {}'.format(_launcher))
-    _service = service.Service('fastcore', _launcher.get('host'), _launcher.get('port'))
-    _regfile = regfile.SimpleRegisterFile('regfile', _launcher, _service)
+    _service = service.Service('fastcore', args.coreid, _launcher.get('host'), _launcher.get('port'))
+    _regfile = regfile.SimpleRegisterFile('regfile', args.coreid, _launcher, _service)
     _mainmem = mainmem.SimpleMainMemory('mainmem', _launcher, _service)
     _system = riscv.syscall.linux.System()
-    state = FastCore('fastcore', _service, _regfile, _mainmem, _system)
+    state = FastCore('fastcore', args.coreid, _service, _regfile, _mainmem, _system)
     while state.get('active'):
         state.update({'ack': True})
         msg = _service.rx()

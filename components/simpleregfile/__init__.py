@@ -11,9 +11,10 @@ import toolbox
 import riscv.constants
 
 class SimpleRegisterFile:
-    def __init__(self, name, launcher, s=None):
+    def __init__(self, name, coreid, launcher, s=None):
         self.name = name
-        self.service = (service.Service(self.get('name'), launcher.get('host'), launcher.get('port')) if not s else s)
+        self.coreid = coreid
+        self.service = (service.Service(self.get('name'), self.get('coreid'), launcher.get('host'), launcher.get('port')) if not s else s)
         self.cycle = 0
         self.active = True
         self.running = False
@@ -25,8 +26,9 @@ class SimpleRegisterFile:
         }
     def state(self):
         return {
-            'cycle': self.get('cycle'),
             'service': self.get('name'),
+            'cycle': self.get('cycle'),
+            'coreid': self.get('coreid'),
         }
     def get(self, attribute, alternative=None):
         return (self.__dict__[attribute] if attribute in dir(self) else alternative)
@@ -46,6 +48,7 @@ class SimpleRegisterFile:
                 assert _name in self.get('registers').keys()
                 self.service.tx({'result': {
                     'arrival': 1 + self.get('cycle'),
+                    'coreid': state.get('coreid'),
                     'register': {
                         'name': _name,
                         'data': self.getregister(self.get('registers'), _name),
@@ -92,6 +95,7 @@ if '__main__' == __name__:
     parser = argparse.ArgumentParser(description='μService-SIMulator: Register File')
     parser.add_argument('--debug', '-D', dest='debug', action='store_true', help='output debug messages')
     parser.add_argument('--log', type=str, dest='log', default='/tmp', help='logging output directory (absolute path!)')
+    parser.add_argument('--coreid', type=int, dest='coreid', default=0, help='core ID number')
     parser.add_argument('launcher', help='host:port of μService-SIMulator launcher')
     args = parser.parse_args()
     assert not os.path.isfile(args.log), '--log must point to directory, not file'
@@ -101,7 +105,7 @@ if '__main__' == __name__:
         except:
             time.sleep(0.1)
     logging.basicConfig(
-        filename=os.path.join(args.log, '{}.log'.format(os.path.basename(__file__))),
+        filename=os.path.join(args.log, '{:04}_{}.log'.format(args.coreid, os.path.basename(__file__))),
         format='%(message)s',
         level=(logging.DEBUG if args.debug else logging.INFO),
     )
@@ -109,7 +113,7 @@ if '__main__' == __name__:
     _launcher = {x:y for x, y in zip(['host', 'port'], args.launcher.split(':'))}
     _launcher['port'] = int(_launcher['port'])
     logging.debug('_launcher : {}'.format(_launcher))
-    state = SimpleRegisterFile('regfile', _launcher)
+    state = SimpleRegisterFile('regfile', args.coreid, _launcher)
     while state.get('active'):
         state.update({'ack': True})
         msg = state.service.rx()
@@ -129,8 +133,8 @@ if '__main__' == __name__:
                     _addr = v.get('snapshot').get('addr')
                     _snapshot_filename = v.get('snapshot').get('snapshot_filename')
                     state.snapshot(_addr.get('register'), _snapshot_filename)
-                _results = v.get('results')
-                _events = v.get('events')
+                _results = tuple(filter(lambda x: state.get('coreid') == x.get('coreid'), v.get('results')))
+                _events = tuple(filter(lambda x: state.get('coreid') == x.get('coreid'), v.get('events')))
                 state.do_tick(_results, _events)
             elif 'restore' == k:
                 assert not state.get('running'), 'Attempted restore while running!'

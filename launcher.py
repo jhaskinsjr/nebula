@@ -237,18 +237,19 @@ def run(cycle, max_cycles, max_instructions, break_on_undefined, snapshot_freque
     if state.get('undefined'): logging.info('*** Encountered undefined instruction! ***')
     return cycle
 def add_service(services, arguments, s):
-    c, h = s.split(':')
+    c, h, coreid = s.split(':')
     services.append(
         threading.Thread(
             target=subprocess.run,
             args=([
                 'ssh',
                 h,
-                'python3 {} {} {} {}'.format(
+                'python3 {} {} {} {} {}'.format(
                     os.path.join(os.getcwd(), c),
                     ('-D' if arguments.debug else ''),
                     '{}:{}'.format(socket.gethostbyaddr(socket.gethostname())[0], arguments.port),
                     ('--log {}'.format(arguments.log) if arguments.log else ''),
+                    ('--coreid {}'.format(coreid) if -1 != int(coreid) else ''),
                 )
             ],),
             daemon=True,
@@ -257,7 +258,10 @@ def add_service(services, arguments, s):
 def spawn(services, args):
     if args.services:
         for s in args.services: add_service(services, args, s)
-    [th.start() for th in services]
+#    [th.start() for th in services]
+    for th in services:
+        th.start()
+        time.sleep(1)
     while len(services) > len(state.get('connections')): time.sleep(1)
 def get_startsymbol(binary, start_symbol):
     with open(binary, 'rb') as fp:

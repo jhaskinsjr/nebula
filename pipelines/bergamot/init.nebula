@@ -1,10 +1,14 @@
 # Sample μService-SIMulator script
-service implementation/simplecore.py:localhost
-service implementation/regfile.py:localhost
-service implementation/mainmem.py:localhost
-service implementation/decode.py:localhost
-service implementation/execute.py:localhost
-service implementation/stats.py:localhost
+# core 0
+service implementation/simplecore.py:localhost:0
+service implementation/regfile.py:localhost:0
+service implementation/decode.py:localhost:0
+service implementation/execute.py:localhost:0
+# core 1
+service implementation/simplecore.py:localhost:1
+service implementation/regfile.py:localhost:1
+service implementation/decode.py:localhost:1
+service implementation/execute.py:localhost:1
 spawn
 config mainmem:peek_latency_in_cycles 25
 config stats:output_filename /tmp/stats.json

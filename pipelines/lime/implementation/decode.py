@@ -30,6 +30,7 @@ def do_issue(service, state):
         if _insn.get('cmd') not in ['ECALL', 'FENCE']:
             if _insn.get('rs1'): service.tx({'event': {
                 'arrival': 1 + state.get('cycle'),
+                'coreid': state.get('coreid'),
                 'register': {
                     'cmd': 'get',
                     'name': _insn.get('rs1'),
@@ -37,6 +38,7 @@ def do_issue(service, state):
             }})
             if _insn.get('rs2'): service.tx({'event': {
                 'arrival': 1 + state.get('cycle'),
+                'coreid': state.get('coreid'),
                 'register': {
                     'cmd': 'get',
                     'name': _insn.get('rs2'),
@@ -53,6 +55,7 @@ def do_issue(service, state):
             for _reg in [10, 11, 12, 13, 14, 15, 17]:
                 service.tx({'event': {
                     'arrival': 1 + state.get('cycle'),
+                    'coreid': state.get('coreid'),
                     'register': {
                         'cmd': 'get',
                         'name': _reg,
@@ -69,6 +72,7 @@ def do_issue(service, state):
         state.update({'%pc': riscv.constants.integer_to_list_of_bytes(_insn.get('size') + int.from_bytes(state.get('%pc'), 'little'), 64, 'little')})
         service.tx({'event': {
             'arrival': 2 + state.get('cycle'),
+            'coreid': state.get('coreid'),
             'alu': {
                 'insn': _insn,
             },
@@ -111,6 +115,7 @@ def do_tick(service, state, results, events):
     if state.get('reset_buffer_available'):
         service.tx({'result': {
             'arrival': 1 + state.get('cycle'),
+            'coreid': state.get('coreid'),
             'decode.buffer_status': {
                 'available': remaining_buffer_availability(),
                 'cycle': state.get('cycle'),
@@ -123,6 +128,7 @@ if '__main__' == __name__:
     parser = argparse.ArgumentParser(description='μService-SIMulator: Instruction Decode')
     parser.add_argument('--debug', '-D', dest='debug', action='store_true', help='output debug messages')
     parser.add_argument('--log', type=str, dest='log', default='/tmp', help='logging output directory (absolute path!)')
+    parser.add_argument('--coreid', type=int, dest='coreid', default=0, help='core ID number')
     parser.add_argument('launcher', help='host:port of μService-SIMulator launcher')
     args = parser.parse_args()
     assert not os.path.isfile(args.log), '--log must point to directory, not file'
@@ -132,7 +138,7 @@ if '__main__' == __name__:
         except:
             time.sleep(0.1)
     logging.basicConfig(
-        filename=os.path.join(args.log, '{}.log'.format(os.path.basename(__file__))),
+        filename=os.path.join(args.log, '{:04}_{}.log'.format(args.coreid, os.path.basename(__file__))),
         format='%(message)s',
         level=(logging.DEBUG if args.debug else logging.INFO),
     )
@@ -143,6 +149,7 @@ if '__main__' == __name__:
     state = {
         'service': 'decode',
         'cycle': 0,
+        'coreid': args.coreid,
         'active': True,
         'running': False,
         '%pc': None,
@@ -161,7 +168,7 @@ if '__main__' == __name__:
             'toolchain': '',
         },
     }
-    _service = service.Service(state.get('service'), _launcher.get('host'), _launcher.get('port'))
+    _service = service.Service(state.get('service'), state.get('coreid'), _launcher.get('host'), _launcher.get('port'))
     while state.get('active'):
         state.update({'ack': True})
         msg = _service.rx()
@@ -176,6 +183,7 @@ if '__main__' == __name__:
                 state.update({'ack': False})
                 _service.tx({'result': {
                     'arrival': 2 + state.get('cycle'), # current-cycle + 2 b/c when this executes cycle is 0; +1 would double-count cycle 1
+                    'coreid': state.get('coreid'),
                     'decode.buffer_status': {
                         'available': state.get('config').get('buffer_capacity'),
                         'cycle': state.get('cycle'),
@@ -209,8 +217,8 @@ if '__main__' == __name__:
                 state.get('config').update({_field: _val})
             elif 'tick' == k:
                 state.update({'cycle': v.get('cycle')})
-                _results = v.get('results')
-                _events = v.get('events')
+                _results = tuple(filter(lambda x: state.get('coreid') == x.get('coreid'), v.get('results')))
+                _events = tuple(filter(lambda x: state.get('coreid') == x.get('coreid'), v.get('events')))
                 do_tick(_service, state, _results, _events)
             elif 'restore' == k:
                 assert not state.get('running'), 'Attempted restore while running!'

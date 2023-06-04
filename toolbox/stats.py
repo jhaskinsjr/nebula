@@ -10,21 +10,23 @@ import service
 import json
 
 def do_tick(service, state, results, events):
-    for _stats in map(lambda y: y.get('stats'), filter(lambda x: x.get('stats'), events)):
+    for _c, _stats in map(lambda y: (y.get('coreid', -1), y.get('stats')), filter(lambda x: x.get('stats'), events)):
+        logging.info('do_tick(): [{:04}] _stats : {}'.format(_c, _stats))
         service.tx({'info': '_stats : {}'.format(_stats)})
         _s = _stats.get('service')
         _t = _stats.get('type')
         _n = _stats.get('name')
         _d = _stats.get('data')
         _k = _stats.get('kwargs')
-        if not _s in state.get('stats').keys(): state.get('stats').update({_s: {}})
-        if not _n in state.get('stats').get(_s): state.get('stats').get(_s).update({_n : ({} if 'histo' == _t else 0)})
+        if not _c in state.get('stats').keys(): state.get('stats').update({_c: {}})
+        if not _s in state.get('stats').get(_c).keys(): state.get('stats').get(_c).update({_s: {}})
+        if not _n in state.get('stats').get(_c).get(_s): state.get('stats').get(_c).get(_s).update({_n : ({} if 'histo' == _t else 0)})
         _increment = (_k.get('increment') if _k and _k.get('increment') else 1)
         if 'histo' == _t:
-            assert _d != None, 'Histogram-type stat {}:{} requires "data" field ({})'.format(_s, _n, _stats)
-            state.get('stats').get(_s).get(_n).update({_d: _increment + state.get('stats').get(_s).get(_n).get(_d, 0)})
+            assert _d != None, 'Histogram-type stat {}_{}:{} requires "data" field ({})'.format(_c, _s, _n, _stats)
+            state.get('stats').get(_c).get(_s).get(_n).update({_d: _increment + state.get('stats').get(_c).get(_s).get(_n).get(_d, 0)})
         else:
-            state.get('stats').get(_s).update({_n: _increment + state.get('stats').get(_s).get(_n)})
+            state.get('stats').get(_c).get(_s).update({_n: _increment + state.get('stats').get(_c).get(_s).get(_n)})
 
 if '__main__' == __name__:
     parser = argparse.ArgumentParser(description='μService-SIMulator: Statistics')
@@ -55,7 +57,7 @@ if '__main__' == __name__:
             'output_filename': None,
         },
     }
-    _service = service.Service(state.get('service'), _launcher.get('host'), _launcher.get('port'))
+    _service = service.Service(state.get('service'), state.get('coreid', -1), _launcher.get('host'), _launcher.get('port'))
     while state.get('active'):
         state.update({'ack': True})
         msg = _service.rx()
@@ -92,3 +94,4 @@ if '__main__' == __name__:
     _output_filename = state.get('config').get('output_filename')
     fp = (sys.stdout if not _output_filename else open(_output_filename, 'w'))
     json.dump(state.get('stats'), fp)
+    logging.info('state.stats : {}'.format(state.get('stats')))

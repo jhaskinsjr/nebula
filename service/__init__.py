@@ -5,11 +5,12 @@ import json
 
 class Service:
     MESSAGE_SIZE = 8192
-    def __init__(self, name, host, port):
-        self.name = name
+    def __init__(self, name, coreid, host, port):
+        self.name = '[{:04}] {}'.format(coreid, name)
+        self.coreid = coreid
         self.s = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
         self.s.connect((host, port))
-        self.tx({'name': name})
+        self.tx({'name': self.name})
         self.tx({'blocking': self.s.getblocking()})
     def __del__(self):
         self.s.close()

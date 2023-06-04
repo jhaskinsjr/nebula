@@ -16,7 +16,7 @@ import toolbox
 class SimpleMainMemory:
     def __init__(self, name, launcher, s=None):
         self.name = name
-        self.service = (service.Service(self.get('name'), launcher.get('host'), launcher.get('port')) if not s else s)
+        self.service = (service.Service(self.get('name'), self.get('coreid', -1), launcher.get('host'), launcher.get('port')) if not s else s)
         self.cycle = 0
         self.active = True
         self.running = False
@@ -107,7 +107,8 @@ class SimpleMainMemory:
     def update(self, d):
         self.__dict__.update(d)
     def do_tick(self, results, events):
-        for ev in filter(lambda x: x, map(lambda y: y.get('mem'), events)):
+#        for ev in filter(lambda x: x, map(lambda y: y.get('mem'), events)):
+        for _coreid, ev in map(lambda x: (x.get('coreid'), x.get('mem')), filter(lambda y: 'mem' in y.keys(), events)):
             _cmd = ev.get('cmd')
             _addr = ev.get('addr')
             _size = ev.get('size')
@@ -118,6 +119,7 @@ class SimpleMainMemory:
             elif 'peek' == _cmd:
                 self.service.tx({'result': {
                     'arrival': self.get('config').get('peek_latency_in_cycles') + self.get('cycle'),
+                    'coreid': _coreid,
                     'mem': {
                         'addr': _addr,
                         'size': _size,
@@ -207,6 +209,7 @@ if '__main__' == __name__:
                 state.restore(_snapshot_filename, _addr)
                 state.service.tx({'ack': {'cycle': state.get('cycle')}})
             elif 'tick' == k:
+                logging.info('tick - v : {}'.format(v))
                 state.update({'cycle': v.get('cycle')})
                 if v.get('snapshot'):
                     _addr = v.get('snapshot').get('addr')

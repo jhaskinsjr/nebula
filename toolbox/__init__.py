@@ -5,6 +5,7 @@ import service
 def report_stats(service, state, type, name, data=None, **kwargs):
     service.tx({'event': {
         'arrival': 1 + state.get('cycle'),
+        'coreid': state.get('coreid', -1),
         'stats': {
             **{
                 'service': state.get('service'),
