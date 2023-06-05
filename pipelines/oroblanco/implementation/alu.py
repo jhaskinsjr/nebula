@@ -490,6 +490,7 @@ def do_ecall(service, stats, insn):
             }})
         service.tx({'event': {
             'arrival': 2 + state.get('cycle'),
+            'coreid': state.get('coreid'),
             'commit': {
                 'insn': {
                     **insn,
