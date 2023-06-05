@@ -1,4 +1,21 @@
 # Sample μService-SIMulator script
+# NOTE: Nebula's multicore support can execute across multiple machines!
+## core 0 # services run on tulip.local
+#service implementation/regfile.py:tulip.local:0
+#service implementation/fetch.py:tulip.local:0
+#service implementation/decode.py:tulip.local:0
+#service implementation/alu.py:tulip.local:0
+#service implementation/lsu.py:tulip.local:0
+#service implementation/commit.py:tulip.local:0
+#service implementation/l2.py:tulip.local:0
+## core 1 # services run on lily.local
+#service implementation/regfile.py:lily.local:1
+#service implementation/fetch.py:lily.local:1
+#service implementation/decode.py:lily.local:1
+#service implementation/alu.py:lily.local:1
+#service implementation/lsu.py:lily.local:1
+#service implementation/commit.py:lily.local:1
+#service implementation/l2.py:lily.local:1
 # core 0
 service implementation/regfile.py:localhost:0
 service implementation/fetch.py:localhost:0
