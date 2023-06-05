@@ -152,7 +152,7 @@ def do_tick(service, state, results, events):
         _addr = _l2.get('addr')
         if _addr == state.get('operands').get('l2'):
             state.get('operands').update({'l2': _l2.get('data')})
-        elif _addr in state.get('pending_fetch'):
+        elif _addr in state.get('pending_fetch') and 'data' in _l2.keys():
             service.tx({'info': '_l2 : {}'.format(_l2)})
             state.get('l1dc').poke(_addr, _l2.get('data'))
             state.get('pending_fetch').remove(_addr)
