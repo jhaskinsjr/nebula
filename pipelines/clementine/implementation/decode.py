@@ -224,6 +224,7 @@ if '__main__' == __name__:
                 _service.tx({'ack': {'cycle': state.get('cycle')}})
             elif 'register' == k:
                 logging.info('register : {}'.format(v))
+                if not state.get('coreid') == v.get('coreid'): continue
                 if not '%pc' == v.get('name'): continue
                 if not 'set' == v.get('cmd'): continue
                 _pc = v.get('data')

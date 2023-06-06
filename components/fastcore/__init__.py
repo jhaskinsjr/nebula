@@ -129,7 +129,7 @@ class FastCore:
             _pc = self.getregister(self.regfile, '%pc')
             _addr = int.from_bytes(_pc, 'little')
             _size = 4
-            _data = self.mainmem.peek(_addr, _size)
+            _data = self.mainmem.peek(_addr, _size, **{'coreid': self.get('coreid')})
             assert len(_data) == _size, 'Fetched wrong number of bytes!'
             _decoded = riscv.decode.do_decode(_data[:], 1)
             _insn = ({
@@ -284,7 +284,7 @@ class FastCore:
             'rs1': self.getregister(self.regfile, insn.get('rs1')),
         }
         _addr = insn.get('imm') + int.from_bytes(_operands.get('rs1'), 'little')
-        _fetched  = self.mainmem.peek(_addr, insn.get('nbytes'))
+        _fetched  = self.mainmem.peek(_addr, insn.get('nbytes'), **{'coreid': self.get('coreid')})
         _fetched += [-1] * (8 - len(_fetched))
         _data = { # HACK: This is 100% little-endian-specific
             'LD': _fetched,
@@ -315,7 +315,7 @@ class FastCore:
             'SB': _data[:1],
         }.get(insn.get('cmd'))
         _addr = insn.get('imm') + int.from_bytes(_operands.get('rs1'), 'little')
-        self.mainmem.poke(_addr, insn.get('nbytes'), _data)
+        self.mainmem.poke(_addr, insn.get('nbytes'), _data, **{'coreid': self.get('coreid')})
         self.setregister(self.regfile, '%pc', riscv.constants.integer_to_list_of_bytes(int.from_bytes(insn.get('%pc'), 'little') + insn.get('size'), 64, 'little'))
         return {
             **insn,
@@ -367,11 +367,11 @@ class FastCore:
             if 'poke' in _side_effect.keys():
                 _addr = int.from_bytes(_side_effect.get('poke').get('addr'), 'little')
                 _data = _side_effect.get('poke').get('data')
-                self.mainmem.poke(_addr, len(_data), _data)
+                self.mainmem.poke(_addr, len(_data), _data, **{'coreid': self.get('coreid')})
             if 'peek' in _side_effect.keys():
                 _addr = _side_effect.get('peek').get('addr')
                 _size = _side_effect.get('peek').get('size')
-                _data = self.mainmem.peek(_addr, _size)
+                _data = self.mainmem.peek(_addr, _size, **{'coreid': self.get('coreid')})
                 if 'arg' not in _syscall_kwargs.keys(): _syscall_kwargs.update({'arg': []})
                 _syscall_kwargs.get('arg').append(bytes(_data))
         if 'output' in _side_effect.keys():
@@ -409,6 +409,7 @@ if '__main__' == __name__:
     parser.add_argument('--debug', '-D', dest='debug', action='store_true', help='output debug messages')
     parser.add_argument('--log', type=str, dest='log', default='/tmp', help='logging output directory (absolute path!)')
     parser.add_argument('--coreid', type=int, dest='coreid', default=0, help='core ID number')
+    parser.add_argument('--pagesize', type=int, dest='pagesize', default=2**16, help='MMU page size in bytes')
     parser.add_argument('launcher', help='host:port of μService-SIMulator launcher')
     args = parser.parse_args()
     assert not os.path.isfile(args.log), '--log must point to directory, not file'
@@ -428,7 +429,7 @@ if '__main__' == __name__:
     logging.debug('_launcher : {}'.format(_launcher))
     _service = service.Service('fastcore', args.coreid, _launcher.get('host'), _launcher.get('port'))
     _regfile = regfile.SimpleRegisterFile('regfile', args.coreid, _launcher, _service)
-    _mainmem = mainmem.SimpleMainMemory('mainmem', _launcher, _service)
+    _mainmem = mainmem.SimpleMainMemory('mainmem', _launcher, args.pagesize, _service)
     _system = riscv.syscall.linux.System()
     state = FastCore('fastcore', args.coreid, _service, _regfile, _mainmem, _system)
     while state.get('active'):
@@ -481,13 +482,14 @@ if '__main__' == __name__:
                 _target.get('config').update({_field: _val})
             elif 'loadbin' == k:
                 logging.info('loadbin : {}'.format(v))
+                _coreid = v.get('coreid')
                 _start_symbol = v.get('start_symbol')
                 _sp = v.get('sp')
                 _pc = v.get('pc')
                 _binary = v.get('binary')
                 _args = v.get('args')
                 _mainmem.boot()
-                _mainmem.loadbin(_start_symbol, _sp, _pc, _binary, *_args)
+                _mainmem.loadbin(_coreid, _start_symbol, _sp, _pc, _binary, *_args)
             elif 'restore' == k:
                 assert not state.get('running'), 'Attempted restore while running!'
                 logging.info('restore : {}'.format(v))
@@ -516,6 +518,7 @@ if '__main__' == __name__:
 #                do_tick(_service, state, _results, _events)
             elif 'register' == k:
                 logging.info('register : {}'.format(v))
+                if not state.get('coreid') == v.get('coreid'): continue
                 _cmd = v.get('cmd')
                 _name = v.get('name')
                 if 'set' == _cmd:

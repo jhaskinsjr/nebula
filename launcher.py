@@ -47,8 +47,10 @@ def handler(conn, addr):
                 break
             elif 'shutdown' == k:
                 state.get('lock').acquire()
-                state.update({'shutdown': v})
-                if None == v: state.update({'running': False})
+#                state.update({'shutdown': v})
+#                if None == v: state.update({'running': False})
+                state.get('shutdown').update({v.get('coreid'): True})
+                if len(state.get('shutdown').keys()) == state.get('ncores'): state.update({'running': False})
                 state.get('lock').release()
             elif 'undefined' == k:
                 state.get('lock').acquire()
@@ -123,13 +125,14 @@ def integer(val):
         '0o': lambda x: int(x, 8),
         '0b': lambda x: int(x, 2),
     }.get(val[:2], lambda x: int(x))(val)
-def register(connections, cmd, name, data=None):
+def register(connections, coreid, cmd, name, data=None):
     _name = name
     try:
         _name = int(_name)
     except:
         pass
     tx(connections, {'register': {**{
+            'coreid': coreid,
             'cmd': cmd,
             'name': _name,
         },
@@ -193,7 +196,6 @@ def run(cycle, max_cycles, max_instructions, break_on_undefined, snapshot_freque
     state.get('lock').release()
     snapshot_at = state.get('instructions_committed') + snapshot_frequency
     while (cycle < max_cycles if max_cycles else True) and \
-          (not state.get('shutdown') or (cycle < state.get('shutdown'))) and \
           (state.get('instructions_committed') < max_instructions if max_instructions else True) and \
           (state.get('running')) and \
           (None == state.get('undefined') if break_on_undefined else True):
@@ -311,7 +313,8 @@ if __name__ == '__main__':
         'running': False,
         'cycle': 0,
         'instructions_committed': 0,
-        'shutdown': None,
+        'shutdown': {},
+        'ncores': 0,
         'undefined': None,
         'cmdline': None,
         'snapshot': {
@@ -353,28 +356,60 @@ if __name__ == '__main__':
                 })
             elif 'run' == cmd:
                 assert not (len(args.cmdline) and args.restore), 'Both command line and --restore given!'
+#                _coreid = 0 # FIXME: just using coreid = 0 for now; this will need to be a loop
+#                if len(args.cmdline):
+#                    state.update({'cmdline': ' '.join(args.cmdline)})
+#                    _sp = integer(args.loadbin[0])
+#                    _pc = integer(args.loadbin[1])
+#                    _start_symbol = args.loadbin[2]
+#                    _binary = os.path.join(os.getcwd(), args.cmdline[0])
+#                    _args = tuple(args.cmdline[1:])
+#                    tx(state.get('connections'), {
+#                        'loadbin': {
+#                            'coreid': _coreid,
+#                            'start_symbol': _start_symbol,
+#                            'sp': _sp,
+#                            'pc': _pc,
+#                            'binary': _binary,
+#                            'args': ((_binary,) + _args),
+#                        }
+#                    })
+#                    register(state.get('connections'), _coreid, 'set', 2, hex(_sp))
+#                    register(state.get('connections'), _coreid, 'set', 4, '0xffff0000') # FIXME: is this necessary???
+#                    register(state.get('connections'), _coreid, 'set', 10, hex(1 + len(_args)))
+#                    register(state.get('connections'), _coreid, 'set', 11, hex(8 + _sp))
+#                    register(state.get('connections'), _coreid, 'set', '%pc', hex(_pc + get_startsymbol(_binary, _start_symbol)))
+#                    logging.info('implied loadbin')
                 if len(args.cmdline):
                     state.update({'cmdline': ' '.join(args.cmdline)})
                     _sp = integer(args.loadbin[0])
                     _pc = integer(args.loadbin[1])
                     _start_symbol = args.loadbin[2]
-                    _binary = os.path.join(os.getcwd(), args.cmdline[0])
-                    _args = tuple(args.cmdline[1:])
-                    tx(state.get('connections'), {
-                        'loadbin': {
-                            'start_symbol': _start_symbol,
-                            'sp': _sp,
-                            'pc': _pc,
-                            'binary': _binary,
-                            'args': ((_binary,) + _args),
-                        }
-                    })
-                    register(state.get('connections'), 'set', 2, hex(_sp))
-                    register(state.get('connections'), 'set', 4, '0xffff0000') # FIXME: is this necessary???
-                    register(state.get('connections'), 'set', 10, hex(1 + len(_args)))
-                    register(state.get('connections'), 'set', 11, hex(8 + _sp))
-                    register(state.get('connections'), 'set', '%pc', hex(_pc + get_startsymbol(_binary, _start_symbol)))
-                    logging.info('implied loadbin')
+                    for _coreid, _cmdline in enumerate(' '.join(args.cmdline).split(',')):
+                        _cmdline = _cmdline.split()
+                        _binary = os.path.join(os.getcwd(), _cmdline[0])
+                        _args = tuple(_cmdline[1:])
+                        tx(state.get('connections'), {
+                            'loadbin': {
+                                'coreid': _coreid,
+                                'start_symbol': _start_symbol,
+                                'sp': _sp,
+                                'pc': _pc,
+                                'binary': _binary,
+                                'args': ((_binary,) + _args),
+                            }
+                        })
+                        register(state.get('connections'), _coreid, 'set', 2, hex(_sp))
+                        register(state.get('connections'), _coreid, 'set', 4, '0xffff0000') # FIXME: is this necessary???
+                        register(state.get('connections'), _coreid, 'set', 10, hex(1 + len(_args)))
+                        register(state.get('connections'), _coreid, 'set', 11, hex(8 + _sp))
+                        register(state.get('connections'), _coreid, 'set', '%pc', hex(_pc + get_startsymbol(_binary, _start_symbol)))
+                        logging.info('implied loadbin')
+                        logging.info('\t_coreid  : {}'.format(_coreid))
+                        logging.info('\t_cmdline : {}'.format(_cmdline))
+                        logging.info('\t_binary  : {}'.format(_binary))
+                        logging.info('\t_args    : {}'.format(_args))
+                        state.update({'ncores': 1 + state.get('ncores')})
                 elif args.restore:
                     restore(state, args.restore)
                 else:
@@ -393,7 +428,7 @@ if __name__ == '__main__':
             else:
                 {
                     'service': lambda x: add_service(_services, args, x),
-                    'register': lambda x, y, z=None: register(state.get('connections'), x, y, z),
+                    'register': lambda w, x, y, z=None: register(state.get('connections'), w, x, y, z),
                     'cycle': lambda: logging.info(state.get('cycle')),
                     'state': lambda: logging.info(state),
                     'config': lambda x, y: config(state.get('connections'), *x.split(':'), y),

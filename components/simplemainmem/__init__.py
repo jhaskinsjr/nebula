@@ -12,11 +12,14 @@ import elftools.elf.elffile
 
 import service
 import toolbox
+import simplemmu
 
 class SimpleMainMemory:
-    def __init__(self, name, launcher, s=None):
+    def __init__(self, name, launcher, pagesize, s=None):
         self.name = name
         self.service = (service.Service(self.get('name'), self.get('coreid', -1), launcher.get('host'), launcher.get('port')) if not s else s)
+        self.pagesize = pagesize
+        self.mmu = simplemmu.SimpleMMU(self.pagesize)
         self.cycle = 0
         self.active = True
         self.running = False
@@ -30,7 +33,7 @@ class SimpleMainMemory:
     def boot(self):
         self.fd = os.open(self.get('config').get('filename'), os.O_RDWR|os.O_CREAT)
         os.ftruncate(self.get('fd'), self.get('config').get('capacity'))
-    def loadbin(self, start_symbol, sp, pc, binary, *args):
+    def loadbin(self, coreid, start_symbol, sp, pc, binary, *args):
         logging.info('loadbin(): binary : {} ({})'.format(binary, type(binary)))
         logging.info('loadbin(): args   : {} ({})'.format(args, type(args)))
         _start_pc = pc
@@ -40,8 +43,9 @@ class SimpleMainMemory:
                 if not section: continue
                 _addr = pc + section.header.sh_addr
                 logging.info('{} : 0x{:08x} ({})'.format(section.name, _addr, section.data_size))
-                os.lseek(self.get('fd'), _addr, os.SEEK_SET)
-                os.write(self.get('fd'), section.data())
+#                os.lseek(self.get('fd'), _addr, os.SEEK_SET)
+#                os.write(self.get('fd'), section.data())
+                self.poke(_addr, section.data_size, section.data(), **{'coreid': coreid}) # FIXME: this assumes each section will be less than self.pagesize bytes
             _symbol_tables = [s for s in elffile.iter_sections() if isinstance(s, elftools.elf.elffile.SymbolTableSection)]
             _start = sum([list(filter(lambda s: start_symbol == s.name, tab.iter_symbols())) for tab in _symbol_tables], [])
             assert 0 < len(_start), 'No {} symbol!'.format(start_symbol)
@@ -71,12 +75,17 @@ class SimpleMainMemory:
         logging.info('loadbin(): len(_args) : {}'.format(sum(map(lambda a: len(a), _args))))
         for x, y in zip(_addr, _args):
             logging.info('loadbin(): @{:08x} : {} ({})'.format(x, y, len(y)))
-        os.lseek(self.get('fd'), sp, os.SEEK_SET)
-        os.write(self.get('fd'), _argc.to_bytes(8, 'little'))       # argc
-        for a in _addr:                                 # argv pointers
-            os.write(self.get('fd'), a.to_bytes(8, 'little'))
-        os.lseek(self.get('fd'), 8, os.SEEK_CUR)                    # NULL pointer
-        os.write(self.get('fd'), bytes(''.join(_args), 'ascii'))    # argv data
+#        os.lseek(self.get('fd'), sp, os.SEEK_SET)
+#        os.write(self.get('fd'), _argc.to_bytes(8, 'little'))       # argc
+        self.poke(sp, 8, _argc.to_bytes(8, 'little'), **{'coreid': coreid}) #argc
+#        for a in _addr:                                 # argv pointers
+#            os.write(self.get('fd'), a.to_bytes(8, 'little'))
+        for x, a in enumerate(_addr):
+            self.poke(sp + (1+x)*8, 8, a.to_bytes(8, 'little'), **{'coreid': coreid}) # argv pointers
+#        os.lseek(self.get('fd'), 8, os.SEEK_CUR)                    # NULL pointer
+#        os.write(self.get('fd'), bytes(''.join(_args), 'ascii'))    # argv data
+        self.poke(sp + (1+len(_addr))*8, 8, (0).to_bytes(8, 'little'), **{'coreid': coreid})
+        self.poke(sp + (2+len(_addr))*8, 8, bytes(''.join(_args), 'ascii'), **{'coreid': coreid})
         return _start_pc
     def snapshot(self, addr, data):
         _snapshot_filename = '{}.{:015}.snapshot'.format(self.get('config').get('filename'), data.get('instructions_committed'))
@@ -113,8 +122,9 @@ class SimpleMainMemory:
             _addr = ev.get('addr')
             _size = ev.get('size')
             _data = ev.get('data')
+            _kwargs = ({'coreid': _coreid} if not ev.get('physical') else {'physical': ev.get('physical')})
             if 'poke' == _cmd:
-                self.poke(_addr, _size, _data)
+                self.poke(_addr, _size, _data, **_kwargs)
                 toolbox.report_stats(self.service, self.state(), 'histo', 'poke.size', _size)
             elif 'peek' == _cmd:
                 self.service.tx({'result': {
@@ -123,29 +133,39 @@ class SimpleMainMemory:
                     'mem': {
                         'addr': _addr,
                         'size': _size,
-                        'data': self.peek(_addr, _size),
+                        'data': self.peek(_addr, _size, **_kwargs),
                     }
                 }})
                 toolbox.report_stats(self.service, self.state(), 'histo', 'peek.size', _size)
             else:
                 logging.fatal('ev : {}'.format(ev))
                 assert False
-    def poke(self, addr, size, data):
+    def poke(self, addr, size, data, **kwargs):
         # data : list of unsigned char, e.g., to make an integer, X, into a list
         # of N little-endian-formatted bytes -> list(X.to_bytes(N, 'little'))
+        # FIXME: handle page-crossing
+        # FIXME: limit len(data) to self.pagesize
+        assert isinstance(kwargs.get('coreid'), int)
+        _addr = (self.mmu.translate(addr, kwargs.get('coreid')) if not kwargs.get('physical') else addr)
+        logging.debug('poke({:08x}, {}, ..., {}) -> {:08x}'.format(addr, size, kwargs, _addr))
         _fd = self.get('fd')
         try:
-            os.lseek(_fd, addr, os.SEEK_SET)
+            os.lseek(_fd, _addr, os.SEEK_SET)
             os.write(_fd, bytes(data))
         except:
-            pass
+            pass # FIXME: Something other than ignoring the issue should happen here!
 #        os.write(_fd, data.to_bytes(size, 'little'))
-    def peek(self, addr, size):
+    def peek(self, addr, size, **kwargs):
         # return : list of unsigned char, e.g., to make an 8-byte quadword from
         # a list, X, of N bytes -> int.from_bytes(X, 'little')
+        # FIXME: handle page-crossing
+        # FIXME: limit size to self.pagesize
+        assert isinstance(kwargs.get('coreid'), int)
+        _addr = (self.mmu.translate(addr, kwargs.get('coreid')) if not kwargs.get('physical') else addr)
+        logging.debug('peek({}, {}, {}) -> {:08x}'.format(addr, size, kwargs, _addr))
         _fd = self.get('fd')
         try:
-            os.lseek(_fd, addr, os.SEEK_SET)
+            os.lseek(_fd, _addr, os.SEEK_SET)
             return list(os.read(_fd, size))
         except:
             return []
@@ -155,6 +175,7 @@ if '__main__' == __name__:
     parser = argparse.ArgumentParser(description='μService-SIMulator: Main Memory')
     parser.add_argument('--debug', '-D', dest='debug', action='store_true', help='output debug messages')
     parser.add_argument('--log', type=str, dest='log', default='/tmp', help='logging output directory (absolute path!)')
+    parser.add_argument('--pagesize', type=int, dest='pagesize', default=2**16, help='MMU page size in bytes')
     parser.add_argument('launcher', help='host:port of μService-SIMulator launcher')
     args = parser.parse_args()
     assert not os.path.isfile(args.log), '--log must point to directory, not file'
@@ -172,7 +193,7 @@ if '__main__' == __name__:
     _launcher = {x:y for x, y in zip(['host', 'port'], args.launcher.split(':'))}
     _launcher['port'] = int(_launcher['port'])
     logging.debug('_launcher : {}'.format(_launcher))
-    state = SimpleMainMemory('mainmem', _launcher)
+    state = SimpleMainMemory('mainmem', _launcher, args.pagesize)
     while state.get('active'):
         state.update({'ack': True})
         msg = state.service.rx()
@@ -195,13 +216,14 @@ if '__main__' == __name__:
                 assert _field in state.get('config').keys(), 'No such config field, {}, in service {}!'.format(_field, state.get('service'))
                 state.get('config').update({_field: _val})
             elif 'loadbin' == k:
+                _coreid = v.get('coreid')
                 _start_symbol = v.get('start_symbol')
                 _sp = v.get('sp')
                 _pc = v.get('pc')
                 _binary = v.get('binary')
                 _args = v.get('args')
                 state.boot()
-                state.loadbin(_start_symbol, _sp, _pc, _binary, *_args)
+                state.loadbin(_coreid, _start_symbol, _sp, _pc, _binary, *_args)
             elif 'restore' == k:
                 _snapshot_filename = v.get('snapshot_filename')
                 _addr = v.get('addr')

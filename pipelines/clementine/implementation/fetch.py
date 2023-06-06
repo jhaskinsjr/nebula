@@ -109,6 +109,7 @@ if '__main__' == __name__:
                 state.update({'cycle': v.get('cycle')})
                 _service.tx({'ack': {'cycle': state.get('cycle')}})
             elif 'register' == k:
+                if not state.get('coreid') == v.get('coreid'): continue
                 if not '%pc' == v.get('name'): continue
                 if not 'set' == v.get('cmd'): continue
                 _pc = v.get('data')
