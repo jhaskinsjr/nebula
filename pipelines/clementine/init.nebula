@@ -6,13 +6,13 @@ service implementation/decode.py:localhost:0
 service implementation/alu.py:localhost:0
 service implementation/lsu.py:localhost:0
 service implementation/commit.py:localhost:0
-# core 1
-service implementation/regfile.py:localhost:1
-service implementation/fetch.py:localhost:1
-service implementation/decode.py:localhost:1
-service implementation/alu.py:localhost:1
-service implementation/lsu.py:localhost:1
-service implementation/commit.py:localhost:1
+## core 1
+#service implementation/regfile.py:localhost:1
+#service implementation/fetch.py:localhost:1
+#service implementation/decode.py:localhost:1
+#service implementation/alu.py:localhost:1
+#service implementation/lsu.py:localhost:1
+#service implementation/commit.py:localhost:1
 spawn
 config mainmem:peek_latency_in_cycles 25
 config decode:buffer_capacity 32
