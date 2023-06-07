@@ -1,7 +1,7 @@
 # Nebula: The Cloud-Native Microarchitecture Simulation Framework!
 
 Nebula (formerly: μService-SIMulator (ussim)) is a framework for
-developing cyce-accurate microprocessor simulators. Python libraries for
+developing cycle-accurate microprocessor simulators. Python libraries for
 decoding and executing statically linked RISC-V binaries, as well as
 several sample pipeline implementations using the framework are included.
 
@@ -35,6 +35,7 @@ example, we will use the Oroblanco pipeline:
 
     python3 ../../launcher.py \
         --log /tmp/oroblanco/sum \
+        --service ../../toolbox/stats.py:localhost:-1 implementation/mainmem.py:-1 \
         --config stats:output_filename:/tmp/oroblanco/sum/stats.json \
         mainmem:filename:/tmp/oroblanco/sum/mainmem.raw \
         mainmem:capacity:$(( 2**32 )) \
@@ -44,7 +45,7 @@ example, we will use the Oroblanco pipeline:
         init.nebula \
         ../../examples/bin/sum 2 3 5 7 11 13
 
-The "python3" command executes the launcher module (launcher.py),
+The "python3" command executes the Nebula launcher (launcher.py),
 which begins by opening a socket and accepting connections on port 12345,
 executing the script init.nebula, and loading the binary
 (${HOME}/src/nebula/examples/bin/sum) together with its command-line
@@ -302,15 +303,23 @@ The simulator executes according to instructions in an execute script.
 Consider the script pipelines/oroblanco/init.nebula:
 
     # Sample μService-SIMulator script
-    service implementation/regfile.py:localhost
-    service implementation/mainmem.py:localhost
-    service implementation/fetch.py:localhost
-    service implementation/decode.py:localhost
-    service implementation/alu.py:localhost
-    service implementation/lsu.py:localhost
-    service implementation/commit.py:localhost
-    service implementation/l2.py:localhost
-    service ../../toolbox/stats.py:localhost
+    # NOTE: Nebula's multicore support can execute across multiple machines!
+    # core 0
+    service implementation/regfile.py:localhost:0
+    service implementation/fetch.py:localhost:0
+    service implementation/decode.py:localhost:0
+    service implementation/alu.py:localhost:0
+    service implementation/lsu.py:localhost:0
+    service implementation/commit.py:localhost:0
+    service implementation/l2.py:localhost:0
+    ## core 1
+    #service implementation/regfile.py:localhost:1
+    #service implementation/fetch.py:localhost:1
+    #service implementation/decode.py:localhost:1
+    #service implementation/alu.py:localhost:1
+    #service implementation/lsu.py:localhost:1
+    #service implementation/commit.py:localhost:1
+    #service implementation/l2.py:localhost:1
     spawn
     config mainmem:peek_latency_in_cycles 25
     config fetch:l1ic_nsets 16
@@ -341,7 +350,7 @@ The script is comprised of commands
     cycle                           print the cycle count to stdout
     register set A B                set register A to value B
     run                             begin execution
-    service A:B                     stage service A on machine B
+    service A:B:C                   stage service A on machine B as a part of core C
     spawn                           execute all staged services
     state                           print launcher's state (i.e., variables, etc) to stdout
     shutdown                        send shutdown signal to services, exit launcher
@@ -353,20 +362,17 @@ services that communicate over a TCP network, the services need not execute
 on the same machine. This is what makes μService-SIMulator
 **the world's first cloud-native microarchitecture simulation framework**!
 
-Consider the following modified init.nebula file that
-spawns just two services on the local machine, and the rest on several
-different machines on my network:
+Consider the following modified Oroblanco init.nebula file that
+spawns services on several different machines on my network:
 
     # Sample μService-SIMulator script
-    service implementation/regfile.py:picard.local   # not run on localhost!
-    service implementation/mainmem.py:localhost
-    service implementation/fetch.py:riker.local      # not run on localhost!
-    service implementation/decode.py:laforge.local   # not run on localhost!
-    service implementation/alu.py:data.local         # not run on localhost!
-    service implementation/lsu.py:worf.local         # not run on localhost!
-    service implementation/commit.py:troi.local      # not run on localhost!
-    service implementation/l2.py:crusher.local       # not run on localhost!
-    service ../../toolbox/stats.py:localhost
+    service implementation/regfile.py:picard.local:0   # not run on localhost!
+    service implementation/fetch.py:riker.local:0      # not run on localhost!
+    service implementation/decode.py:laforge.local:0   # not run on localhost!
+    service implementation/alu.py:data.local:0         # not run on localhost!
+    service implementation/lsu.py:worf.local:0         # not run on localhost!
+    service implementation/commit.py:troi.local:0      # not run on localhost!
+    service implementation/l2.py:crusher.local:0       # not run on localhost!
     spawn
     config mainmem:peek_latency_in_cycles 25
     config fetch:l1ic_nsets 16
@@ -391,13 +397,82 @@ different machines on my network:
     run
     shutdown
 
-Note that the mainmem.py and stats.py services both execute on the local
-machine. For now, mainmem.py, because of the way launcher.py manages
-snapshots, restores, and loading the binary and its parameters into the 
-simulated main memory, must execute on `localhost`; stats.py runs on
-`localhost` so that the output (`/tmp/stats.json`) will be output to the
-local machine. Otherwise, _all_ the other services are free to execute on
-any other machines on the network. 
+Recall that the mainmem.py and stats.py services are spawned locally using
+the "--service" command line parameter.
+
+# Multicore Simulations
+
+Nebula also supports multicore simulations, and can place the services for
+each core on a single machine, and accommodate multiple cores spanning
+multiple machines. Consider the following modified Oroblanco init.nebula:
+
+    # Sample μService-SIMulator script
+    # core 0
+    service implementation/regfile.py:picard.local:0   # not run on localhost!
+    service implementation/fetch.py:picard.local:0     # not run on localhost!
+    service implementation/decode.py:picard.local:0    # not run on localhost!
+    service implementation/alu.py:picard.local:0       # not run on localhost!
+    service implementation/lsu.py:picard.local:0       # not run on localhost!
+    service implementation/commit.py:picard.local:0    # not run on localhost!
+    service implementation/l2.py:picard.local:0        # not run on localhost!
+    # core 1
+    service implementation/regfile.py:riker.local:1    # not run on localhost!
+    service implementation/fetch.py:riker.local:1      # not run on localhost!
+    service implementation/decode.py:riker.local:1     # not run on localhost!
+    service implementation/alu.py:riker.local:1        # not run on localhost!
+    service implementation/lsu.py:riker.local:1        # not run on localhost!
+    service implementation/commit.py:riker.local:1     # not run on localhost!
+    service implementation/l2.py:riker.local:1         # not run on localhost!
+    spawn
+    config mainmem:peek_latency_in_cycles 25
+    config fetch:l1ic_nsets 16
+    config fetch:l1ic_nways 2
+    config fetch:l1ic_nbytesperblock 16
+    config fetch:l1ic_evictionpolicy lru # random
+    config decode:buffer_capacity 16
+    config decode:btb_nentries 8
+    config decode:btb_nbytesperentry 8
+    config decode:btb_evictionpolicy lru # random
+    config alu:forwarding True
+    config lsu:l1dc_nsets 16
+    config lsu:l1dc_nways 2
+    config lsu:l1dc_nbytesperblock 16
+    config lsu:l1dc_evictionpolicy lru # random
+    config l2:l2_nsets 32
+    config l2:l2_nways 16
+    config l2:l2_nbytesperblock 16
+    config l2:l2_evictionpolicy lru # random
+    config l2:l2_hitlatency 5
+    config stats:output_filename /tmp/stats.json
+    run
+    shutdown
+
+Thus, all the services for core 0 are executed on the server picard.local,
+and all the services for core 1 are executed on the server riker.local.
+Both cores are Oroblanco cores, and both are identically configured. Both
+will commence execution when the init.nebula "run" command is executed by
+the launcher.
+
+To execute across N cores, it is necessary to supply N binaries and their
+parameters, e.g.:
+
+    python3 ../../launcher.py \
+        --log /tmp/oroblanco/sum \
+        --service ../../toolbox/stats.py:localhost:-1 implementation/mainmem.py:-1 \
+        --config stats:output_filename:/tmp/oroblanco/sum/stats.json \
+        mainmem:filename:/tmp/oroblanco/sum/mainmem.raw \
+        mainmem:capacity:$(( 2**32 )) \
+        --max_instructions $(( 10**5 )) \
+        -- \
+        12345 \
+        init.nebula \
+        ../../examples/bin/sum 2 3 5 7 11 13 , ../../examples/bin/sort 7 2 3 5
+
+where each binary-parameter set is separated by a comma.
+
+As the binaries execute, a rudimentary MMU (see: components/simplemmu/) will
+map addresses from core 0 to separate addresses from core 1 so that the two
+simulations can proceed concurrently without clobbering one another's state.
 
 # Sample Binaries
 
@@ -630,14 +705,13 @@ extend and enhance the simulator:
 1. perfect value predictor
 1. return address stack
 1. accelerated `mmap`-based main memory implementation
-1. implement new eviction policies (e.g., least frequently used) for SimpleCache
-and SimpleBTB
-1. multi-core support with cache sharing
+1. implement new eviction policies (e.g., least frequently used) for SimpleCache and SimpleBTB
 1. ARM instruction set support
 1. MIPS instruction set support
 1. x86_64 instruction set support
 1. SPARC v9 instruction set support
 1. sample Jupyter Notebook for fetching and processing data from MongoDB
+1. ~~multi-core support with cache sharing~~
 1. ~~syscall proxying~~
 1. ~~launch from binary's `_start` label rather than `main` label~~
 1. ~~tool for cataloging, indexing, and retrieving simulator runs~~
