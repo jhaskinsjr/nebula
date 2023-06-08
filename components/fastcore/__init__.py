@@ -156,7 +156,9 @@ class FastCore:
         self.service.tx({'committed': _increment})
         if 'shutdown' in _result.keys():
             self.service.tx({'info': 'ECALL {}... graceful shutdown'.format(int.from_bytes(_result.get('operands').get('syscall_num'), 'little'))})
-            self.service.tx({'shutdown': 1 + state.get('cycle')})
+            self.service.tx({'shutdown': {
+                'coreid': state.get('coreid'),
+            }})
             self.update({'shutdown': True})
     def getregister(self, regfile, reg):
         return regfile.getregister(regfile.registers, reg)
