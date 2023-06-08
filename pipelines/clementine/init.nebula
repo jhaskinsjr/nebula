@@ -14,8 +14,10 @@ service implementation/commit.py:localhost:0
 #service implementation/lsu.py:localhost:1
 #service implementation/commit.py:localhost:1
 spawn
-config mainmem:peek_latency_in_cycles 25
 config decode:buffer_capacity 32
+config mainmem:peek_latency_in_cycles 25
+config mainmem:filename /tmp/mainmem.raw
+config mainmem:capacity 4294967296
 config stats:output_filename /tmp/stats.json
 run
 shutdown

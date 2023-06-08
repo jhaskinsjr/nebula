@@ -16,7 +16,6 @@ service implementation/l2.py:localhost:0
 #service implementation/commit.py:localhost:1
 #service implementation/l2.py:localhost:1
 spawn
-config mainmem:peek_latency_in_cycles 25
 config fetch:l1ic_nsets 16
 config fetch:l1ic_nways 2
 config fetch:l1ic_nbytesperblock 16
@@ -31,10 +30,9 @@ config l2:l2_nways 16
 config l2:l2_nbytesperblock 16
 config l2:l2_evictionpolicy lru # random
 config l2:l2_hitlatency 5
+config mainmem:peek_latency_in_cycles 25
+config mainmem:filename /tmp/mainmem.raw
+config mainmem:capacity 4294967296
 config stats:output_filename /tmp/stats.json
-# Memory hierarhchy peek latencies...
-# - L1 peek-hit latency: 5**0 cycles
-# - L2 peek-hit latency: 5**1 cycles
-# - MM peek     latency: 5**2 cycles
 run
 shutdown

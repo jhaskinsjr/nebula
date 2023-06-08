@@ -11,6 +11,8 @@ service implementation/execute.py:localhost:0
 #service implementation/execute.py:localhost:1
 spawn
 config mainmem:peek_latency_in_cycles 25
+config mainmem:filename /tmp/mainmem.raw
+config mainmem:capacity 4294967296
 config stats:output_filename /tmp/stats.json
 run
 shutdown

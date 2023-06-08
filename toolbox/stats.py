@@ -75,7 +75,7 @@ if '__main__' == __name__:
                 state.update({'ack': False})
                 _service.tx({'info': 'state.config : {}'.format(state.get('config'))})
             elif 'config' == k:
-                logging.debug('config : {}'.format(v))
+                logging.info('config : {}'.format(v))
                 if state.get('service') != v.get('service'): continue
                 _field = v.get('field')
                 _val = v.get('val')

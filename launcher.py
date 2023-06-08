@@ -380,6 +380,10 @@ if __name__ == '__main__':
 #                    register(state.get('connections'), _coreid, 'set', 11, hex(8 + _sp))
 #                    register(state.get('connections'), _coreid, 'set', '%pc', hex(_pc + get_startsymbol(_binary, _start_symbol)))
 #                    logging.info('implied loadbin')
+                if len(args.cmdline): tx(state.get('connections'), {
+                    'binary': os.path.join(os.getcwd(), args.cmdline[0]),
+                })
+                for c in (args.config if args.config else []): config(state.get('connections'), *c.split(':'))
                 if len(args.cmdline):
                     state.update({'cmdline': ' '.join(args.cmdline)})
                     _sp = integer(args.loadbin[0])
@@ -419,12 +423,12 @@ if __name__ == '__main__':
                 state.update({'running': False})
             elif 'spawn' == cmd:
                 spawn(_services, args)
-                config(state.get('connections'), 'decode', 'toolchain', state.get('config').get('toolchain'))
-                if len(args.cmdline): tx(state.get('connections'), {
-                    'binary': os.path.join(os.getcwd(), args.cmdline[0]),
-                })
-                if args.config:
-                    for c in args.config: config(state.get('connections'), *c.split(':'))
+#                config(state.get('connections'), 'decode', 'toolchain', state.get('config').get('toolchain'))
+#                if len(args.cmdline): tx(state.get('connections'), {
+#                    'binary': os.path.join(os.getcwd(), args.cmdline[0]),
+#                })
+#                if args.config:
+#                    for c in args.config: config(state.get('connections'), *c.split(':'))
             else:
                 {
                     'service': lambda x: add_service(_services, args, x),
