@@ -529,5 +529,4 @@ if '__main__' == __name__:
                     _ret = _regfile.getregister(_regfile.get('registers'), _name)
                     _regfile.service.tx({'result': {'register': _ret}})
         if state.get('ack') and state.get('running'): _service.tx({'ack': {'cycle': state.get('cycle')}})
-    #_service.tx({'shutdown': None})
 

@@ -356,30 +356,6 @@ if __name__ == '__main__':
                 })
             elif 'run' == cmd:
                 assert not (len(args.cmdline) and args.restore), 'Both command line and --restore given!'
-#                _coreid = 0 # FIXME: just using coreid = 0 for now; this will need to be a loop
-#                if len(args.cmdline):
-#                    state.update({'cmdline': ' '.join(args.cmdline)})
-#                    _sp = integer(args.loadbin[0])
-#                    _pc = integer(args.loadbin[1])
-#                    _start_symbol = args.loadbin[2]
-#                    _binary = os.path.join(os.getcwd(), args.cmdline[0])
-#                    _args = tuple(args.cmdline[1:])
-#                    tx(state.get('connections'), {
-#                        'loadbin': {
-#                            'coreid': _coreid,
-#                            'start_symbol': _start_symbol,
-#                            'sp': _sp,
-#                            'pc': _pc,
-#                            'binary': _binary,
-#                            'args': ((_binary,) + _args),
-#                        }
-#                    })
-#                    register(state.get('connections'), _coreid, 'set', 2, hex(_sp))
-#                    register(state.get('connections'), _coreid, 'set', 4, '0xffff0000') # FIXME: is this necessary???
-#                    register(state.get('connections'), _coreid, 'set', 10, hex(1 + len(_args)))
-#                    register(state.get('connections'), _coreid, 'set', 11, hex(8 + _sp))
-#                    register(state.get('connections'), _coreid, 'set', '%pc', hex(_pc + get_startsymbol(_binary, _start_symbol)))
-#                    logging.info('implied loadbin')
                 if len(args.cmdline): tx(state.get('connections'), {
                     'binary': os.path.join(os.getcwd(), args.cmdline[0]),
                 })
@@ -423,12 +399,6 @@ if __name__ == '__main__':
                 state.update({'running': False})
             elif 'spawn' == cmd:
                 spawn(_services, args)
-#                config(state.get('connections'), 'decode', 'toolchain', state.get('config').get('toolchain'))
-#                if len(args.cmdline): tx(state.get('connections'), {
-#                    'binary': os.path.join(os.getcwd(), args.cmdline[0]),
-#                })
-#                if args.config:
-#                    for c in args.config: config(state.get('connections'), *c.split(':'))
             else:
                 {
                     'service': lambda x: add_service(_services, args, x),

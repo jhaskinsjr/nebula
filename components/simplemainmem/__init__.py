@@ -43,8 +43,6 @@ class SimpleMainMemory:
                 if not section: continue
                 _addr = pc + section.header.sh_addr
                 logging.info('{} : 0x{:08x} ({})'.format(section.name, _addr, section.data_size))
-#                os.lseek(self.get('fd'), _addr, os.SEEK_SET)
-#                os.write(self.get('fd'), section.data())
                 self.poke(_addr, section.data_size, section.data(), **{'coreid': coreid}) # FIXME: this assumes each section will be less than self.pagesize bytes
             _symbol_tables = [s for s in elffile.iter_sections() if isinstance(s, elftools.elf.elffile.SymbolTableSection)]
             _start = sum([list(filter(lambda s: start_symbol == s.name, tab.iter_symbols())) for tab in _symbol_tables], [])
@@ -75,15 +73,9 @@ class SimpleMainMemory:
         logging.info('loadbin(): len(_args) : {}'.format(sum(map(lambda a: len(a), _args))))
         for x, y in zip(_addr, _args):
             logging.info('loadbin(): @{:08x} : {} ({})'.format(x, y, len(y)))
-#        os.lseek(self.get('fd'), sp, os.SEEK_SET)
-#        os.write(self.get('fd'), _argc.to_bytes(8, 'little'))       # argc
         self.poke(sp, 8, _argc.to_bytes(8, 'little'), **{'coreid': coreid}) #argc
-#        for a in _addr:                                 # argv pointers
-#            os.write(self.get('fd'), a.to_bytes(8, 'little'))
         for x, a in enumerate(_addr):
             self.poke(sp + (1+x)*8, 8, a.to_bytes(8, 'little'), **{'coreid': coreid}) # argv pointers
-#        os.lseek(self.get('fd'), 8, os.SEEK_CUR)                    # NULL pointer
-#        os.write(self.get('fd'), bytes(''.join(_args), 'ascii'))    # argv data
         self.poke(sp + (1+len(_addr))*8, 8, (0).to_bytes(8, 'little'), **{'coreid': coreid})
         self.poke(sp + (2+len(_addr))*8, 8, bytes(''.join(_args), 'ascii'), **{'coreid': coreid})
         return _start_pc
@@ -116,7 +108,6 @@ class SimpleMainMemory:
     def update(self, d):
         self.__dict__.update(d)
     def do_tick(self, results, events):
-#        for ev in filter(lambda x: x, map(lambda y: y.get('mem'), events)):
         for _coreid, ev in map(lambda x: (x.get('coreid'), x.get('mem')), filter(lambda y: 'mem' in y.keys(), events)):
             _cmd = ev.get('cmd')
             _addr = ev.get('addr')
@@ -154,7 +145,6 @@ class SimpleMainMemory:
             os.write(_fd, bytes(data))
         except:
             pass # FIXME: Something other than ignoring the issue should happen here!
-#        os.write(_fd, data.to_bytes(size, 'little'))
     def peek(self, addr, size, **kwargs):
         # return : list of unsigned char, e.g., to make an 8-byte quadword from
         # a list, X, of N bytes -> int.from_bytes(X, 'little')
