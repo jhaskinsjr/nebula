@@ -11,7 +11,7 @@ import json
 
 def do_tick(service, state, results, events):
     for _c, _stats in map(lambda y: (y.get('coreid', -1), y.get('stats')), filter(lambda x: x.get('stats'), events)):
-        logging.info('do_tick(): [{:04}] _stats : {}'.format(_c, _stats))
+        logging.debug('do_tick(): [{:04}] _stats : {}'.format(_c, _stats))
         service.tx({'info': '_stats : {}'.format(_stats)})
         _s = _stats.get('service')
         _t = _stats.get('type')

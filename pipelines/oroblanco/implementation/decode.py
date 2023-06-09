@@ -108,7 +108,7 @@ def do_issue(service, state):
     for _dec in state.get('remove_from_decoded'): state.get('decoded').remove(_dec)
     state.get('remove_from_decoded').clear()
 def do_tick(service, state, results, events):
-    logging.info('do_tick(): results : {}'.format(results))
+    logging.debug('do_tick(): results : {}'.format(results))
     state.get('forward').clear()
     for _reg in map(lambda y: y.get('register'), filter(lambda x: x.get('register'), results)):
         if '%pc' != _reg.get('name'): continue

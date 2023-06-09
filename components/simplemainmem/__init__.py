@@ -221,7 +221,7 @@ if '__main__' == __name__:
                 state.restore(_snapshot_filename, _addr)
                 state.service.tx({'ack': {'cycle': state.get('cycle')}})
             elif 'tick' == k:
-                logging.info('tick - v : {}'.format(v))
+                logging.debug('tick - v : {}'.format(v))
                 state.update({'cycle': v.get('cycle')})
                 if v.get('snapshot'):
                     _addr = v.get('snapshot').get('addr')
