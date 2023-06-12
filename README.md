@@ -35,7 +35,7 @@ example, we will use the Oroblanco pipeline:
 
     python3 ../../launcher.py \
         --log /tmp/oroblanco/sum \
-        --service ../../toolbox/stats.py:localhost:-1 implementation/mainmem.py:-1 \
+        --service ../../toolbox/stats.py:localhost:-1 implementation/mainmem.py:localhost:-1 \
         --config stats:output_filename:/tmp/oroblanco/sum/stats.json \
         mainmem:filename:/tmp/oroblanco/sum/mainmem.raw \
         mainmem:capacity:$(( 2**32 )) \
