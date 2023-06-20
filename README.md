@@ -53,17 +53,33 @@ parameters "2 3 5 7 11 13", into the simulated main memory. With this
 foundation established, the simulator will execute a maximum of 100,000
 simulated instructions.
 
-## Simulator Output Artifacts
+**Step 7.** Examine the output:
 
-Once the simulation completes, the directory "/tmp/bergamot/sum" will
-contain one log file for each of the services that executed during the
-simulation, and a "stats.json" file, which contains statistics such as
-number of simulated cycles, counts of the number of times each register
-was fetched/written, counts of the number of committed instructions,
-number of times each instruction type (e.g., ADD, ADDI, SD, SW) was decoded,
-number of times each instruction type was executed, etc.
+When the simulator finishes, each module will emit its own log file with
+information about the operations performed in that module; to wit:
 
-Consider the following example JSON output:
+* **/tmp/oroblanco/sum/launcher.py.log**: detailed
+information about the operation of the Oroblanco pipeline
+* **/tmp/oroblanco/sum/mainmem.py.log**: loading the binary and placing the
+command line arguments
+* **/tmp/oroblanco/sum/stats.py.log**: module configuration and the final
+JSON object
+* **/tmp/oroblanco/sum/0000_regfile.py.log**: dump of the registers of
+core 0 at the conclusion of the simulation
+* **/tmp/oroblanco/sum/0000_alu.py.log**: instructions that executed
+on core 0 (irrespective of whether they ultimately retire)
+* **/tmp/oroblanco/sum/0000_commit.py.log**: all instructions that
+retired on core 0
+
+These log files assist with debugging and gaining deeper insights about the
+operation of the simulator and the pipeline designs that the simulator
+models. Some modules' log files (e.g., 0000_fetch.py.log,
+0000_decode.py.log) will be empty. This does not signify a malfunction; the
+module just did not report on any events, but could be modified to do so. 
+
+## JSON Output
+
+Consider the following example stats.json output:
 
     {
         "message_size": {
