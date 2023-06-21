@@ -70,6 +70,8 @@ core 0 at the conclusion of the simulation
 on core 0 (irrespective of whether they ultimately retire)
 * **/tmp/oroblanco/sum/0000_commit.py.log**: all instructions that
 retired on core 0
+* **/tmp/oroblanco/sum/stats.json**: counts of key events that occurred
+during the simulation for each core
 
 These log files assist with debugging and gaining deeper insights about the
 operation of the simulator and the pipeline designs that the simulator
