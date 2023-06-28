@@ -56,7 +56,18 @@ simulated instructions.
 **Step 7.** Examine the output:
 
 When the simulator finishes, each module will emit its own log file with
-information about the operations performed in that module; to wit:
+information about the operations performed in that module. The `sum`
+example binary returns the sum of the numbers passed on the command line.
+In the typical RISC-V Application Binary Interface, the value returned
+by a function (in this case, `main`) is written into register 10; to wit:
+
+    egrep "register 10" /tmp/oroblanco/sum/0000_regfile.py.log
+
+which should return
+
+    register 10 : [41, 0, 0, 0, 0, 0, 0, 0]
+
+Several other modules emit log files, as well:
 
 * **/tmp/oroblanco/sum/launcher.py.log**: detailed
 information about the operation of the Oroblanco pipeline
@@ -64,8 +75,6 @@ information about the operation of the Oroblanco pipeline
 command line arguments
 * **/tmp/oroblanco/sum/stats.py.log**: module configuration and the final
 JSON object
-* **/tmp/oroblanco/sum/0000_regfile.py.log**: dump of the registers of
-core 0 at the conclusion of the simulation
 * **/tmp/oroblanco/sum/0000_alu.py.log**: instructions that executed
 on core 0 (irrespective of whether they ultimately retire)
 * **/tmp/oroblanco/sum/0000_commit.py.log**: all instructions that
