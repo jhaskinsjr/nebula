@@ -23,7 +23,7 @@ class Service:
             str: lambda : json.dumps({'text': msg}),
             dict: lambda : json.dumps(msg),
         }.get(type(msg), lambda : json.dumps({'error': 'Undeliverable object'}))().encode('ascii')
-        assert self.MESSAGE_SIZE >= len(_message), 'Message too big!'
+        assert self.MESSAGE_SIZE >= len(_message), 'Message ({} B) too big!'.format(len(_message))
         _message += (' ' * (self.MESSAGE_SIZE - len(_message))).encode('ascii')
         self.s.send(_message)
 
