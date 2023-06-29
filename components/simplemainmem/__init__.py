@@ -7,6 +7,7 @@ import itertools
 import logging
 import time
 import subprocess
+import itertools
 
 import elftools.elf.elffile
 
@@ -14,11 +15,20 @@ import service
 import toolbox
 import simplemmu
 
+def log2(A):
+    return (
+        None
+        if 1 > A else
+        len(list(itertools.takewhile(lambda x: x, map(lambda y: A >> y, range(A))))) - 1
+    )
+
 class SimpleMainMemory:
     def __init__(self, name, launcher, pagesize, s=None):
         self.name = name
         self.service = (service.Service(self.get('name'), self.get('coreid', -1), launcher.get('host'), launcher.get('port')) if not s else s)
         self.pagesize = pagesize
+        self.pageoffsetmask = self.pagesize - 1
+        self.pageoffsetbits = log2(self.pagesize)
         self.mmu = simplemmu.SimpleMMU(self.pagesize)
         self.cycle = 0
         self.active = True
@@ -131,7 +141,66 @@ class SimpleMainMemory:
             else:
                 logging.fatal('ev : {}'.format(ev))
                 assert False
+    def valid_access(self, addr, size):
+        retval  = addr >= 0
+        retval &= (addr + size) < self.get('config').get('capacity')
+        return retval
+    def do_poke(self, addr, data, **kwargs):
+        # data : list of unsigned char, e.g., to make an integer, X, into a list
+        # of N little-endian-formatted bytes -> list(X.to_bytes(N, 'little'))
+        logging.debug('do_poke({:08x}, ..., {}) -> {:08x}'.format(addr, kwargs, addr))
+        _addr = (self.mmu.translate(addr, kwargs.get('coreid')) if not kwargs.get('physical') else addr)
+        _fd = self.get('fd')
+        try:
+            os.lseek(_fd, _addr, os.SEEK_SET)
+            os.write(_fd, bytes(data))
+        except:
+            pass # FIXME: Something other than ignoring the issue should happen here!
     def poke(self, addr, size, data, **kwargs):
+        def accesses(addr, size, data, **kwargs):
+            _addrs = [addr] + list(map(lambda x: (x * self.pagesize) + ((addr | self.pageoffsetmask) ^ self.pageoffsetmask), range(1 + (size // self.pagesize))))[1:]
+            _sizes = [min((((addr | self.pageoffsetmask) ^ self.pageoffsetmask) + self.pagesize) - addr, size)]
+            _datas, data = [data[:_sizes[0]]], data[_sizes[0]:]
+            for _ in _addrs[1:]:
+                _sizes += [min(self.pagesize, len(data))]
+                _s = _sizes[-1]
+                _d, data = data[:_s], data[_s:]
+                _datas += [_d]
+            logging.debug('poke.accesses(): _addrs : ({}) {}'.format(kwargs.get('coreid'), _addrs))
+            return zip(_addrs, _datas)
+        assert isinstance(kwargs.get('coreid'), int)
+        logging.debug('poke({:08x}, {}, ..., {}) -> {:08x}'.format(addr, size, kwargs, addr))
+        if not self.valid_access(addr, size):
+            logging.info('poke({:08}, {}, ..., {}): Access does not fit in memory boundaries!'.format(addr, size, kwargs))
+            return
+        for a, d in accesses(addr, len(data), data, **kwargs): self.do_poke(a, d, **kwargs)
+    def do_peek(self, addr, size, **kwargs):
+        # return : list of unsigned char, e.g., to make an 8-byte quadword from
+        # a list, X, of N bytes -> int.from_bytes(X, 'little')
+        assert isinstance(kwargs.get('coreid'), int)
+        _addr = (self.mmu.translate(addr, kwargs.get('coreid')) if not kwargs.get('physical') else addr)
+        logging.debug('do_peek({}, {}, {}) -> {:08x}'.format(addr, size, kwargs, _addr))
+        _fd = self.get('fd')
+        try:
+            os.lseek(_fd, _addr, os.SEEK_SET)
+            return list(os.read(_fd, size))
+        except:
+            return []
+    def peek(self, addr, size, **kwargs):
+        def accesses(addr, size, **kwargs):
+            _addrs = [addr] + list(map(lambda x: (x * self.pagesize) + ((addr | self.pageoffsetmask) ^ self.pageoffsetmask), range(1 + (size // self.pagesize))))[1:]
+            _sizes = [min((((addr | self.pageoffsetmask) ^ self.pageoffsetmask) + self.pagesize) - addr, size)]
+            for _ in _addrs[1:]:
+                _sizes += [min(self.pagesize, size - sum(_sizes))]
+            logging.info('peek.accesses({}, {}, {}): ({}) {}'.format(addr, size, kwargs, kwargs.get('coreid'), list(zip(_addrs, _sizes))))
+            return zip(_addrs, _sizes)
+        assert isinstance(kwargs.get('coreid'), int)
+        logging.debug('peek({:08x}, {}, ..., {}) -> {:08x}'.format(addr, size, kwargs, addr))
+        if not self.valid_access(addr, size):
+            logging.info('peek({:08}, {}, ..., {}): Access does not fit in memory boundaries!'.format(addr, size, kwargs))
+            return []
+        return sum([self.do_peek(a, s, **kwargs) for a, s in accesses(addr, size, **kwargs)], [])
+    def poke_0(self, addr, size, data, **kwargs):
         # data : list of unsigned char, e.g., to make an integer, X, into a list
         # of N little-endian-formatted bytes -> list(X.to_bytes(N, 'little'))
         # FIXME: handle page-crossing
@@ -145,7 +214,7 @@ class SimpleMainMemory:
             os.write(_fd, bytes(data))
         except:
             pass # FIXME: Something other than ignoring the issue should happen here!
-    def peek(self, addr, size, **kwargs):
+    def peek_0(self, addr, size, **kwargs):
         # return : list of unsigned char, e.g., to make an 8-byte quadword from
         # a list, X, of N bytes -> int.from_bytes(X, 'little')
         # FIXME: handle page-crossing
