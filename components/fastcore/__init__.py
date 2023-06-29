@@ -474,7 +474,7 @@ if '__main__' == __name__:
                     'regfile': _regfile,
                     'mainmem': _mainmem,
                     'system': _system,
-                    state.get('service'): state,
+                    state.get('name'): state,
                 }
                 if v.get('service') not in _components.keys(): continue
                 _target = _components.get(v.get('service'))
