@@ -73,7 +73,7 @@ class SimpleCache:
         return _retval
     def poke(self, addr, data):
         _offset = self.offset(addr)
-        assert self.fits(addr, len(data)), 'request does not fit in block! ({:08x} {} {} {})'.format(addr, _offset, len(data))
+        assert self.fits(addr, len(data)), 'request does not fit in block! ({:08x} {} {})'.format(addr, _offset, len(data))
         _set = self.sets[self.setnum(addr)]
         _w = self.waynum(addr, _set)
         _w = (_w if isinstance(_w, int) else self.victim(_set))
