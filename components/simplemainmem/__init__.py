@@ -192,7 +192,7 @@ class SimpleMainMemory:
             _sizes = [min((((addr | self.pageoffsetmask) ^ self.pageoffsetmask) + self.pagesize) - addr, size)]
             for _ in _addrs[1:]:
                 _sizes += [min(self.pagesize, size - sum(_sizes))]
-            logging.info('peek.accesses({}, {}, {}): ({}) {}'.format(addr, size, kwargs, kwargs.get('coreid'), list(zip(_addrs, _sizes))))
+            logging.debug('peek.accesses({}, {}, {}): ({}) {}'.format(addr, size, kwargs, kwargs.get('coreid'), list(zip(_addrs, _sizes))))
             return zip(_addrs, _sizes)
         assert isinstance(kwargs.get('coreid'), int)
         logging.debug('peek({:08x}, {}, ..., {}) -> {:08x}'.format(addr, size, kwargs, addr))
@@ -200,34 +200,6 @@ class SimpleMainMemory:
             logging.info('peek({:08}, {}, ..., {}): Access does not fit in memory boundaries!'.format(addr, size, kwargs))
             return []
         return sum([self.do_peek(a, s, **kwargs) for a, s in accesses(addr, size, **kwargs)], [])
-    def poke_0(self, addr, size, data, **kwargs):
-        # data : list of unsigned char, e.g., to make an integer, X, into a list
-        # of N little-endian-formatted bytes -> list(X.to_bytes(N, 'little'))
-        # FIXME: handle page-crossing
-        # FIXME: limit len(data) to self.pagesize
-        assert isinstance(kwargs.get('coreid'), int)
-        _addr = (self.mmu.translate(addr, kwargs.get('coreid')) if not kwargs.get('physical') else addr)
-        logging.debug('poke({:08x}, {}, ..., {}) -> {:08x}'.format(addr, size, kwargs, _addr))
-        _fd = self.get('fd')
-        try:
-            os.lseek(_fd, _addr, os.SEEK_SET)
-            os.write(_fd, bytes(data))
-        except:
-            pass # FIXME: Something other than ignoring the issue should happen here!
-    def peek_0(self, addr, size, **kwargs):
-        # return : list of unsigned char, e.g., to make an 8-byte quadword from
-        # a list, X, of N bytes -> int.from_bytes(X, 'little')
-        # FIXME: handle page-crossing
-        # FIXME: limit size to self.pagesize
-        assert isinstance(kwargs.get('coreid'), int)
-        _addr = (self.mmu.translate(addr, kwargs.get('coreid')) if not kwargs.get('physical') else addr)
-        logging.debug('peek({}, {}, {}) -> {:08x}'.format(addr, size, kwargs, _addr))
-        _fd = self.get('fd')
-        try:
-            os.lseek(_fd, _addr, os.SEEK_SET)
-            return list(os.read(_fd, size))
-        except:
-            return []
 
 
 if '__main__' == __name__:
