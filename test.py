@@ -819,16 +819,19 @@ class Harness:
         ).split())
         _script  = ['# μService-SIMulator test harness script']
 #        _script += ['port 10000']
-        _script += ['service pipelines/bergamot/implementation/{}:localhost'.format(s) for s in ('simplecore.py', 'regfile.py', 'mainmem.py', 'decode.py', 'execute.py')]
+        _script += ['service pipelines/bergamot/implementation/{}:localhost:0'.format(s) for s in ('simplecore.py', 'regfile.py', 'decode.py', 'execute.py')]
         _script += ['spawn']
         _script += ['config mainmem:peek_latency_in_cycles 1']
-        _script += ['loadbin 0x{:08x} 0x{:08x} _start'.format(self._sp, self._start_pc)]
+        _script += ['config mainmem:filename {}'.format(os.path.join(args.dir, 'mainmem.raw'))]
+        _script += ['config mainmem:capacity {}'.format(2**32)]
+#        _script += ['loadbin 0x{:08x} 0x{:08x} _start'.format(self._sp, self._start_pc)]
 #        _script += ['config max_instructions {}'.format(_n_instruction)]
         _script += ['run']
         _script += ['shutdown']
         with open(os.path.join(args.dir, 'test.nebula'), 'w+') as fp: fp.write('\n'.join(_script))
-        _cmd = 'python3 launcher.py --log {} --max_instructions {} -- {} {} {}'.format(
+        _cmd = 'python3 launcher.py --log {} --service {} --max_instructions {} -- {} {} {}'.format(
             args.dir,
+            'pipelines/bergamot/implementation/mainmem.py:localhost:-1',
             _n_instruction,
             args.port,
             os.path.join(args.dir, 'test.nebula'),
@@ -843,7 +846,7 @@ class Harness:
         if args.debug: print('\n'.join(_stdout))
         _regfile_py_log = None
         os.sync()
-        with open(os.path.join(args.dir, 'regfile.py.log'), 'r') as fp: _regfile_py_log = fp.readlines()
+        with open(os.path.join(args.dir, '0000_regfile.py.log'), 'r') as fp: _regfile_py_log = fp.readlines()
         _x31 = list(filter(lambda x: re.search('register 31 : ', x), _regfile_py_log))[-1].split(':')[1]
         _x31 = eval(_x31)
         print('do_test(..., {}): {} (_correct_answer) ?= {} (_x31) -> {}'.format(
