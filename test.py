@@ -29,6 +29,13 @@ class Harness:
             'c.slli': self.c_slli,
             'c.srli': self.c_srli,
             'c.srai': self.c_srai,
+            'lb': self.lb,
+            'lh': self.lh,
+            'lw': self.lw,
+            'ld': self.ld,
+            'lbu': self.lbu,
+            'lhu': self.lhu,
+            'lwu': self.lwu,
             'slli': self.slli,
             'slliw': self.slliw,
             'srli': self.srli,
@@ -255,6 +262,321 @@ class Harness:
         _correct_answer &= 2**64 - 1
         _correct_answer = int.from_bytes(struct.Struct('<Q').pack(_correct_answer), 'little')
         _correct_answer = list(_correct_answer.to_bytes(8, 'little'))
+        return _correct_answer, _assembly
+    def lb(self):
+        _nbytes = 1
+        _nbits = _nbytes * 8
+        _const_0u = random.randint(0, 2**20 - 1)
+        _const_0l = random.randint(-2**11, 2**11 - 1)
+        _const_1u = random.randint(0, 2**20 - 1)
+        _const_1l = random.randint(-2**11, 2**11 - 1)
+        _assembly  = ['lui x15, {}'.format(_const_0u)]
+        _assembly += ['slli x15, x15, 32']
+        _assembly += ['srli x15, x15, 32']
+        _assembly += ['ori x17, x0, {}'.format(_const_0l)]
+        _assembly += ['slli x17, x17, {}'.format(64 - 12)]
+        _assembly += ['srli x17, x17, {}'.format(64 - 12)]
+        _assembly += ['or x15, x15, x17']
+        _assembly += ['slli x15, x15, 32']
+        _assembly += ['lui x16, {}'.format(_const_1u)]
+        _assembly += ['slli x16, x16, 32']
+        _assembly += ['srli x16, x16, 32']
+        _assembly += ['ori x17, x0, {}'.format(_const_1l)]
+        _assembly += ['slli x17, x17, {}'.format(64 - 12)]
+        _assembly += ['srli x17, x17, {}'.format(64 - 12)]
+        _assembly += ['or x16, x16, x17']
+        _assembly += ['or x15, x15, x16']
+        _assembly += ['ori x18, x0, 0x1']
+        _assembly += ['slli x18, x18, 20']
+        _assembly += ['sd x15, 0(x18)']
+        _assembly += ['lb x31, 0(x18)']
+        _correct_answer  = (_const_0u << 12)
+        _correct_answer |= (_const_0l & ((2**12) - 1))
+        _correct_answer <<= 32
+        _correct_answer |= (_const_1u << 12)
+        _correct_answer |= (_const_1l & ((2**12) - 1))
+        _correct_answer &= (2 ** 64) - 1
+#        print('_correct_answer : {:016x}'.format(_correct_answer))
+        _correct_answer &= 2**_nbits - 1
+        _sign = _correct_answer & (1 << (_nbits - 1))
+#        print('_correct_answer : {}'.format(_correct_answer))
+        _correct_answer = list(_correct_answer.to_bytes(_nbytes, 'little'))
+        _correct_answer += ([0xff] * (8 - _nbytes) if _sign else [0] * (8 - _nbytes))
+#        print('_correct_answer : {}'.format(_correct_answer))
+#        print('_const_0u       : {:05x}'.format(_const_0u))
+#        print('_const_0l       : {:03x}'.format(_const_0l & ((2**32) - 1)))
+#        print('_const_1u       : {:05x}'.format(_const_1u))
+#        print('_const_1l       : {:03x}'.format(_const_1l & ((2**32) - 1)))
+        return _correct_answer, _assembly
+    def lh(self):
+        _nbytes = 2
+        _nbits = _nbytes * 8
+        _const_0u = random.randint(0, 2**20 - 1)
+        _const_0l = random.randint(-2**11, 2**11 - 1)
+        _const_1u = random.randint(0, 2**20 - 1)
+        _const_1l = random.randint(-2**11, 2**11 - 1)
+        _assembly  = ['lui x15, {}'.format(_const_0u)]
+        _assembly += ['slli x15, x15, 32']
+        _assembly += ['srli x15, x15, 32']
+        _assembly += ['ori x17, x0, {}'.format(_const_0l)]
+        _assembly += ['slli x17, x17, {}'.format(64 - 12)]
+        _assembly += ['srli x17, x17, {}'.format(64 - 12)]
+        _assembly += ['or x15, x15, x17']
+        _assembly += ['slli x15, x15, 32']
+        _assembly += ['lui x16, {}'.format(_const_1u)]
+        _assembly += ['slli x16, x16, 32']
+        _assembly += ['srli x16, x16, 32']
+        _assembly += ['ori x17, x0, {}'.format(_const_1l)]
+        _assembly += ['slli x17, x17, {}'.format(64 - 12)]
+        _assembly += ['srli x17, x17, {}'.format(64 - 12)]
+        _assembly += ['or x16, x16, x17']
+        _assembly += ['or x15, x15, x16']
+        _assembly += ['ori x18, x0, 0x1']
+        _assembly += ['slli x18, x18, 20']
+        _assembly += ['sd x15, 0(x18)']
+        _assembly += ['lh x31, 0(x18)']
+        _correct_answer  = (_const_0u << 12)
+        _correct_answer |= (_const_0l & ((2**12) - 1))
+        _correct_answer <<= 32
+        _correct_answer |= (_const_1u << 12)
+        _correct_answer |= (_const_1l & ((2**12) - 1))
+        _correct_answer &= (2 ** 64) - 1
+#        print('_correct_answer : {:016x} ({})'.format(_correct_answer, list(_correct_answer.to_bytes(8, 'little'))))
+        _correct_answer &= 2**_nbits - 1
+        _sign = _correct_answer & (1 << (_nbits - 1))
+#        print('_correct_answer : {}'.format(_correct_answer))
+        _correct_answer = list(_correct_answer.to_bytes(_nbytes, 'little'))
+        _correct_answer += ([0xff] * (8 - _nbytes) if _sign else [0] * (8 - _nbytes))
+#        print('_correct_answer : {}'.format(_correct_answer))
+#        print('_const_0u       : {:05x}'.format(_const_0u))
+#        print('_const_0l       : {:03x}'.format(_const_0l & ((2**32) - 1)))
+#        print('_const_1u       : {:05x}'.format(_const_1u))
+#        print('_const_1l       : {:03x}'.format(_const_1l & ((2**32) - 1)))
+        return _correct_answer, _assembly
+    def lw(self):
+        _nbytes = 4
+        _nbits = _nbytes * 8
+        _const_0u = random.randint(0, 2**20 - 1)
+        _const_0l = random.randint(-2**11, 2**11 - 1)
+        _const_1u = random.randint(0, 2**20 - 1)
+        _const_1l = random.randint(-2**11, 2**11 - 1)
+        _assembly  = ['lui x15, {}'.format(_const_0u)]
+        _assembly += ['slli x15, x15, 32']
+        _assembly += ['srli x15, x15, 32']
+        _assembly += ['ori x17, x0, {}'.format(_const_0l)]
+        _assembly += ['slli x17, x17, {}'.format(64 - 12)]
+        _assembly += ['srli x17, x17, {}'.format(64 - 12)]
+        _assembly += ['or x15, x15, x17']
+        _assembly += ['slli x15, x15, 32']
+        _assembly += ['lui x16, {}'.format(_const_1u)]
+        _assembly += ['slli x16, x16, 32']
+        _assembly += ['srli x16, x16, 32']
+        _assembly += ['ori x17, x0, {}'.format(_const_1l)]
+        _assembly += ['slli x17, x17, {}'.format(64 - 12)]
+        _assembly += ['srli x17, x17, {}'.format(64 - 12)]
+        _assembly += ['or x16, x16, x17']
+        _assembly += ['or x15, x15, x16']
+        _assembly += ['ori x18, x0, 0x1']
+        _assembly += ['slli x18, x18, 20']
+        _assembly += ['sd x15, 0(x18)']
+        _assembly += ['lw x31, 0(x18)']
+        _correct_answer  = (_const_0u << 12)
+        _correct_answer |= (_const_0l & ((2**12) - 1))
+        _correct_answer <<= 32
+        _correct_answer |= (_const_1u << 12)
+        _correct_answer |= (_const_1l & ((2**12) - 1))
+        _correct_answer &= (2 ** 64) - 1
+#        print('_correct_answer : {:016x} ({})'.format(_correct_answer, list(_correct_answer.to_bytes(8, 'little'))))
+        _correct_answer &= 2**_nbits - 1
+        _sign = _correct_answer & (1 << (_nbits - 1))
+#        print('_correct_answer : {}'.format(_correct_answer))
+        _correct_answer = list(_correct_answer.to_bytes(_nbytes, 'little'))
+        _correct_answer += ([0xff] * (8 - _nbytes) if _sign else [0] * (8 - _nbytes))
+#        print('_correct_answer : {}'.format(_correct_answer))
+#        print('_const_0u       : {:05x}'.format(_const_0u))
+#        print('_const_0l       : {:03x}'.format(_const_0l & ((2**32) - 1)))
+#        print('_const_1u       : {:05x}'.format(_const_1u))
+#        print('_const_1l       : {:03x}'.format(_const_1l & ((2**32) - 1)))
+        return _correct_answer, _assembly
+    def ld(self):
+        _nbytes = 8
+        _nbits = _nbytes * 8
+        _const_0u = random.randint(0, 2**20 - 1)
+        _const_0l = random.randint(-2**11, 2**11 - 1)
+        _const_1u = random.randint(0, 2**20 - 1)
+        _const_1l = random.randint(-2**11, 2**11 - 1)
+        _assembly  = ['lui x15, {}'.format(_const_0u)]
+        _assembly += ['slli x15, x15, 32']
+        _assembly += ['srli x15, x15, 32']
+        _assembly += ['ori x17, x0, {}'.format(_const_0l)]
+        _assembly += ['slli x17, x17, {}'.format(64 - 12)]
+        _assembly += ['srli x17, x17, {}'.format(64 - 12)]
+        _assembly += ['or x15, x15, x17']
+        _assembly += ['slli x15, x15, 32']
+        _assembly += ['lui x16, {}'.format(_const_1u)]
+        _assembly += ['slli x16, x16, 32']
+        _assembly += ['srli x16, x16, 32']
+        _assembly += ['ori x17, x0, {}'.format(_const_1l)]
+        _assembly += ['slli x17, x17, {}'.format(64 - 12)]
+        _assembly += ['srli x17, x17, {}'.format(64 - 12)]
+        _assembly += ['or x16, x16, x17']
+        _assembly += ['or x15, x15, x16']
+        _assembly += ['ori x18, x0, 0x1']
+        _assembly += ['slli x18, x18, 20']
+        _assembly += ['sd x15, 0(x18)']
+        _assembly += ['ld x31, 0(x18)']
+        _correct_answer  = (_const_0u << 12)
+        _correct_answer |= (_const_0l & ((2**12) - 1))
+        _correct_answer <<= 32
+        _correct_answer |= (_const_1u << 12)
+        _correct_answer |= (_const_1l & ((2**12) - 1))
+        _correct_answer &= (2 ** 64) - 1
+#        print('_correct_answer : {:016x} ({})'.format(_correct_answer, list(_correct_answer.to_bytes(8, 'little'))))
+        _correct_answer &= 2**_nbits - 1
+        _sign = _correct_answer & (1 << (_nbits - 1))
+#        print('_correct_answer : {}'.format(_correct_answer))
+        _correct_answer = list(_correct_answer.to_bytes(_nbytes, 'little'))
+        _correct_answer += ([0xff] * (8 - _nbytes) if _sign else [0] * (8 - _nbytes))
+#        print('_correct_answer : {}'.format(_correct_answer))
+#        print('_const_0u       : {:05x}'.format(_const_0u))
+#        print('_const_0l       : {:03x}'.format(_const_0l & ((2**32) - 1)))
+#        print('_const_1u       : {:05x}'.format(_const_1u))
+#        print('_const_1l       : {:03x}'.format(_const_1l & ((2**32) - 1)))
+        return _correct_answer, _assembly
+    def lbu(self):
+        _nbytes = 1
+        _nbits = _nbytes * 8
+        _const_0u = random.randint(0, 2**20 - 1)
+        _const_0l = random.randint(-2**11, 2**11 - 1)
+        _const_1u = random.randint(0, 2**20 - 1)
+        _const_1l = random.randint(-2**11, 2**11 - 1)
+        _assembly  = ['lui x15, {}'.format(_const_0u)]
+        _assembly += ['slli x15, x15, 32']
+        _assembly += ['srli x15, x15, 32']
+        _assembly += ['ori x17, x0, {}'.format(_const_0l)]
+        _assembly += ['slli x17, x17, {}'.format(64 - 12)]
+        _assembly += ['srli x17, x17, {}'.format(64 - 12)]
+        _assembly += ['or x15, x15, x17']
+        _assembly += ['slli x15, x15, 32']
+        _assembly += ['lui x16, {}'.format(_const_1u)]
+        _assembly += ['slli x16, x16, 32']
+        _assembly += ['srli x16, x16, 32']
+        _assembly += ['ori x17, x0, {}'.format(_const_1l)]
+        _assembly += ['slli x17, x17, {}'.format(64 - 12)]
+        _assembly += ['srli x17, x17, {}'.format(64 - 12)]
+        _assembly += ['or x16, x16, x17']
+        _assembly += ['or x15, x15, x16']
+        _assembly += ['ori x18, x0, 0x1']
+        _assembly += ['slli x18, x18, 20']
+        _assembly += ['sd x15, 0(x18)']
+        _assembly += ['lbu x31, 0(x18)']
+        _correct_answer  = (_const_0u << 12)
+        _correct_answer |= (_const_0l & ((2**12) - 1))
+        _correct_answer <<= 32
+        _correct_answer |= (_const_1u << 12)
+        _correct_answer |= (_const_1l & ((2**12) - 1))
+        _correct_answer &= (2 ** 64) - 1
+#        print('_correct_answer : {:016x}'.format(_correct_answer))
+        _correct_answer &= 2**_nbits - 1
+        _sign = _correct_answer & (1 << (_nbits - 1))
+#        print('_correct_answer : {}'.format(_correct_answer))
+        _correct_answer = list(_correct_answer.to_bytes(_nbytes, 'little'))
+        _correct_answer += [0] * (8 - _nbytes)
+#        print('_correct_answer : {}'.format(_correct_answer))
+#        print('_const_0u       : {:05x}'.format(_const_0u))
+#        print('_const_0l       : {:03x}'.format(_const_0l & ((2**32) - 1)))
+#        print('_const_1u       : {:05x}'.format(_const_1u))
+#        print('_const_1l       : {:03x}'.format(_const_1l & ((2**32) - 1)))
+        return _correct_answer, _assembly
+    def lhu(self):
+        _nbytes = 2
+        _nbits = _nbytes * 8
+        _const_0u = random.randint(0, 2**20 - 1)
+        _const_0l = random.randint(-2**11, 2**11 - 1)
+        _const_1u = random.randint(0, 2**20 - 1)
+        _const_1l = random.randint(-2**11, 2**11 - 1)
+        _assembly  = ['lui x15, {}'.format(_const_0u)]
+        _assembly += ['slli x15, x15, 32']
+        _assembly += ['srli x15, x15, 32']
+        _assembly += ['ori x17, x0, {}'.format(_const_0l)]
+        _assembly += ['slli x17, x17, {}'.format(64 - 12)]
+        _assembly += ['srli x17, x17, {}'.format(64 - 12)]
+        _assembly += ['or x15, x15, x17']
+        _assembly += ['slli x15, x15, 32']
+        _assembly += ['lui x16, {}'.format(_const_1u)]
+        _assembly += ['slli x16, x16, 32']
+        _assembly += ['srli x16, x16, 32']
+        _assembly += ['ori x17, x0, {}'.format(_const_1l)]
+        _assembly += ['slli x17, x17, {}'.format(64 - 12)]
+        _assembly += ['srli x17, x17, {}'.format(64 - 12)]
+        _assembly += ['or x16, x16, x17']
+        _assembly += ['or x15, x15, x16']
+        _assembly += ['ori x18, x0, 0x1']
+        _assembly += ['slli x18, x18, 20']
+        _assembly += ['sd x15, 0(x18)']
+        _assembly += ['lhu x31, 0(x18)']
+        _correct_answer  = (_const_0u << 12)
+        _correct_answer |= (_const_0l & ((2**12) - 1))
+        _correct_answer <<= 32
+        _correct_answer |= (_const_1u << 12)
+        _correct_answer |= (_const_1l & ((2**12) - 1))
+        _correct_answer &= (2 ** 64) - 1
+#        print('_correct_answer : {:016x} ({})'.format(_correct_answer, list(_correct_answer.to_bytes(8, 'little'))))
+        _correct_answer &= 2**_nbits - 1
+        _sign = _correct_answer & (1 << (_nbits - 1))
+#        print('_correct_answer : {}'.format(_correct_answer))
+        _correct_answer = list(_correct_answer.to_bytes(_nbytes, 'little'))
+        _correct_answer += [0] * (8 - _nbytes)
+#        print('_correct_answer : {}'.format(_correct_answer))
+#        print('_const_0u       : {:05x}'.format(_const_0u))
+#        print('_const_0l       : {:03x}'.format(_const_0l & ((2**32) - 1)))
+#        print('_const_1u       : {:05x}'.format(_const_1u))
+#        print('_const_1l       : {:03x}'.format(_const_1l & ((2**32) - 1)))
+        return _correct_answer, _assembly
+    def lwu(self):
+        _nbytes = 4
+        _nbits = _nbytes * 8
+        _const_0u = random.randint(0, 2**20 - 1)
+        _const_0l = random.randint(-2**11, 2**11 - 1)
+        _const_1u = random.randint(0, 2**20 - 1)
+        _const_1l = random.randint(-2**11, 2**11 - 1)
+        _assembly  = ['lui x15, {}'.format(_const_0u)]
+        _assembly += ['slli x15, x15, 32']
+        _assembly += ['srli x15, x15, 32']
+        _assembly += ['ori x17, x0, {}'.format(_const_0l)]
+        _assembly += ['slli x17, x17, {}'.format(64 - 12)]
+        _assembly += ['srli x17, x17, {}'.format(64 - 12)]
+        _assembly += ['or x15, x15, x17']
+        _assembly += ['slli x15, x15, 32']
+        _assembly += ['lui x16, {}'.format(_const_1u)]
+        _assembly += ['slli x16, x16, 32']
+        _assembly += ['srli x16, x16, 32']
+        _assembly += ['ori x17, x0, {}'.format(_const_1l)]
+        _assembly += ['slli x17, x17, {}'.format(64 - 12)]
+        _assembly += ['srli x17, x17, {}'.format(64 - 12)]
+        _assembly += ['or x16, x16, x17']
+        _assembly += ['or x15, x15, x16']
+        _assembly += ['ori x18, x0, 0x1']
+        _assembly += ['slli x18, x18, 20']
+        _assembly += ['sd x15, 0(x18)']
+        _assembly += ['lwu x31, 0(x18)']
+        _correct_answer  = (_const_0u << 12)
+        _correct_answer |= (_const_0l & ((2**12) - 1))
+        _correct_answer <<= 32
+        _correct_answer |= (_const_1u << 12)
+        _correct_answer |= (_const_1l & ((2**12) - 1))
+        _correct_answer &= (2 ** 64) - 1
+#        print('_correct_answer : {:016x} ({})'.format(_correct_answer, list(_correct_answer.to_bytes(8, 'little'))))
+        _correct_answer &= 2**_nbits - 1
+        _sign = _correct_answer & (1 << (_nbits - 1))
+#        print('_correct_answer : {}'.format(_correct_answer))
+        _correct_answer = list(_correct_answer.to_bytes(_nbytes, 'little'))
+        _correct_answer += [0] * (8 - _nbytes)
+#        print('_correct_answer : {}'.format(_correct_answer))
+#        print('_const_0u       : {:05x}'.format(_const_0u))
+#        print('_const_0l       : {:03x}'.format(_const_0l & ((2**32) - 1)))
+#        print('_const_1u       : {:05x}'.format(_const_1u))
+#        print('_const_1l       : {:03x}'.format(_const_1l & ((2**32) - 1)))
         return _correct_answer, _assembly
     def slli(self):
         _const = random.randint(0, 2**20 - 1)
@@ -881,5 +1203,5 @@ if __name__ == '__main__':
     if not os.path.exists(os.path.join(args.dir, 'bin')): os.mkdir(os.path.join(args.dir, 'bin'))
     for _ in range(args.loop): [
         _harness.generate(args, n)
-        for n in filter(lambda a: a in (args.insns if args.insns else _harness.tests.keys()), _harness.tests.keys())
+        for n in filter(lambda a: a in (map(lambda b: b.lower(), args.insns) if args.insns else _harness.tests.keys()), _harness.tests.keys())
     ]
