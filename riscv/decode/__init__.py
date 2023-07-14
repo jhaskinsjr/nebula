@@ -594,13 +594,13 @@ def i_type(word):
             0b100: {'cmd': 'XORI', 'imm': uncompressed_i_type_imm12(word, signed=True)},
             0b110: {'cmd': 'ORI', 'imm': uncompressed_i_type_imm12(word, signed=True)},
             0b111: {'cmd': 'ANDI', 'imm': uncompressed_i_type_imm12(word, signed=True)},
-            0b101: {'cmd': ('SRLI' if 0 == uncompressed_funct7(word) else 'SRAI'), 'shamt': uncompressed_i_type_shamt(word)},
+            0b101: {'cmd': ('SRLI' if 0 == uncompressed_funct7(word) & 0b010_0000 else 'SRAI'), 'shamt': uncompressed_i_type_shamt(word)},
             0b111: {'cmd': 'ANDI', 'imm': uncompressed_i_type_imm12(word, signed=True)},
         },
         0b001_1011: {
             0b000: {'cmd': 'ADDIW', 'imm': uncompressed_i_type_imm12(word, signed=True)},
             0b001: {'cmd': 'SLLIW', 'shamt': uncompressed_i_type_shamt(word)},
-            0b101: {'cmd': ('SRLIW' if 0 == uncompressed_funct7(word) else 'SRAIW'), 'shamt': uncompressed_i_type_shamt(word)},
+            0b101: {'cmd': ('SRLIW' if 0 == uncompressed_funct7(word) & 0b010_0000 else 'SRAIW'), 'shamt': uncompressed_i_type_shamt(word)},
         }
     }.get(uncompressed_opcode(word), {})
     if not uncompressed_funct3(word) in _cmds.keys():
