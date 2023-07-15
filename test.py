@@ -75,6 +75,12 @@ class Harness:
             'sltiu': self.sltiu,
             'lui': self.lui,
 #            'auipc': self.auipc, # FIXME: self._start_pc is not 0x00000000
+            'beq': self.beq,
+            'bne': self.bne,
+            'blt': self.blt,
+            'bge': self.bge,
+            'bltu': self.bltu,
+            'bgeu': self.bgeu,
         }
         self._start_pc = 0x00000000
         self._sp = 0x80000000
@@ -1182,12 +1188,68 @@ class Harness:
         _correct_answer = list(_correct_answer.to_bytes(8, 'little', signed=True))
 #        print('_correct_answer : {}'.format(_correct_answer))
         return _correct_answer, _assembly
+    def branch(self, mnemonic, nbytes, c1, correct_answer):
+        _const_0 = [random.randint(0, 255) for _ in range(nbytes)]
+        _const_1 = c1(_const_0)
+        _assembly  = ['jal x0, do_test']
+        _assembly += ['match:']
+        _assembly += ['addi x31, x0, 1']
+        _assembly += ['jal x0, done']
+        _assembly += ['do_test:']
+        _assembly += sum([['slli x15, x15, 8', 'ori x15, x15, {}'.format(c)] for c in reversed(_const_0)], [])
+        _assembly += sum([['slli x16, x16, 8', 'ori x16, x16, {}'.format(c)] for c in reversed(_const_1)], [])
+        _assembly += ['{} x15, x16, match'.format(mnemonic)]
+        _assembly += ['done:']
+        _correct_answer = correct_answer(_const_0, _const_1)
+        return _correct_answer, _assembly
+    def beq(self):
+        return self.branch(
+            'beq',
+            8,
+            lambda a: (a if random.randint(0, 1) else [random.randint(0, 255) for _ in range(8)]),
+            lambda a, b: list((1 if a == b else 0).to_bytes(8, 'little')),
+        )
+    def bne(self):
+        return self.branch(
+            'bne',
+            8,
+            lambda a: (a if random.randint(0, 1) else [random.randint(0, 255) for _ in range(8)]),
+            lambda a, b: list((1 if a != b else 0).to_bytes(8, 'little')),
+        )
+    def blt(self):
+        return self.branch(
+            'blt',
+            8,
+            lambda a: (list((int.from_bytes(a, 'little', signed=True) - 1).to_bytes(8, 'little', signed=True)) if random.randint(0, 1) else [random.randint(0, 255) for _ in range(8)]),
+            lambda a, b: list((1 if int.from_bytes(a, 'little', signed=True) < int.from_bytes(b, 'little', signed=True) else 0).to_bytes(8, 'little')),
+        )
+    def bge(self):
+        return self.branch(
+            'bge',
+            8,
+            lambda a: (list((int.from_bytes(a, 'little', signed=True) + random.randint(0, 1)).to_bytes(8, 'little', signed=True)) if random.randint(0, 1) else [random.randint(0, 255) for _ in range(8)]),
+            lambda a, b: list((1 if int.from_bytes(a, 'little', signed=True) >= int.from_bytes(b, 'little', signed=True) else 0).to_bytes(8, 'little')),
+        )
+    def bltu(self):
+        return self.branch(
+            'bltu',
+            8,
+            lambda a: (list((int.from_bytes(a, 'little') - 1).to_bytes(8, 'little')) if random.randint(0, 1) else [random.randint(0, 255) for _ in range(8)]),
+            lambda a, b: list((1 if int.from_bytes(a, 'little') < int.from_bytes(b, 'little') else 0).to_bytes(8, 'little')),
+        )
+    def bgeu(self):
+        return self.branch(
+            'bgeu',
+            8,
+            lambda a: (list((int.from_bytes(a, 'little') + random.randint(0, 1)).to_bytes(8, 'little')) if random.randint(0, 1) else [random.randint(0, 255) for _ in range(8)]),
+            lambda a, b: list((1 if int.from_bytes(a, 'little') >= int.from_bytes(b, 'little') else 0).to_bytes(8, 'little')),
+        )
     def generate(self, args, test):
         _correct_answer, _assembly = self.tests.get(test)()
         _n_instruction = len(_assembly)
         _program  = '\n'.join(list(map(lambda x: '\t{}'.format(x), ['.text', '.globl\t_start', '.type\t_start, @function'])) + [''])
         _program += '\n'.join(['_exit: '] + list(map(lambda x: '\t{}'.format(x), ['add x17, x0, 93', 'ecall'])) + [''])
-        _program += '\n'.join(['_start:'] + list(map(lambda x: '\t{}'.format(x), _assembly + ['jal x1, _exit'])))
+        _program += '\n'.join(['_start:'] + list(map(lambda x: (x if x.endswith(':') else '\t{}'.format(x)), _assembly + ['jal x1, _exit'])))
         _program += '\n'
         with open(os.path.join(args.dir, 'src', '{}.s'.format(test)), 'w+') as fp: fp.write(_program)
         subprocess.run('{} -o {} -march=rv64gc {} -nostartfiles'.format(
