@@ -29,6 +29,10 @@ class Harness:
             'c.slli': self.c_slli,
             'c.srli': self.c_srli,
             'c.srai': self.c_srai,
+            'sb': self.sb,
+            'sh': self.sh,
+            'sw': self.sw,
+            'sd': self.sd,
             'lb': self.lb,
             'lh': self.lh,
             'lw': self.lw,
@@ -262,6 +266,58 @@ class Harness:
         _correct_answer &= 2**64 - 1
         _correct_answer = int.from_bytes(struct.Struct('<Q').pack(_correct_answer), 'little')
         _correct_answer = list(_correct_answer.to_bytes(8, 'little'))
+        return _correct_answer, _assembly
+    def sb(self):
+        _nbytes = 1
+        _mnemonic = 'sb'
+        _const = [random.randint(0, 255) for _ in range(_nbytes)]
+#        print('_const : {}'.format(_const))
+        _assembly  = sum([['slli x15, x15, 8', 'ori x15, x15, {}'.format(c)] for c in reversed(_const)], [])
+        _assembly += ['ori x18, x0, 1']
+        _assembly += ['slli x18, x18, 20']
+        _assembly += ['sd x0, 0(x18)']
+        _assembly += ['{} x15, 0(x18)'.format(_mnemonic)]
+        _assembly += ['ld x31, 0(x18)']
+        _correct_answer = _const + [0] * (8 - _nbytes)
+        return _correct_answer, _assembly
+    def sh(self):
+        _nbytes = 2
+        _mnemonic = 'sh'
+        _const = [random.randint(0, 255) for _ in range(_nbytes)]
+#        print('_const : {}'.format(_const))
+        _assembly  = sum([['slli x15, x15, 8', 'ori x15, x15, {}'.format(c)] for c in reversed(_const)], [])
+        _assembly += ['ori x18, x0, 1']
+        _assembly += ['slli x18, x18, 20']
+        _assembly += ['sd x0, 0(x18)']
+        _assembly += ['{} x15, 0(x18)'.format(_mnemonic)]
+        _assembly += ['ld x31, 0(x18)']
+        _correct_answer = _const + [0] * (8 - _nbytes)
+        return _correct_answer, _assembly
+    def sw(self):
+        _nbytes = 4
+        _mnemonic = 'sw'
+        _const = [random.randint(0, 255) for _ in range(_nbytes)]
+#        print('_const : {}'.format(_const))
+        _assembly  = sum([['slli x15, x15, 8', 'ori x15, x15, {}'.format(c)] for c in reversed(_const)], [])
+        _assembly += ['ori x18, x0, 1']
+        _assembly += ['slli x18, x18, 20']
+        _assembly += ['sd x0, 0(x18)']
+        _assembly += ['{} x15, 0(x18)'.format(_mnemonic)]
+        _assembly += ['ld x31, 0(x18)']
+        _correct_answer = _const + [0] * (8 - _nbytes)
+        return _correct_answer, _assembly
+    def sd(self):
+        _nbytes = 8
+        _mnemonic = 'sd'
+        _const = [random.randint(0, 255) for _ in range(_nbytes)]
+#        print('_const : {}'.format(_const))
+        _assembly  = sum([['slli x15, x15, 8', 'ori x15, x15, {}'.format(c)] for c in reversed(_const)], [])
+        _assembly += ['ori x18, x0, 1']
+        _assembly += ['slli x18, x18, 20']
+        _assembly += ['sd x0, 0(x18)']
+        _assembly += ['{} x15, 0(x18)'.format(_mnemonic)]
+        _assembly += ['ld x31, 0(x18)']
+        _correct_answer = _const + [0] * (8 - _nbytes)
         return _correct_answer, _assembly
     def lb(self):
         _nbytes = 1
