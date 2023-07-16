@@ -1246,7 +1246,7 @@ class Harness:
         )
     def generate(self, args, test):
         _correct_answer, _assembly = self.tests.get(test)()
-        _n_instruction = len(_assembly)
+        _n_instruction = len(list(filter(lambda a: not a.endswith(':'), _assembly))) + 3
         _program  = '\n'.join(list(map(lambda x: '\t{}'.format(x), ['.text', '.globl\t_start', '.type\t_start, @function'])) + [''])
         _program += '\n'.join(['_exit: '] + list(map(lambda x: '\t{}'.format(x), ['add x17, x0, 93', 'ecall'])) + [''])
         _program += '\n'.join(['_start:'] + list(map(lambda x: (x if x.endswith(':') else '\t{}'.format(x)), _assembly + ['jal x1, _exit'])))
@@ -1270,7 +1270,7 @@ class Harness:
         _script += ['shutdown']
         with open(os.path.join(args.dir, 'test.nebula'), 'w+') as fp: fp.write('\n'.join(_script))
         _cmd = 'python3 launcher.py --log {} --service {} --max_instructions {} -- {} {} {}'.format(
-            args.dir,
+            os.path.join(os.getcwd(), args.dir),
             'pipelines/bergamot/implementation/mainmem.py:localhost:-1',
             _n_instruction,
             args.port,
