@@ -29,6 +29,13 @@ class Harness:
             'c.slli': self.c_slli,
             'c.srli': self.c_srli,
             'c.srai': self.c_srai,
+            'c.andi': self.c_andi,
+            'c.addiw': self.c_addiw,
+            'c.beqz': self.c_beqz,
+            'c.bnez': self.c_bnez,
+            'c.nop': self.c_nop,
+            'c.lw': self.c_lw,
+            'c.ld': self.c_ld,
             'sb': self.sb,
             'sh': self.sh,
             'sw': self.sw,
@@ -272,6 +279,84 @@ class Harness:
         _correct_answer &= 2**64 - 1
         _correct_answer = int.from_bytes(struct.Struct('<Q').pack(_correct_answer), 'little')
         _correct_answer = list(_correct_answer.to_bytes(8, 'little'))
+        return _correct_answer, _assembly
+    def c_andi(self):
+        _const_0 = random.randint(0, 2**20 - 1)
+        _const_1 = random.randint(-2**4, 2**4 - 1)
+        _assembly  = ['lui x15, {}'.format(_const_0)]
+        _assembly += ['c.andi x15, {}'.format(_const_1)]
+        _assembly += ['c.mv x31, x15']
+        _const_0 = int.from_bytes(struct.Struct('<Q').pack(_const_0 << 12), 'little', signed=True)
+        _const_0 &= (2**64) - 1
+        _const_1 = int.from_bytes(struct.Struct('<q').pack(_const_1), 'little', signed=True)
+        _const_1 &= (2**64) - 1
+        print('_const_0 : {:016x}'.format(_const_0))
+        print('_const_1 : {:016x}'.format(_const_1))
+        _correct_answer = _const_0 & _const_1
+        _correct_answer = list(_correct_answer.to_bytes(8, 'little', signed=True))
+        return _correct_answer, _assembly
+    def c_addiw(self):
+        _const_0 = random.randint(0, 2**20 - 1)
+        _const_1 = random.randint(-2**4, 2**4 - 1)
+        _assembly  = ['lui x15, {}'.format(_const_0)]
+        _assembly += ['c.addiw x15, {}'.format(_const_1)]
+        _assembly += ['c.mv x31, x15']
+        _const_0 = int.from_bytes(struct.Struct('<I').pack(_const_0 << 12), 'little', signed=True)
+        _correct_answer = ((_const_0 + _const_1) << 32) >> 32
+        _correct_answer = list(_correct_answer.to_bytes(8, 'little', signed=True))
+        return _correct_answer, _assembly
+    def c_beqz(self):
+        _const = (0 if random.randint(0, 1) else random.randint(-2**11, 2**11 - 1))
+        _assembly  = ['jal x0, do_test']
+        _assembly += ['match:']
+        _assembly += ['addi x31, x0, 1']
+        _assembly += ['jal x0, done']
+        _assembly += ['do_test:']
+        _assembly += ['addi x15, x0, {}'.format(_const)]
+        _assembly += ['c.beqz x15, match']
+        _assembly += ['done:']
+        _correct_answer = list((1 if 0 == _const else 0).to_bytes(8, 'little'))
+        return _correct_answer, _assembly
+    def c_bnez(self):
+        _const = (0 if random.randint(0, 1) else random.randint(-2**11, 2**11 - 1))
+        _assembly  = ['jal x0, do_test']
+        _assembly += ['match:']
+        _assembly += ['addi x31, x0, 1']
+        _assembly += ['jal x0, done']
+        _assembly += ['do_test:']
+        _assembly += ['addi x15, x0, {}'.format(_const)]
+        _assembly += ['c.bnez x15, match']
+        _assembly += ['done:']
+        _correct_answer = list((1 if 0 != _const else 0).to_bytes(8, 'little'))
+        return _correct_answer, _assembly
+    def c_nop(self):
+        _assembly = ['c.nop']
+        _correct_answer = list((0).to_bytes(8, 'little'))
+        return _correct_answer, _assembly
+    def c_lw(self):
+        _nbytes = 4
+        _mnemonic = 'c.lw'
+        _const = [random.randint(0, 255) for _ in range(_nbytes)]
+        _assembly  = sum([['slli x15, x15, 8', 'ori x15, x15, {}'.format(c)] for c in reversed(_const)], [])
+        _assembly += ['ori x14, x0, 1']
+        _assembly += ['slli x14, x14, 20']
+        _assembly += ['sd x15, 0(x14)']
+        _assembly += ['{} x15, 0(x14)'.format(_mnemonic)]
+        _assembly += ['or x31, x15, x0']
+        _sign = (_const[-1] >> 7) & 0b1 # HACK: little-endian specific
+        _correct_answer = _const + [(0xff if _sign else 0)] * (8 - _nbytes)
+        return _correct_answer, _assembly
+    def c_ld(self):
+        _nbytes = 8
+        _mnemonic = 'c.ld'
+        _const = [random.randint(0, 255) for _ in range(_nbytes)]
+        _assembly  = sum([['slli x15, x15, 8', 'ori x15, x15, {}'.format(c)] for c in reversed(_const)], [])
+        _assembly += ['ori x14, x0, 1']
+        _assembly += ['slli x14, x14, 20']
+        _assembly += ['sd x15, 0(x14)']
+        _assembly += ['{} x15, 0(x14)'.format(_mnemonic)]
+        _assembly += ['or x31, x15, x0']
+        _correct_answer = _const + [0] * (8 - _nbytes)
         return _correct_answer, _assembly
     def sb(self):
         _nbytes = 1
