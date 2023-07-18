@@ -897,7 +897,7 @@ def compressed_quadrant_00_opcode_010(word):
     _impl = c_lw
     _b06     = (word >> 5) & 0b1
     _b02     = (word >> 6) & 0b1
-    _b050403 = (word >> 9) & 0b111
+    _b050403 = (word >> 10) & 0b111
     _imm = (_b06 << 6) | (_b050403 << 3) | (_b02 << 2)
     return _impl(word, imm=_imm)
 def compressed_quadrant_00_opcode_011(word):
