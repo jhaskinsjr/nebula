@@ -6,5 +6,6 @@
 int
 main(int argc, char ** argv)
 {
-	return -1 * ((argc > 1) ? (int)atoi(argv[1]) : 0);
+	printf("%d\n", -1 * (int)atoi(argv[1]));
+	return 0;
 }
