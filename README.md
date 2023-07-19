@@ -56,7 +56,7 @@ simulated instructions.
 **Step 7.** Examine the output:
 
 The output emitted to the console from the simulator should be 41, the sum
-of the first few prime integers; to wit:
+of the first six prime integers; to wit:
 
     41
 
