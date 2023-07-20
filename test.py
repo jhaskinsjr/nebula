@@ -36,6 +36,12 @@ class Harness:
             'c.nop': self.c_nop,
             'c.lw': self.c_lw,
             'c.ld': self.c_ld,
+            'c.lwsp': self.c_lwsp,
+            'c.ldsp': self.c_ldsp,
+            'c.sw': self.c_sw,
+            'c.sd': self.c_sd,
+            'c.swsp': self.c_swsp,
+            'c.sdsp': self.c_sdsp,
             'sb': self.sb,
             'sh': self.sh,
             'sw': self.sw,
@@ -286,14 +292,18 @@ class Harness:
         _assembly  = ['lui x15, {}'.format(_const_0)]
         _assembly += ['c.andi x15, {}'.format(_const_1)]
         _assembly += ['c.mv x31, x15']
-        _const_0 = int.from_bytes(struct.Struct('<Q').pack(_const_0 << 12), 'little', signed=True)
-        _const_0 &= (2**64) - 1
-        _const_1 = int.from_bytes(struct.Struct('<q').pack(_const_1), 'little', signed=True)
-        _const_1 &= (2**64) - 1
-        print('_const_0 : {:016x}'.format(_const_0))
-        print('_const_1 : {:016x}'.format(_const_1))
-        _correct_answer = _const_0 & _const_1
-        _correct_answer = list(_correct_answer.to_bytes(8, 'little', signed=True))
+#        _const_0 = int.from_bytes(struct.Struct('<q').pack(_const_0 << 12), 'little', signed=True)
+#        _const_0 &= (2**64) - 1
+#        _const_1 = int.from_bytes(struct.Struct('<q').pack(_const_1), 'little', signed=True)
+#        _const_1 &= (2**64) - 1
+        _const_0 = list(int.from_bytes(struct.Struct('<I').pack(_const_0 << 12), 'little', signed=True).to_bytes(8, 'little', signed=True))
+        _const_1 = list(int.from_bytes(struct.Struct('<i').pack(_const_1), 'little', signed=True).to_bytes(8, 'little', signed=True))
+        print('_const_0        : {:016x}'.format(int.from_bytes(_const_0, 'little')))
+        print('_const_1        : {:016x}'.format(int.from_bytes(_const_1, 'little')))
+#        _correct_answer = _const_0 & _const_1
+        _correct_answer = list(map(lambda a, b: a & b, _const_0, _const_1))
+        print('_correct_answer : {:016x}'.format(int.from_bytes(_correct_answer, 'little')))
+#        _correct_answer = list(_correct_answer.to_bytes(8, 'little', signed=True))
         return _correct_answer, _assembly
     def c_addiw(self):
         _const_0 = random.randint(0, 2**20 - 1)
@@ -337,11 +347,12 @@ class Harness:
         _nbytes = 4
         _mnemonic = 'c.lw'
         _const = [random.randint(0, 255) for _ in range(_nbytes)]
+        _offset = (random.randint(0, 2**7 - 1) | 0b11) ^ 0b11
         _assembly  = sum([['slli x15, x15, 8', 'ori x15, x15, {}'.format(c)] for c in reversed(_const)], [])
         _assembly += ['ori x14, x0, 1']
         _assembly += ['slli x14, x14, 20']
-        _assembly += ['sd x15, 0(x14)']
-        _assembly += ['{} x15, 0(x14)'.format(_mnemonic)]
+        _assembly += ['sd x15, {}(x14)'.format(_offset)]
+        _assembly += ['{} x15, {}(x14)'.format(_mnemonic, _offset)]
         _assembly += ['or x31, x15, x0']
         _sign = (_const[-1] >> 7) & 0b1 # HACK: little-endian specific
         _correct_answer = _const + [(0xff if _sign else 0)] * (8 - _nbytes)
@@ -350,12 +361,85 @@ class Harness:
         _nbytes = 8
         _mnemonic = 'c.ld'
         _const = [random.randint(0, 255) for _ in range(_nbytes)]
+        _offset = (random.randint(0, 2**8 - 1) | 0b111) ^ 0b111
         _assembly  = sum([['slli x15, x15, 8', 'ori x15, x15, {}'.format(c)] for c in reversed(_const)], [])
         _assembly += ['ori x14, x0, 1']
         _assembly += ['slli x14, x14, 20']
-        _assembly += ['sd x15, 0(x14)']
-        _assembly += ['{} x15, 0(x14)'.format(_mnemonic)]
+        _assembly += ['sd x15, {}(x14)'.format(_offset)]
+        _assembly += ['{} x15, {}(x14)'.format(_mnemonic, _offset)]
         _assembly += ['or x31, x15, x0']
+        _correct_answer = _const + [0] * (8 - _nbytes)
+        return _correct_answer, _assembly
+    def c_lwsp(self):
+        _nbytes = 4
+        _mnemonic = 'c.lwsp'
+        _const = [random.randint(0, 255) for _ in range(_nbytes)]
+        _offset = (random.randint(0, 2**7 - 1) | 0b11) ^ 0b11
+        _assembly  = sum([['slli x15, x15, 8', 'ori x15, x15, {}'.format(c)] for c in reversed(_const)], [])
+        _assembly += ['sd x15, {}(x2)'.format(_offset)]
+        _assembly += ['{} x31, {}(x2)'.format(_mnemonic, _offset)]
+        _sign = (_const[-1] >> 7) & 0b1 # HACK: little-endian specific
+        _correct_answer = _const + [(0xff if _sign else 0)] * (8 - _nbytes)
+        return _correct_answer, _assembly
+    def c_ldsp(self):
+        _nbytes = 8
+        _mnemonic = 'c.ldsp'
+        _const = [random.randint(0, 255) for _ in range(_nbytes)]
+        _offset = (random.randint(0, 2**8 - 1) | 0b111) ^ 0b111
+        _assembly  = sum([['slli x15, x15, 8', 'ori x15, x15, {}'.format(c)] for c in reversed(_const)], [])
+        _assembly += ['sd x15, {}(x2)'.format(_offset)]
+        _assembly += ['{} x31, {}(x2)'.format(_mnemonic, _offset)]
+        _sign = (_const[-1] >> 7) & 0b1 # HACK: little-endian specific
+        _correct_answer = _const + [(0xff if _sign else 0)] * (8 - _nbytes)
+        return _correct_answer, _assembly
+    def c_sw(self):
+        _nbytes = 4
+        _mnemonic = 'c.sw'
+        _const = [random.randint(0, 255) for _ in range(_nbytes)]
+        _offset = (random.randint(0, 2**7 - 1) | 0b11) ^ 0b11
+        _assembly  = sum([['slli x15, x15, 8', 'ori x15, x15, {}'.format(c)] for c in reversed(_const)], [])
+        _assembly += ['ori x14, x0, 1']
+        _assembly += ['slli x14, x14, 20']
+        _assembly += ['sd x0, {}(x14)'.format(_offset)]
+        _assembly += ['{} x15, {}(x14)'.format(_mnemonic, _offset)]
+        _assembly += ['ld x15, {}(x14)'.format(_offset)]
+        _assembly += ['or x31, x15, x0']
+        _correct_answer = _const + [0] * (8 - _nbytes)
+        return _correct_answer, _assembly
+    def c_sd(self):
+        _nbytes = 8
+        _mnemonic = 'c.sd'
+        _const = [random.randint(0, 255) for _ in range(_nbytes)]
+        _offset = (random.randint(0, 2**8 - 1) | 0b111) ^ 0b111
+        _assembly  = sum([['slli x15, x15, 8', 'ori x15, x15, {}'.format(c)] for c in reversed(_const)], [])
+        _assembly += ['ori x14, x0, 1']
+        _assembly += ['slli x14, x14, 20']
+        _assembly += ['sd x0, {}(x14)'.format(_offset)]
+        _assembly += ['{} x15, {}(x14)'.format(_mnemonic, _offset)]
+        _assembly += ['ld x15, {}(x14)'.format(_offset)]
+        _assembly += ['or x31, x15, x0']
+        _correct_answer = _const + [0] * (8 - _nbytes)
+        return _correct_answer, _assembly
+    def c_swsp(self):
+        _nbytes = 4
+        _mnemonic = 'c.swsp'
+        _const = [random.randint(0, 255) for _ in range(_nbytes)]
+        _offset = (random.randint(0, 2**7 - 1) | 0b11) ^ 0b11
+        _assembly  = sum([['slli x15, x15, 8', 'ori x15, x15, {}'.format(c)] for c in reversed(_const)], [])
+        _assembly += ['sd x0, {}(x2)'.format(_offset)]
+        _assembly += ['{} x15, {}(x2)'.format(_mnemonic, _offset)]
+        _assembly += ['ld x31, {}(x2)'.format(_offset)]
+        _correct_answer = _const + [0] * (8 - _nbytes)
+        return _correct_answer, _assembly
+    def c_sdsp(self):
+        _nbytes = 8
+        _mnemonic = 'c.sdsp'
+        _const = [random.randint(0, 255) for _ in range(_nbytes)]
+        _offset = (random.randint(0, 2**8 - 1) | 0b111) ^ 0b111
+        _assembly  = sum([['slli x15, x15, 8', 'ori x15, x15, {}'.format(c)] for c in reversed(_const)], [])
+        _assembly += ['sd x0, {}(x2)'.format(_offset)]
+        _assembly += ['{} x15, {}(x2)'.format(_mnemonic, _offset)]
+        _assembly += ['ld x31, {}(x2)'.format(_offset)]
         _correct_answer = _const + [0] * (8 - _nbytes)
         return _correct_answer, _assembly
     def sb(self):
@@ -1401,6 +1485,7 @@ if __name__ == '__main__':
     parser.add_argument('dir', type=str, help='directory to put tests')
     args = parser.parse_args()
     if args.debug: print('args : {}'.format(args))
+    args.dir = os.path.join(os.getcwd(), args.dir)
     assert os.path.exists(args.dir), 'Cannot open dir, {}!'.format(args.dir)
     if not os.path.exists(os.path.join(args.dir, 'src')): os.mkdir(os.path.join(args.dir, 'src'))
     if not os.path.exists(os.path.join(args.dir, 'bin')): os.mkdir(os.path.join(args.dir, 'bin'))
