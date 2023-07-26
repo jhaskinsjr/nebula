@@ -31,7 +31,7 @@ class FastCore:
         self.ack = True
         self.instructions_committed = 0
         self.shutdown = None
-        self.objmap =None
+        self.objmap = None
         self.config = {
             'toolchain': '',
             'binary': '',
@@ -111,7 +111,8 @@ class FastCore:
         logging.info('FastCore.__init__(): self.mainmem.fd              : {}'.format(self.mainmem.get('fd')))
         logging.info('FastCore.__init__(): self.mainmem.config.filename : {}'.format(self.mainmem.get('config').get('filename')))
         logging.info('FastCore.__init__(): self.mainmem.config.capacity : {}'.format(self.mainmem.get('config').get('capacity')))
-        logging.info('FastCore.__init__(): self.registers               : {}'.format(self.regfile.registers))
+        logging.info('FastCore.__init__(): self.regfile.registers       : {}'.format(self.regfile.registers))
+        logging.info('FastCore.__init__(): self.system                  : {}'.format(dir(self.system)))
     def state(self):
         return {
             'service': self.get('name'),
@@ -495,14 +496,23 @@ if '__main__' == __name__:
             elif 'restore' == k:
                 assert not state.get('running'), 'Attempted restore while running!'
                 logging.info('restore : {}'.format(v))
-                _regfile.update({'cycle': v.get('cycle')})
-                _mainmem.update({'cycle': v.get('cycle')})
-                state.update({'cycle': v.get('cycle')})
-                state.update({'instructions_committed': v.get('instructions_committed')})
+#                _regfile.update({'cycle': v.get('cycle')})
+#                _mainmem.update({'cycle': v.get('cycle')})
+#                state.update({'cycle': v.get('cycle')})
+#                state.update({'instructions_committed': v.get('instructions_committed')})
                 _snapshot_filename = v.get('snapshot_filename')
                 _addr = v.get('addr')
-                _mainmem.restore(_snapshot_filename, _addr)
-                _regfile.restore(_snapshot_filename, _addr)
+#                _mainmem.restore(_snapshot_filename, _addr)
+#                _regfile.restore(_snapshot_filename, _addr)
+                _restore = _mainmem.restore(_snapshot_filename, _addr)
+                _regfile.registers = _restore.get('registers')
+                _regfile.update({'cycle': _restore.get('cycle')})
+                _mainmem.update({'cycle': _restore.get('cycle')})
+                state.update({'cycle': _restore.get('cycle')})
+                state.update({'instructions_committed': _restore.get('instructions_committed')})
+                logging.info('state.cycle : {}'.format(state.get('cycle')))
+                logging.info('state.instructions_committed : {}'.format(state.get('instructions_committed')))
+#                logging.info('_regfile.registers : {}'.format(_regfile.registers))
                 _service.tx({'ack': {'cycle': state.get('cycle')}})
             elif 'tick' == k:
                 _regfile.update({'cycle': v.get('cycle')})
@@ -511,10 +521,13 @@ if '__main__' == __name__:
                 if v.get('snapshot'):
                     logging.info('tick.v : {}'.format(v))
                     _addr = v.get('snapshot').get('addr')
-                    _data = v.get('snapshot').get('data')
+                    _data = {
+                        **v.get('snapshot').get('data'),
+                        **{'registers': _regfile.registers},
+                    }
                     _snapshot_filename = _mainmem.snapshot(_addr, _data)
-                    _regfile.snapshot(_addr, _snapshot_filename)
-                if not state.get('shutdown'): state.execute(10**5)
+#                    _regfile.snapshot(_addr, _snapshot_filename)
+                if not state.get('shutdown'): state.execute(10**2)
 #                _results = v.get('results')
 #                _events = v.get('events')
 #                do_tick(_service, state, _results, _events)

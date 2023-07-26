@@ -142,7 +142,7 @@ if '__main__' == __name__:
                 _snapshot_filename = v.get('snapshot_filename')
                 _addr = v.get('addr')
                 logging.info('restore - v : {}'.format(v))
-                state.restore(_snapshot_filename, _addr)
+#                state.restore(_snapshot_filename, _addr)
                 state.service.tx({'ack': {'cycle': state.get('cycle')}})
             elif 'register' == k:
                 logging.info('register : {}'.format(v))

@@ -18,7 +18,8 @@ class SimpleMMU:
         self.pageoffsetbits = log2(self.pagesize)
         self.translations = {}
     def translate(self, addr, coreid):
-        _k = (coreid, addr >> self.pageoffsetbits)
+#        _k = (coreid, addr >> self.pageoffsetbits) # BLERG: tuples cannot be keys in JSON
+        _k = (coreid << self.pageoffsetbits) | (addr >> self.pageoffsetbits)
         self.translations.update({_k: self.translations.get(_k, self.BASE + (len(self.translations.keys()) << self.pageoffsetbits))})
         return self.translations.get(_k) | (addr & self.pageoffsetmask)
     def get(self, attribute, alternative=None):

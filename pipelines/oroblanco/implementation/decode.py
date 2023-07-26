@@ -108,6 +108,7 @@ def do_issue(service, state):
     for _dec in state.get('remove_from_decoded'): state.get('decoded').remove(_dec)
     state.get('remove_from_decoded').clear()
 def do_tick(service, state, results, events):
+    if not state.get('%pc'): return
     logging.debug('do_tick(): results : {}'.format(results))
     state.get('forward').clear()
     for _reg in map(lambda y: y.get('register'), filter(lambda x: x.get('register'), results)):
@@ -294,23 +295,25 @@ if '__main__' == __name__:
                     state.get('config').get('btb_nbytesperentry'),
                     state.get('config').get('btb_evictionpolicy'),
                 )})
-                state.update({'pending_fetch': {
-                    'addr': state.get('%pc'),
-                    'size': state.get('fetch_size'),
-                }})
-                _service.tx({'event': {
-                    'arrival': 1 + state.get('cycle'),
-                    'coreid': state.get('coreid'),
-                    'fetch': {
-                        **{'cmd': 'get'},
-                        **state.get('pending_fetch'),
-                    }
-                }})
-                _next_pc  = int.from_bytes(state.get('pending_fetch').get('addr'), 'little')
-                _next_pc += state.get('pending_fetch').get('size')
-                _next_pc  = riscv.constants.integer_to_list_of_bytes(_next_pc, 64, 'little')
-                state.get('next_%pc').append(_next_pc)
+                if state.get('%pc'):
+                    state.update({'pending_fetch': {
+                        'addr': state.get('%pc'),
+                        'size': state.get('fetch_size'),
+                    }})
+                    _service.tx({'event': {
+                        'arrival': 1 + state.get('cycle'),
+                        'coreid': state.get('coreid'),
+                        'fetch': {
+                            **{'cmd': 'get'},
+                            **state.get('pending_fetch'),
+                        }
+                    }})
+                    _next_pc  = int.from_bytes(state.get('pending_fetch').get('addr'), 'little')
+                    _next_pc += state.get('pending_fetch').get('size')
+                    _next_pc  = riscv.constants.integer_to_list_of_bytes(_next_pc, 64, 'little')
+                    state.get('next_%pc').append(_next_pc)
                 if not state.get('config').get('toolchain'): continue
+                if not state.get('binary'): continue
                 _toolchain = state.get('config').get('toolchain')
                 _binary = state.get('binary')
                 _files = next(iter(list(os.walk(_toolchain))))[-1]

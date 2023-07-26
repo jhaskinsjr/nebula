@@ -50,7 +50,8 @@ def handler(conn, addr):
 #                state.update({'shutdown': v})
 #                if None == v: state.update({'running': False})
                 state.get('shutdown').update({v.get('coreid'): True})
-                if len(state.get('shutdown').keys()) == state.get('ncores'): state.update({'running': False})
+#                if len(state.get('shutdown').keys()) == state.get('ncores'): state.update({'running': False})
+                if all(state.get('shutdown').values()): state.update({'running': False})
                 state.get('lock').release()
             elif 'undefined' == k:
                 state.get('lock').acquire()
@@ -314,16 +315,25 @@ if __name__ == '__main__':
         'cycle': 0,
         'instructions_committed': 0,
         'shutdown': {},
-        'ncores': 0,
+#        'ncores': 0,
         'undefined': None,
         'cmdline': None,
         'snapshot': {
             'addr': {
-                'register': 0x9000_0000,
-                'cycle': 0x9000_1000,
-                'instructions_committed': 0x9000_2000,
-                'cmdline_length': 0x9000_3000,
-                'cmdline': 0x9000_3100,
+                'padding': 0x0000,
+                'cycle': 0x1000,
+                'instructions_committed': 0x2000,
+                'cmdline_length': 0x3000,
+                'cmdline': 0x4000,
+                'registers_length': 0x5000,
+                'registers': 0x6000,
+                'mmu_length': 0x7000,
+                'mmu': 0x8000,
+#                'register': 0x9000_0000,
+#                'cycle': 0x9000_1000,
+#                'instructions_committed': 0x9000_2000,
+#                'cmdline_length': 0x9000_3000,
+#                'cmdline': 0x9000_3100,
             },
         },
         'config': {
@@ -389,9 +399,11 @@ if __name__ == '__main__':
                         logging.info('\t_cmdline : {}'.format(_cmdline))
                         logging.info('\t_binary  : {}'.format(_binary))
                         logging.info('\t_args    : {}'.format(_args))
-                        state.update({'ncores': 1 + state.get('ncores')})
+#                        state.update({'ncores': 1 + state.get('ncores')})
+                        state.get('shutdown').update({len(state.get('shutdown').keys()): False})
                 elif args.restore:
                     restore(state, args.restore)
+                    state.get('shutdown').update({len(state.get('shutdown').keys()): False})
                 else:
                     assert False, 'Neither command line nor --restore!'
                 state.update({'running': True})
