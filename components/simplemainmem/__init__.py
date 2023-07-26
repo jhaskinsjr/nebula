@@ -90,74 +90,7 @@ class SimpleMainMemory:
         self.poke(sp + (1+len(_addr))*8, 8, (0).to_bytes(8, 'little'), **{'coreid': coreid})
         self.poke(sp + (2+len(_addr))*8, 8, bytes(''.join(_args), 'ascii'), **{'coreid': coreid})
         return _start_pc
-    def snapshot_0(self, addr, data):
-        logging.info('snapshot(): data : {}'.format(data))
-        _snapshot_filename = '{}.{:015}.snapshot'.format(self.get('config').get('filename'), data.get('instructions_committed'))
-        subprocess.run('cp {} {}'.format(self.get('config').get('filename'), _snapshot_filename).split())
-        fd = os.open(_snapshot_filename, os.O_RDWR | os.O_CREAT)
-        _addr = {x:self.config.get('capacity') + y for x, y in addr.items()}
-        os.lseek(fd, _addr.get('padding'), os.SEEK_SET)
-        os.write(fd, bytes([0xff] * (_addr.get('cycle') - _addr.get('padding'))))
-        os.lseek(fd, _addr.get('cycle'), os.SEEK_SET)
-        os.write(fd, (1 + data.get('cycle')).to_bytes(8, 'little'))
-        os.lseek(fd, _addr.get('instructions_committed'), os.SEEK_SET)
-        os.write(fd, data.get('instructions_committed').to_bytes(8, 'little'))
-        os.lseek(fd, _addr.get('cmdline_length'), os.SEEK_SET)
-        os.write(fd, len(data.get('cmdline')).to_bytes(8, 'little'))
-        os.lseek(fd, _addr.get('cmdline'), os.SEEK_SET)
-        os.write(fd, bytes(data.get('cmdline'), 'ascii'))
-        # HACK: should dumping registers be the purview of regfile?
-        if 'registers' in data.keys():
-            _regs = json.dumps(data.get('registers'))
-            os.lseek(fd, _addr.get('registers_length'), os.SEEK_SET)
-            os.write(fd, len(_regs).to_bytes(8, 'little'))
-            os.lseek(fd, _addr.get('registers'), os.SEEK_SET)
-            os.write(fd, bytes(_regs, encoding='ascii'))
-        _translations = json.dumps(self.mmu.translations)
-        os.lseek(fd, _addr.get('mmu_length'), os.SEEK_SET)
-        os.write(fd, len(_translations).to_bytes(8, 'little'))
-        os.lseek(fd, _addr.get('mmu'), os.SEEK_SET)
-        os.write(fd, bytes(_translations, encoding='ascii'))
-        os.fsync(fd)
-        os.close(fd)
-        logging.info('snapshot(): snapshot saved to {}'.format(_snapshot_filename))
-        # FIXME: make snapshots read-only after creation
-        return _snapshot_filename
-    def restore_0(self, snapshot_filename, addr):
-        subprocess.run('cp {} {}'.format(snapshot_filename, self.get('config').get('filename')).split())
-        subprocess.run('chmod u+w {}'.format(self.get('config').get('filename')).split())
-        _retval = {}
-        fd = os.open(snapshot_filename, os.O_RDONLY)
-        _addr = {x:self.config.get('capacity') + y for x, y in addr.items()}
-        os.lseek(fd, _addr.get('cycle'), os.SEEK_SET)
-        _retval.update({'cycle': int.from_bytes(os.read(fd, 8), 'little')})
-        os.lseek(fd, _addr.get('instructions_committed'), os.SEEK_SET)
-        _retval.update({'instructions_committed': int.from_bytes(os.read(fd, 8), 'little')})
-        os.lseek(fd, _addr.get('cmdline_length'), os.SEEK_SET)
-        _retval.update({'cmdline_length': int.from_bytes(os.read(fd, 8), 'little')})
-        os.lseek(fd, _addr.get('cmdline'), os.SEEK_SET)
-        _retval.update({'cmdline': str(os.read(fd, _retval.get('cmdline_length')), encoding='ascii')})
-        # HACK: should restorings registers be the purview of regfile?
-        os.lseek(fd, _addr.get('registers_length'), os.SEEK_SET)
-        _retval.update({'registers_length': int.from_bytes(os.read(fd, 8), 'little')})
-        print('registers_length : {}'.format(_retval.get('registers_length')))
-        print('_retval : {}'.format(_retval))
-        os.lseek(fd, _addr.get('registers'), os.SEEK_SET)
-        _regs = str(os.read(fd, _retval.get('registers_length')), encoding='ascii')
-        _regs = json.loads(_regs)
-        _regs = {(k if '%pc' == k else int(k)):v for k, v in _regs.items()}
-        print('_regs : {} ({})'.format(_regs, len(_regs)))
-        _retval.update({'registers': _regs})
-        os.lseek(fd, _addr.get('mmu_length'), os.SEEK_SET)
-        _retval.update({'mmu_length': int.from_bytes(os.read(fd, 8), 'little')})
-        os.lseek(fd, _addr.get('mmu'), os.SEEK_SET)
-        _translations = str(os.read(fd, _retval.get('mmu_length')), encoding='ascii')
-        _translations = {int(x):y for x, y in json.loads(_translations).items()}
-        self.mmu.translations = _translations
-        _retval.update({'translations': _translations})
-        logging.info('restore(): _retval : {}'.format(_retval))
-        return _retval
-    def snapshot(self, addr, data):
+    def snapshot(self, data):
         logging.info('snapshot(): data   : {}'.format(data))
         _snapshot_filename = '{}.{:015}.snapshot'.format(self.get('config').get('filename'), data.get('instructions_committed'))
         subprocess.run('cp {} {}'.format(self.get('config').get('filename'), _snapshot_filename).split())
@@ -178,7 +111,7 @@ class SimpleMainMemory:
         logging.info('snapshot(): snapshot saved to {}'.format(_snapshot_filename))
         # FIXME: make snapshots read-only after creation
         return _snapshot_filename
-    def restore(self, snapshot_filename, addr):
+    def restore(self, snapshot_filename):
         subprocess.run('cp {} {}'.format(snapshot_filename, self.get('config').get('filename')).split())
         subprocess.run('chmod u+w {}'.format(self.get('config').get('filename')).split())
         fd = os.open(snapshot_filename, os.O_RDONLY)
@@ -347,9 +280,8 @@ if '__main__' == __name__:
                 state.loadbin(_coreid, _start_symbol, _sp, _pc, _binary, *_args)
             elif 'restore' == k:
                 _snapshot_filename = v.get('snapshot_filename')
-                _addr = v.get('addr')
                 state.boot()
-                state.restore(_snapshot_filename, _addr)
+                state.restore(_snapshot_filename)
                 state.service.tx({'ack': {'cycle': state.get('cycle')}})
             elif 'tick' == k:
                 logging.debug('tick - v : {}'.format(v))
@@ -364,7 +296,7 @@ if '__main__' == __name__:
             elif 'restore' == k:
                 assert not state.get('running'), 'Attempted restore while running!'
                 state.update({'cycle': v.get('cycle')})
-                state.restore(v.get('snapshot_filename'), {})
+                state.restore(v.get('snapshot_filename'))
                 state.service.tx({'ack': {'cycle': state.get('cycle')}})
         if state.get('ack') and state.get('running'): state.service.tx({'ack': {'cycle': state.get('cycle')}})
     os.close(state.get('fd'))

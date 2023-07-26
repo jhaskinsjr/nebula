@@ -496,15 +496,8 @@ if '__main__' == __name__:
             elif 'restore' == k:
                 assert not state.get('running'), 'Attempted restore while running!'
                 logging.info('restore : {}'.format(v))
-#                _regfile.update({'cycle': v.get('cycle')})
-#                _mainmem.update({'cycle': v.get('cycle')})
-#                state.update({'cycle': v.get('cycle')})
-#                state.update({'instructions_committed': v.get('instructions_committed')})
                 _snapshot_filename = v.get('snapshot_filename')
-                _addr = v.get('addr')
-#                _mainmem.restore(_snapshot_filename, _addr)
-#                _regfile.restore(_snapshot_filename, _addr)
-                _restore = _mainmem.restore(_snapshot_filename, _addr)
+                _restore = _mainmem.restore(_snapshot_filename)
                 _regfile.registers = _restore.get('registers')
                 _regfile.update({'cycle': _restore.get('cycle')})
                 _mainmem.update({'cycle': _restore.get('cycle')})
@@ -512,7 +505,6 @@ if '__main__' == __name__:
                 state.update({'instructions_committed': _restore.get('instructions_committed')})
                 logging.info('state.cycle : {}'.format(state.get('cycle')))
                 logging.info('state.instructions_committed : {}'.format(state.get('instructions_committed')))
-#                logging.info('_regfile.registers : {}'.format(_regfile.registers))
                 _service.tx({'ack': {'cycle': state.get('cycle')}})
             elif 'tick' == k:
                 _regfile.update({'cycle': v.get('cycle')})
@@ -525,8 +517,7 @@ if '__main__' == __name__:
                         **v.get('snapshot').get('data'),
                         **{'registers': _regfile.registers},
                     }
-                    _snapshot_filename = _mainmem.snapshot(_addr, _data)
-#                    _regfile.snapshot(_addr, _snapshot_filename)
+                    _snapshot_filename = _mainmem.snapshot(_data)
                 if not state.get('shutdown'): state.execute(10**2)
 #                _results = v.get('results')
 #                _events = v.get('events')

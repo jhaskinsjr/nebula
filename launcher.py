@@ -47,10 +47,7 @@ def handler(conn, addr):
                 break
             elif 'shutdown' == k:
                 state.get('lock').acquire()
-#                state.update({'shutdown': v})
-#                if None == v: state.update({'running': False})
                 state.get('shutdown').update({v.get('coreid'): True})
-#                if len(state.get('shutdown').keys()) == state.get('ncores'): state.update({'running': False})
                 if all(state.get('shutdown').values()): state.update({'running': False})
                 state.get('lock').release()
             elif 'undefined' == k:
@@ -151,31 +148,16 @@ def config(connections, service, field, val):
         'val': _val,
     }})
 def restore(state, snapshot_filename):
-    fd = os.open(snapshot_filename, os.O_RDWR)
-    os.lseek(fd, state.get('snapshot').get('addr').get('cycle'), os.SEEK_SET)
-    cycle = int.from_bytes(os.read(fd, 8), 'little')
-    os.lseek(fd, state.get('snapshot').get('addr').get('instructions_committed'), os.SEEK_SET)
-    state.update({'instructions_committed': int.from_bytes(os.read(fd, 8), 'little')})
-    os.lseek(fd, state.get('snapshot').get('addr').get('cmdline_length'), os.SEEK_SET)
-    state.update({'cmdline_length': int.from_bytes(os.read(fd, 8), 'little')})
-    os.lseek(fd, state.get('snapshot').get('addr').get('cmdline'), os.SEEK_SET)
-    state.update({'cmdline': os.read(fd, state.get('cmdline_length')).decode('ascii')})
-    os.close(fd)
     logging.info('restore(): snapshot_filename            : {}'.format(snapshot_filename))
-    logging.info('restore(): cycle                        : {}'.format(cycle))
-    logging.info('restore(): state.instructions_committed : {}'.format(state.get('instructions_committed')))
-    logging.info('restore(): state.cmdline                : {}'.format(state.get('cmdline')))
+    _cycle = 0
     tx(state.get('connections'), {
         'restore': {
-            'cycle': cycle,
-            'instructions_committed': state.get('instructions_committed'),
+            'cycle': _cycle,
             'snapshot_filename': snapshot_filename,
-            'cmdline': state.get('cmdline'),
-            'addr': state.get('snapshot').get('addr'),
         }
     })
     waitforack(state)
-    return cycle - 1
+    return _cycle
 def waitforack(state):
     _ack = False
     while not _ack:
@@ -315,7 +297,6 @@ if __name__ == '__main__':
         'cycle': 0,
         'instructions_committed': 0,
         'shutdown': {},
-#        'ncores': 0,
         'undefined': None,
         'cmdline': None,
         'snapshot': {
@@ -329,11 +310,6 @@ if __name__ == '__main__':
                 'registers': 0x6000,
                 'mmu_length': 0x7000,
                 'mmu': 0x8000,
-#                'register': 0x9000_0000,
-#                'cycle': 0x9000_1000,
-#                'instructions_committed': 0x9000_2000,
-#                'cmdline_length': 0x9000_3000,
-#                'cmdline': 0x9000_3100,
             },
         },
         'config': {
@@ -399,7 +375,6 @@ if __name__ == '__main__':
                         logging.info('\t_cmdline : {}'.format(_cmdline))
                         logging.info('\t_binary  : {}'.format(_binary))
                         logging.info('\t_args    : {}'.format(_args))
-#                        state.update({'ncores': 1 + state.get('ncores')})
                         state.get('shutdown').update({len(state.get('shutdown').keys()): False})
                 elif args.restore:
                     restore(state, args.restore)
