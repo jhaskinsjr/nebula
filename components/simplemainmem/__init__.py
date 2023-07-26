@@ -287,9 +287,8 @@ if '__main__' == __name__:
                 logging.debug('tick - v : {}'.format(v))
                 state.update({'cycle': v.get('cycle')})
                 if v.get('snapshot'):
-                    _addr = v.get('snapshot').get('addr')
                     _data = v.get('snapshot').get('data')
-                    state.snapshot(_addr, _data)
+                    state.snapshot(_data)
                 _results = v.get('results')
                 _events = v.get('events')
                 state.do_tick(_results, _events)
