@@ -320,6 +320,68 @@ For a brief overview of each pipeline implmentation, follow the links below:
 * [Lime](pipelines/lime/README.md)
 * [Oroblanco](pipelines/oroblanco/README.md)
 
+# Snapshots
+
+The [Amanatsu] (pipelines/amanatsu/README.md) pipeline implementation does
+not actually model a pipeline. Rather, it fetches and executes instructions
+in a tight loop as rapidly as possible. In addition to making it almost 1,000
+times faster than any of the other sample pipelines (all of which, do model
+execution in cycle-accurate detail), this makes Amanatsu ideally suited for
+capturing execution state in a snapshot that can be resumed.
+
+## Capturing A Snapshot
+
+To capture snapshots after 100, 300, 900, and 2,700 instructions' worth of
+execution:
+
+    cd  ${HOME}/src/nebula/pipelines/amanatsu/
+    mkdir -p /tmp/amanatsu/sum
+    python3 ../../launcher.py \
+        --log /tmp/amanatsu/sum \
+        --service ../../toolbox/stats.py:localhost:-1 \
+        --config stats:output_filename:/tmp/amanatsu/sum/stats.json \
+        mainmem:filename:/tmp/amanatsu/sum/mainmem.raw \
+        mainmem:capacity:$(( 2**32 )) \
+        --snapshots 100 300 900 2700 \
+        -- \
+        12345 \
+        init.nebula \
+        ../../examples/bin/sum 2 3 5 7 11 13 17 19 23 29
+
+This will create a series of files:
+
+* **/tmp/amanatsu/sum/mainmem.raw.000000000000100.snapshot**: execution state captured after 100 instructions
+* **/tmp/amanatsu/sum/mainmem.raw.000000000000300.snapshot**: execution state captured after 300 instructions
+* **/tmp/amanatsu/sum/mainmem.raw.000000000000900.snapshot**: execution state captured after 900 instructions
+* **/tmp/amanatsu/sum/mainmem.raw.000000000002700.snapshot**: execution state captured after 2,700 instructions
+
+## Restoring From A Snapshot
+
+Any of the pipelines can restore state from a snapshot and resume execution,
+e.g.:
+
+    cd  ${HOME}/src/nebula/pipelines/oroblanco/
+    python3 ../../launcher.py \
+        --log /tmp/oroblanco/sum \
+        --service ../../toolbox/stats.py:localhost:-1 \
+        --config stats:output_filename:/tmp/oroblanco/sum/stats.json \
+        mainmem:filename:/tmp/oroblanco/sum/mainmem.raw \
+        mainmem:capacity:$(( 2**32 )) \
+        --restore /tmp/amanatsu/sum/mainmem.raw.000000000000900.snapshot \
+        -- \
+        12345 \
+        init.nebula
+
+Note: (1) the `--restore` parameter is included; and (2) the command that
+was executed to create the snapshots (`../../examples/bin/sum 2 3 5 7`...) is
+omitted. In this example, the Oroblanco pipeline should return
+
+    129
+
+On my laptop, resuming from this snapshot, Oroblanco finishes executing in
+a little more than 8 minutes, whereas executing the same command line
+end-to-end, Oroblanco requires more than 11 minutes.
+
 # Simulator Scripts
 
 The simulator executes according to instructions in an execute script.
@@ -652,29 +714,39 @@ command line to invoke the simulation.
 # Simulator Speed
 
 On my laptop, a Lenovo ThinkPad with 32 GB of RAM and an Intel Core
-i7-8565U, running Ubuntu MATE 22.04, the Oroblanco pipeline executes at a
-rate of about 30 simulated cycles per real-world second at a steady state
-system load of less than 10%.
+i7-8565U, running Ubuntu MATE 22.04, Amanatsu executes at a rate of
+approximately 4,000 instructions/second. Recall, however, that Amanatsu does
+**not** perform cycle-accurate simulation, but, rather, merely executes
+instructions in a tight loop, updating state (main memory and the register
+file) as rapidly as possible. (This is what makes Amanatsu ideal for
+creating simulation snapshots for subsequent execution by the cycle-accurate
+pipeline models.)
 
-While 30 cycles/second is not blazingly fast,
-as stated above (see: Software Architecture), I view the flexibilty
-enabeld by this software architecture as a more-than-worthwhile tradeoff.
-Also, consider that with the CPU utilization so low, I am able to execute
-many simulations simulatenously without saturating my CPU; this
+The Oroblanco sample pipeline, which does perform cycle-accurate simulation,
+executes at a rate of about 30 simulated cycles per real-world second at a
+steady state system load of less than 10%. While 30 cycles/second is not
+blazingly fast, as stated above (see: Software Architecture), I view the
+flexibilty enabeld by Nebula's software architecture as a
+more-than-worthwhile tradeoff. Also, consider that with the CPU utilization
+so low, I am able to execute many simulations simulatenously without
+saturating my CPU; this
 comports well with the fact that much of microarchitecture research
 requires large state-space searches, with many executions of the same
 benchmarks under different parameters (e.g., cache capacity, cache
-replacement algorithm, branch predictor). Using the `executor.py` tool, I
+replacement algorithm, branch predictor).
+
+Using the `executor.py` tool, I
 was able to execute a large state space exploration on my laptop
 comprised of approximately 6,200 simulations that ran for roughly 6,500
 cycles apiece in just under 3 hours with `--max_cpu_utilization` set to 90
 (so that I could continue to use my laptop for other tasks); that is a very
 respectable aggregate simulation rate of roughly 3,700 cycles/second on a
 consumer-grade laptop!
+
 Finally, consider that I have made almost no effort to optimize the
 simulator, choosing instead at this early stage to focus primarily on
 correctness; future optimization efforts will doubtless increase the
-execution speed.
+execution speed of both Amanatsu and the cycle-accurate pipeline models.
 
 # Instruction Implementation Tests
 
