@@ -525,15 +525,6 @@ if '__main__' == __name__:
                         'cmdline': state.get('cmdline'),
                         'registers': _regfile.registers,
                     })
-#                if v.get('snapshot'):
-#                    logging.info('tick.v : {}'.format(v))
-#                    _addr = v.get('snapshot').get('addr')
-#                    _data = {
-#                        **v.get('snapshot').get('data'),
-#                        **{'registers': _regfile.registers},
-#                    }
-#                    _snapshot_filename = _mainmem.snapshot(_data)
-#                if not state.get('shutdown'): state.execute(10**2)
 #                _results = v.get('results')
 #                _events = v.get('events')
 #                do_tick(_service, state, _results, _events)
