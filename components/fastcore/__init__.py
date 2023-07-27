@@ -32,6 +32,8 @@ class FastCore:
         self.instructions_committed = 0
         self.shutdown = None
         self.objmap = None
+        self.snapshots = []
+        self.cmdline = None
         self.config = {
             'toolchain': '',
             'binary': '',
@@ -506,19 +508,32 @@ if '__main__' == __name__:
                 logging.info('state.cycle : {}'.format(state.get('cycle')))
                 logging.info('state.instructions_committed : {}'.format(state.get('instructions_committed')))
                 _service.tx({'ack': {'cycle': state.get('cycle')}})
+            elif 'snapshots' == k:
+                state.update({'snapshots': v.get('checkpoints')})
+                state.update({'cmdline': v.get('cmdline')})
             elif 'tick' == k:
                 _regfile.update({'cycle': v.get('cycle')})
                 _mainmem.update({'cycle': v.get('cycle')})
                 state.update({'cycle': v.get('cycle')})
-                if v.get('snapshot'):
-                    logging.info('tick.v : {}'.format(v))
-                    _addr = v.get('snapshot').get('addr')
-                    _data = {
-                        **v.get('snapshot').get('data'),
-                        **{'registers': _regfile.registers},
-                    }
-                    _snapshot_filename = _mainmem.snapshot(_data)
-                if not state.get('shutdown'): state.execute(10**2)
+                _do_snapshot = 0 < len(state.get('snapshots'))
+                _instruction_count = (10**5 if not len(state.get('snapshots')) else state.get('snapshots').pop(0) - state.get('instructions_committed'))
+                if not state.get('shutdown'):
+                    state.execute(_instruction_count)
+                    if _do_snapshot: _snapshot_filename = _mainmem.snapshot({
+                        'cycle': state.get('cycle'),
+                        'instructions_committed': state.get('instructions_committed'),
+                        'cmdline': state.get('cmdline'),
+                        'registers': _regfile.registers,
+                    })
+#                if v.get('snapshot'):
+#                    logging.info('tick.v : {}'.format(v))
+#                    _addr = v.get('snapshot').get('addr')
+#                    _data = {
+#                        **v.get('snapshot').get('data'),
+#                        **{'registers': _regfile.registers},
+#                    }
+#                    _snapshot_filename = _mainmem.snapshot(_data)
+#                if not state.get('shutdown'): state.execute(10**2)
 #                _results = v.get('results')
 #                _events = v.get('events')
 #                do_tick(_service, state, _results, _events)

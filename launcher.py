@@ -177,28 +177,28 @@ def run(cycle, max_cycles, max_instructions, break_on_undefined, snapshot_freque
     state.get('lock').acquire()
     tx(state.get('connections'), 'run')
     state.get('lock').release()
-    snapshot_at = state.get('instructions_committed') + snapshot_frequency
+#    snapshot_at = state.get('instructions_committed') + snapshot_frequency
     while (cycle < max_cycles if max_cycles else True) and \
           (state.get('instructions_committed') < max_instructions if max_instructions else True) and \
           (state.get('running')) and \
           (None == state.get('undefined') if break_on_undefined else True):
         state.get('lock').acquire()
-        _snapshot = {}
-        if snapshot_frequency and snapshot_at and state.get('instructions_committed') >= snapshot_at:
-            state.update({'cycle': cycle})
-            _snapshot = {
-                'snapshot': {
-                    'addr': state.get('snapshot').get('addr'),
-                    'data': {
-                        'cycle': state.get('cycle'),
-                        'instructions_committed': state.get('instructions_committed'),
-                        'cmdline': state.get('cmdline'),
-                    },
-                }
-            }
-            snapshot_at += snapshot_frequency
-        logging.debug('snapshot_frequency : {}'.format(snapshot_frequency))
-        logging.debug('snapshot_at        : {}'.format(snapshot_at))
+#        _snapshot = {}
+#        if snapshot_frequency and snapshot_at and state.get('instructions_committed') >= snapshot_at:
+#            state.update({'cycle': cycle})
+#            _snapshot = {
+#                'snapshot': {
+#                    'addr': state.get('snapshot').get('addr'),
+#                    'data': {
+#                        'cycle': state.get('cycle'),
+#                        'instructions_committed': state.get('instructions_committed'),
+#                        'cmdline': state.get('cmdline'),
+#                    },
+#                }
+#            }
+#            snapshot_at += snapshot_frequency
+#        logging.debug('snapshot_frequency : {}'.format(snapshot_frequency))
+#        logging.debug('snapshot_at        : {}'.format(snapshot_at))
         logging.debug('state.instructions_committed : {}'.format(state.get('instructions_committed')))
         logging.info('run(): @{:8}'.format(cycle))
         logging.info('\tinfo :\n\t\t{}'.format('\n\t\t'.join(state.get('info'))))
@@ -212,7 +212,7 @@ def run(cycle, max_cycles, max_instructions, break_on_undefined, snapshot_freque
         cycle = (min(state.get('futures').keys()) if len(state.get('futures').keys()) else 1 + cycle)
         tx(state.get('connections'), {'tick': {
             **{'cycle': cycle},
-            **_snapshot,
+#            **_snapshot,
             **dict(state.get('futures').get(cycle, {'results': [], 'events': []})),
         }})
         if cycle in state.get('futures'): state.get('futures').pop(cycle)
@@ -269,7 +269,7 @@ if __name__ == '__main__':
     parser.add_argument('--log', type=str, dest='log', default='/tmp', help='logging output directory')
     parser.add_argument('--max_cycles', type=int, dest='max_cycles', default=None, help='maximum number of cycles to run for')
     parser.add_argument('--max_instructions', type=int, dest='max_instructions', default=None, help='maximum number of instructions to execute')
-    parser.add_argument('--snapshots', type=int, dest='snapshots', default=0, help='number of instructions per snapshot')
+    parser.add_argument('--snapshots', type=int, dest='snapshots', nargs='+', help='number of instructions per snapshot')
     parser.add_argument('port', type=int, help='port for accepting connections')
     parser.add_argument('script', type=str, help='script to be executed by μService-SIMulator')
     parser.add_argument('cmdline', nargs='*', help='binary to be executed and parameters')
@@ -299,19 +299,19 @@ if __name__ == '__main__':
         'shutdown': {},
         'undefined': None,
         'cmdline': None,
-        'snapshot': {
-            'addr': {
-                'padding': 0x0000,
-                'cycle': 0x1000,
-                'instructions_committed': 0x2000,
-                'cmdline_length': 0x3000,
-                'cmdline': 0x4000,
-                'registers_length': 0x5000,
-                'registers': 0x6000,
-                'mmu_length': 0x7000,
-                'mmu': 0x8000,
-            },
-        },
+#        'snapshots': {
+#            'addr': {
+#                'padding': 0x0000,
+#                'cycle': 0x1000,
+#                'instructions_committed': 0x2000,
+#                'cmdline_length': 0x3000,
+#                'cmdline': 0x4000,
+#                'registers_length': 0x5000,
+#                'registers': 0x6000,
+#                'mmu_length': 0x7000,
+#                'mmu': 0x8000,
+#            },
+#        },
         'config': {
             'mainmem_filename': None,
             'mainmem_capacity': None,
@@ -381,6 +381,13 @@ if __name__ == '__main__':
                     state.get('shutdown').update({len(state.get('shutdown').keys()): False})
                 else:
                     assert False, 'Neither command line nor --restore!'
+                if args.snapshots:
+                    tx(state.get('connections'), {
+                        'snapshots': {
+                            'checkpoints': args.snapshots,
+                            'cmdline': state.get('cmdline'),
+                        }
+                    })
                 state.update({'running': True})
                 state.update({'cycle': run(state.get('cycle'), args.max_cycles, args.max_instructions, args.break_on_undefined, args.snapshots)})
                 state.update({'running': False})

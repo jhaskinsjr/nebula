@@ -36,6 +36,7 @@ class SimpleMainMemory:
         self.running = False
         self.ack = True
         self.fd = None
+        self.snapshots = None
         self.config = {
             'filename': None,
             'capacity': None,
@@ -119,6 +120,7 @@ class SimpleMainMemory:
         _state_length = int.from_bytes(os.read(fd, 8), 'little')
         _retval = str(os.read(fd, _state_length), encoding='ascii')
         _retval = json.loads(_retval)
+        logging.info('SimpleMainMemory.restore(): _retval : {}'.format(_retval))
         _retval.update({'registers': {(k if '%pc' == k else int(k)):v for k, v in _retval.get('registers').items()}})
         _retval.update({'mmu': {int(x):y for x, y in _retval.get('mmu').items()}})
         self.mmu.translations = _retval.get('mmu')
@@ -129,7 +131,7 @@ class SimpleMainMemory:
             'name': k,
             'data': v,
         }})
-        logging.info('restore(): _retval : {}'.format(_retval))
+        logging.info('SimpleMainMemory.restore(): _retval : {}'.format(_retval))
         return _retval
     def state(self):
         return {
@@ -283,6 +285,8 @@ if '__main__' == __name__:
                 state.boot()
                 state.restore(_snapshot_filename)
                 state.service.tx({'ack': {'cycle': state.get('cycle')}})
+            elif 'snapshots' == k:
+                state.update({'snapshots': v})
             elif 'tick' == k:
                 logging.debug('tick - v : {}'.format(v))
                 state.update({'cycle': v.get('cycle')})
