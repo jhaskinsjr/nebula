@@ -1391,7 +1391,7 @@ def do_decode(buffer, max_insns):
     while max_insns > len(_retval) and len(buffer[x:4 + x]):
         _word = int.from_bytes(buffer[x:4 + x], 'little')
         if 0x3 == _word & 0x3:
-            if 4 > len(buffer): break
+            if 4 > len(buffer[x:4 + x]): break
             _retval.append(decode_uncompressed(_word))
             x += 4
         else:
