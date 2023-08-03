@@ -1,6 +1,5 @@
 # Sample μService-SIMulator script
 # core 0
-#service implementation/fastcore.py:localhost:0
 service implementation/regfile.py:localhost:0
 service implementation/fetch.py:localhost:0
 service implementation/decode.py:localhost:0
@@ -8,6 +7,14 @@ service implementation/alu.py:localhost:0
 service implementation/lsu.py:localhost:0
 service implementation/commit.py:localhost:0
 service implementation/l2.py:localhost:0
+# core 1
+#service implementation/regfile.py:localhost:0
+#service implementation/fetch.py:localhost:0
+#service implementation/decode.py:localhost:0
+#service implementation/alu.py:localhost:0
+#service implementation/lsu.py:localhost:0
+#service implementation/commit.py:localhost:0
+#service implementation/l2.py:localhost:0
 spawn
 config fetch:l1ic_nsets 16
 config fetch:l1ic_nways 2
