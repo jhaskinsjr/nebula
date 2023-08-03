@@ -24,20 +24,20 @@ https://www.ibm.com/support/pages/configuring-ssh-login-without-password
 
 **Step 4.** Create a folder for the execution artifacts:
 
-    mkdir -p /tmp/oroblanco/sum
+    mkdir -p /tmp/pompia/sum
 
 **Step 5.** Enter the directory of one of the sample pipelines; for this
-example, we will use the Oroblanco pipeline:
+example, we will use the Pompia pipeline:
 
-    cd ${HOME}/src/nebula/pipelines/oroblanco
+    cd ${HOME}/src/nebula/pipelines/pompia
 
 **Step 6.** Execute:
 
     python3 ../../launcher.py \
-        --log /tmp/oroblanco/sum \
+        --log /tmp/pompia/sum \
         --service ../../toolbox/stats.py:localhost:-1 implementation/mainmem.py:localhost:-1 \
-        --config stats:output_filename:/tmp/oroblanco/sum/stats.json \
-        mainmem:filename:/tmp/oroblanco/sum/mainmem.raw \
+        --config stats:output_filename:/tmp/pompia/sum/stats.json \
+        mainmem:filename:/tmp/pompia/sum/mainmem.raw \
         mainmem:capacity:$(( 2**32 )) \
         --max_instructions $(( 10**5 )) \
         -- \
@@ -63,19 +63,19 @@ of the first six prime integers; to wit:
 For a more in-depth analysis of the actions taken by the simulator,
 each module emits its own log file:
 
-* **/tmp/oroblanco/sum/launcher.py.log**: detailed
-information about the operation of the Oroblanco pipeline
-* **/tmp/oroblanco/sum/mainmem.py.log**: loading the binary and placing the
+* **/tmp/pompia/sum/launcher.py.log**: detailed
+information about the operation of the Pompia pipeline
+* **/tmp/pompia/sum/mainmem.py.log**: loading the binary and placing the
 command line arguments
-* **/tmp/oroblanco/sum/stats.py.log**: module configuration and the final
+* **/tmp/pompia/sum/stats.py.log**: module configuration and the final
 JSON object
-* **/tmp/oroblanco/sum/0000_regfile.py.log**: initial- and final states of
+* **/tmp/pompia/sum/0000_regfile.py.log**: initial- and final states of
 the register file on core 0
-* **/tmp/oroblanco/sum/0000_alu.py.log**: instructions that executed
+* **/tmp/pompia/sum/0000_alu.py.log**: instructions that executed
 on core 0 (irrespective of whether they ultimately retire)
-* **/tmp/oroblanco/sum/0000_commit.py.log**: all instructions that
+* **/tmp/pompia/sum/0000_commit.py.log**: all instructions that
 retired on core 0
-* **/tmp/oroblanco/sum/stats.json**: counts of key events that occurred
+* **/tmp/pompia/sum/stats.json**: counts of key events that occurred
 during the simulation for each core
 
 These log files assist with debugging and gaining deeper insights about the
@@ -301,16 +301,17 @@ well on any Unix-like OS with a Python3 port.
 
 # Sample Pipelines
 
-At present, there are five sample pipeline implementations: Amanatsu,
-Bergamot, Clementine, Lime, and Oroblanco.
+At present, there are six sample pipeline implementations: Amanatsu,
+Bergamot, Clementine, Lime, Oroblanco, and Pompia.
 
 The Quick Start section above shows how to execute the examples/bin/sum program
-using the Oroblanco implementation; to use the Amanatsu implementation, "cd"
-into the pipelines/amanatsu subdirectory (instead of pipelines/oroblanco); to
+using the Pompia implementation; to use the Amanatsu implementation, "cd"
+into the pipelines/amanatsu subdirectory (instead of pipelines/pompia); to
 use the Bergamot implementation, "cd" into the pipelines/bergamot subdirectory;
 to use the Clementine implementation, "cd" into the pipelines/clementine
 subdirectory; to use the Lime implementation, "cd" into the
-pipelines/lime subdirectory.
+pipelines/lime subdirectory; to use the Oroblanco implementation, "cd" into
+the pipelines/oroblanco subdirectory.
 
 For a brief overview of each pipeline implmentation, follow the links below:
 
@@ -319,6 +320,7 @@ For a brief overview of each pipeline implmentation, follow the links below:
 * [Clementine](pipelines/clementine/README.md)
 * [Lime](pipelines/lime/README.md)
 * [Oroblanco](pipelines/oroblanco/README.md)
+* [Pompia](pipelines/pompia/README.md)
 
 # Snapshots
 
