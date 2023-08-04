@@ -142,18 +142,18 @@ def do_tick(service, state, results, events):
                         'result': _result,
                     },
                 }
-        else:
-            for _insn in filter(lambda a: a.get('cmd') in riscv.constants.STORES, state.get('pending_commit')):
-                assert _insn.get('operands')
-                if _insn.get('operands').get('addr') != _l1dc.get('addr'): continue
-                service.tx({'info': '_insn : {}'.format(_insn)})
-                _index = state.get('pending_commit').index(_insn)
-                state.get('pending_commit')[_index] = {
-                    **_insn,
-                    **{
-                        'result': None,
-                    },
-                }
+#        else:
+#            for _insn in filter(lambda a: a.get('cmd') in riscv.constants.STORES, state.get('pending_commit')):
+#                assert _insn.get('operands')
+#                if _insn.get('operands').get('addr') != _l1dc.get('addr'): continue
+#                service.tx({'info': '_insn : {}'.format(_insn)})
+#                _index = state.get('pending_commit').index(_insn)
+#                state.get('pending_commit')[_index] = {
+#                    **_insn,
+#                    **{
+#                        'result': None,
+#                    },
+#                }
     for _commit in map(lambda y: y.get('commit'), filter(lambda x: x.get('commit'), events)):
         state.get('pending_commit').append(_commit.get('insn'))
     state.update({'pending_commit': sorted(state.get('pending_commit'), key=lambda x: x.get('iid'))})

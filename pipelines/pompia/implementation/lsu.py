@@ -12,6 +12,7 @@ import service
 import toolbox
 import components.simplecache
 import riscv.execute
+import riscv.constants
 import riscv.syscall.linux
 
 def fetch_block(service, state, addr):
@@ -127,6 +128,7 @@ def do_execute(service, state):
     # NOTE: simpliying to only one in-flight LOAD/STORE at a time
     _insn = (state.get('executing')[0] if len(state.get('executing')) else (state.get('pending_execute')[0] if len(state.get('pending_execute')) else None))
     if not _insn: return
+    if _insn.get('cmd') in riscv.constants.STORES and not _insn.get('retired'): return # must not allow flushed STORE instructions to change state
     if not len(state.get('executing')): state.get('executing').append(state.get('pending_execute').pop(0))
     service.tx({'info': '_insn : {}'.format(_insn)})
     {
@@ -148,6 +150,19 @@ def do_execute(service, state):
     }.get(_insn.get('cmd'), do_unimplemented)(service, state, _insn)
 
 def do_tick(service, state, results, events):
+    for _flush, _retire in map(lambda y: (y.get('flush'), y.get('retire')), filter(lambda x: x.get('flush') or x.get('retire'), results)):
+        if _flush:
+            _ndx = next(filter(lambda x: _flush.get('iid') == state.get('pending_execute')[x].get('iid'), range(len(state.get('pending_execute')))), None)
+            if not isinstance(_ndx, int): continue
+            logging.info('_flush : {}'.format(_flush))
+            service.tx({'info': 'flushing : {}'.format(_flush)})
+            state.get('pending_execute').pop(_ndx)
+        if _retire:
+            _ndx = next(filter(lambda x: _retire.get('iid') == state.get('pending_execute')[x].get('iid'), range(len(state.get('pending_execute')))), None)
+            if not isinstance(_ndx, int): continue
+            logging.info('_retire : {}'.format(_retire))
+            service.tx({'info': 'retiring : {}'.format(_retire)})
+            state.get('pending_execute')[_ndx].update({'retired': True})
     for _l2 in filter(lambda x: x, map(lambda y: y.get('l2'), results)):
         _addr = _l2.get('addr')
         if _addr == state.get('operands').get('l2'):
@@ -170,6 +185,7 @@ def do_tick(service, state, results, events):
             }})
         elif 'cmd' in _lsu.keys() and 'purge' == _lsu.get('cmd'):
             state.get('l1dc').purge()
+    service.tx({'info': 'state.pending_execute : {}'.format(state.get('pending_execute'))})
     do_execute(service, state)
 
 if '__main__' == __name__:

@@ -261,6 +261,7 @@ def do_store(service, state, insn):
     _rs2 = insn.get('operands').get('rs2')
     insn = {
         **insn,
+        **{'result': None},
 #        **{
 #            'operands': {
 #                'rs1': _rs1,
