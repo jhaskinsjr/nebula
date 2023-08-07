@@ -24,6 +24,18 @@ def do_commit(service, state):
     )))})
     _commit = []
     for _insn in state.get('pending_commit'):
+        if 'confirmed' in _insn.keys() and not _insn.get('confirmed'):
+                service.tx({'info': 'confirming {}'.format(_insn)})
+                service.tx({'result': {
+                    'arrival': 1 + state.get('cycle'),
+                    'coreid': state.get('coreid'),
+                    'confirm': {
+                        'cmd': _insn.get('cmd'),
+                        'iid': _insn.get('iid'),
+                        '%pc': _insn.get('%pc'),
+                    },
+                }})
+                _insn.update({'confirmed': True})
         if not any(map(lambda x: x in _insn.keys(), ['next_pc', 'ret_pc', 'result'])): break
         _commit.append(_insn)
         if state.get('flush_until') and state.get('flush_until') != _insn.get('%pc'):
@@ -118,8 +130,45 @@ def do_tick(service, state, results, events):
     for _l1dc in map(lambda y: y.get('l1dc'), filter(lambda x: x.get('l1dc'), results)):
         service.tx({'info': '_l1dc : {}'.format(_l1dc)})
         if 'data' in _l1dc.keys():
+#            for _insn in filter(lambda a: a.get('cmd') in riscv.constants.LOADS + riscv.constants.STORES, state.get('pending_commit')):
+#                assert _insn.get('operands')
+#                if _insn.get('operands').get('addr') != _l1dc.get('addr'): continue
+#                service.tx({'info': '_insn : {}'.format(_insn)})
+#                if _insn.get('cmd') in riscv.constants.LOADS:
+#                    # LOAD
+#                    _peeked  = _l1dc.get('data')
+#                    _peeked += [-1] * (8 - len(_peeked))
+#                    _result = { # HACK: This is 100% little-endian-specific
+#                        'LD': _peeked,
+#                        'LW': _peeked[:4] + [(0xff if ((_peeked[3] >> 7) & 0b1) else 0)] * 4,
+#                        'LH': _peeked[:2] + [(0xff if ((_peeked[1] >> 7) & 0b1) else 0)] * 6,
+#                        'LB': _peeked[:1] + [(0xff if ((_peeked[0] >> 7) & 0b1) else 0)] * 7,
+#                        'LWU': _peeked[:4] + [0] * 4,
+#                        'LHU': _peeked[:2] + [0] * 6,
+#                        'LBU': _peeked[:1] + [0] * 7,
+#                        'LR.D': _peeked,
+#                        'LR.W': _peeked[:4] + [(0xff if ((_peeked[3] >> 7) & 0b1) else 0)] * 4,
+#                    }.get(_insn.get('cmd'))
+#                    _index = state.get('pending_commit').index(_insn)
+#                    state.get('pending_commit')[_index] = {
+#                        **_insn,
+#                        **{
+#                            'result': _result,
+#                        },
+#                    }
+#                else:
+#                    #STORE
+#                    assert 'confirmed' in _insn.keys()
+#                    _index = state.get('pending_commit').index(_insn)
+#                    state.get('pending_commit')[_index] = {
+#                        **_insn,
+#                        **{
+#                            'result': None,
+#                        },
+#                    }
             for _insn in filter(lambda a: a.get('cmd') in riscv.constants.LOADS, state.get('pending_commit')):
                 assert _insn.get('operands')
+                assert 'confirmed' in _insn.keys()
                 if _insn.get('operands').get('addr') != _l1dc.get('addr'): continue
                 service.tx({'info': '_insn : {}'.format(_insn)})
                 _peeked  = _l1dc.get('data')
@@ -142,18 +191,19 @@ def do_tick(service, state, results, events):
                         'result': _result,
                     },
                 }
-#        else:
-#            for _insn in filter(lambda a: a.get('cmd') in riscv.constants.STORES, state.get('pending_commit')):
-#                assert _insn.get('operands')
-#                if _insn.get('operands').get('addr') != _l1dc.get('addr'): continue
-#                service.tx({'info': '_insn : {}'.format(_insn)})
-#                _index = state.get('pending_commit').index(_insn)
-#                state.get('pending_commit')[_index] = {
-#                    **_insn,
-#                    **{
-#                        'result': None,
-#                    },
-#                }
+        else:
+            for _insn in filter(lambda a: a.get('cmd') in riscv.constants.STORES, state.get('pending_commit')):
+                assert _insn.get('operands')
+                assert 'confirmed' in _insn.keys()
+                if _insn.get('operands').get('addr') != _l1dc.get('addr'): continue
+                service.tx({'info': '_insn : {}'.format(_insn)})
+                _index = state.get('pending_commit').index(_insn)
+                state.get('pending_commit')[_index] = {
+                    **_insn,
+                    **{
+                        'result': None,
+                    },
+                }
     for _commit in map(lambda y: y.get('commit'), filter(lambda x: x.get('commit'), events)):
         state.get('pending_commit').append(_commit.get('insn'))
     state.update({'pending_commit': sorted(state.get('pending_commit'), key=lambda x: x.get('iid'))})

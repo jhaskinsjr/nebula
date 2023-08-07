@@ -96,37 +96,35 @@ def do_issue(service, state):
 def do_tick(service, state, results, events):
     logging.debug('do_tick(): results : {}'.format(results))
     state.get('forward').clear()
-    for _reg in map(lambda y: y.get('register'), filter(lambda x: x.get('register'), results)):
-        if '%pc' != _reg.get('name'): continue
-        if _reg.get('data') in map(lambda x: x.get('%pc'), state.get('issued')): continue
-        state.get('decoded').clear()
-        state.get('buffer').clear()
-        _pc = _reg.get('data')
-        state.update({'%pc': _pc})
-        state.update({'%jp': _pc})
-        if 0 == int.from_bytes(_pc, 'little'):
-            service.tx({'info': 'Jump to @0x00000000... graceful shutdown'})
-            service.tx({'shutdown': {
-                'coreid': state.get('coreid'),
-            }})
-            break
-        state.update({'pending_fetch': {
-            'fetch': {
-                'cmd': 'get',
-                'addr': int.from_bytes(state.get('%jp'), 'little'),
-            }
-        }})
-        _service.tx({'event': {
-            'arrival': 1 + state.get('cycle'),
-            'coreid': state.get('coreid'),
-            **state.get('pending_fetch'),
-        }})
     for _fwd in map(lambda y: y.get('forward'), filter(lambda x: x.get('forward'), results)):
         state.get('forward').update({_fwd.get('rd'): _fwd.get('result')})
     service.tx({'info': 'forward                : {}'.format(state.get('forward'))})
     for _flush, _retire in map(lambda y: (y.get('flush'), y.get('retire')), filter(lambda x: x.get('flush') or x.get('retire'), results)):
         if _flush: service.tx({'info': 'flushing : {}'.format(_flush)})
-        if _retire: service.tx({'info': 'retiring : {}'.format(_retire)})
+        if _retire:
+            service.tx({'info': 'retiring : {}'.format(_retire)})
+            if 'next_pc' in _retire.keys() and _retire.get('taken'):
+                state.get('decoded').clear()
+                state.get('buffer').clear()
+                _next_pc = _retire.get('next_pc')
+                if len(state.get('issued')): _next_pc = (
+                    _retire.get('next_pc')
+                    if not any(map(lambda x: _retire.get('next_pc') == x.get('%pc'), state.get('issued')))
+                    else riscv.constants.integer_to_list_of_bytes(state.get('issued')[-1].get('_pc') + state.get('issued')[-1].get('size'), 64, 'little')
+                )
+                state.update({'%pc': _next_pc})
+                state.update({'%jp': _next_pc})
+                state.update({'pending_fetch': {
+                    'fetch': {
+                        'cmd': 'get',
+                        'addr': int.from_bytes(state.get('%jp'), 'little'),
+                    }
+                }})
+                _service.tx({'event': {
+                    'arrival': 1 + state.get('cycle'),
+                    'coreid': state.get('coreid'),
+                    **state.get('pending_fetch'),
+                }})
         _commit = (_flush if _flush else _retire)
         assert _commit.get('iid') == state.get('issued')[0].get('iid')
         state.get('issued').pop(0)

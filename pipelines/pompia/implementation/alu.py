@@ -68,10 +68,15 @@ def do_auipc(service, state, insn):
     return insn, True
 def do_jal(service, state, insn):
     _next_pc, _ret_pc = riscv.execute.jal(insn.get('%pc'), insn.get('imm'), insn.get('size'))
+    _taken = (int.from_bytes(insn.get('%pc'), 'little') + insn.get('size')) != int.from_bytes(_next_pc, 'little') 
+    # _taken rather than using the return value since,
+    # in a pathological case, it's possible to jump
+    # to the next instruction which is indistinguishable
+    # from not-taken
     insn = {
         **insn,
         **{
-            'taken': True,
+            'taken': _taken,
             'next_pc': _next_pc,
             'ret_pc': _ret_pc,
         },
@@ -90,10 +95,15 @@ def do_jalr(service, state, insn):
 #    _rs1 = (insn.get('operands').get('rs1') if ('operands' in insn.keys() and 'rs1' in insn.get('operands').keys()) else state.get('operands').get(insn.get('rs1')))
     _rs1 = insn.get('operands').get('rs1')
     _next_pc, _ret_pc = riscv.execute.jalr(insn.get('%pc'), insn.get('imm'), _rs1, insn.get('size'))
+    _taken = (int.from_bytes(insn.get('%pc'), 'little') + insn.get('size')) != int.from_bytes(_next_pc, 'little') 
+    # _taken rather than using the return value since,
+    # in a pathological case, it's possible to jump
+    # to the next instruction which is indistinguishable
+    # from not-taken
     insn = {
         **insn,
         **{
-            'taken': True,
+            'taken': _taken,
             'next_pc': _next_pc,
             'ret_pc': _ret_pc,
 #            'operands': {
@@ -124,6 +134,11 @@ def do_branch(service, state, insn):
         'BLTU': riscv.execute.bltu,
         'BGEU': riscv.execute.bgeu,
     }.get(insn.get('cmd'))(insn.get('%pc'), _rs1, _rs2, insn.get('imm'), insn.get('size'))
+    _taken = (int.from_bytes(insn.get('%pc'), 'little') + insn.get('size')) != int.from_bytes(_next_pc, 'little') 
+    # _taken rather than using the return value since,
+    # in a pathological case, it's possible to branch
+    # to the next instruction which is indistinguishable
+    # from not-taken
     insn = {
         **insn,
         **{
@@ -250,6 +265,8 @@ def do_load(service, state, insn):
         'lsu': {
             'insn': {
                 **insn,
+                **{'confirmed': False},
+#                **{'result': None},
             },
         }
     }})
@@ -261,7 +278,8 @@ def do_store(service, state, insn):
     _rs2 = insn.get('operands').get('rs2')
     insn = {
         **insn,
-        **{'result': None},
+        **{'confirmed': False},
+#        **{'result': None},
 #        **{
 #            'operands': {
 #                'rs1': _rs1,

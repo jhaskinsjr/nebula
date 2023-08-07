@@ -30,75 +30,79 @@ def fetch_block(service, state, addr):
         },
     }})
     toolbox.report_stats(service, state, 'flat', 'l1dc_misses')
-def do_l1dc(service, state, addr, size, data=None):
-    service.tx({'info': 'addr : {}'.format(addr)})
+def do_l1dc(service, state, insn, data=None):
+    _addr = insn.get('operands').get('addr')
+    _size = insn.get('nbytes')
+    service.tx({'info': '_addr : {}'.format(_addr)})
     _ante = None
     _post = None
-    if state.get('l1dc').fits(addr, size):
-        _data = state.get('l1dc').peek(addr, size)
+    if state.get('l1dc').fits(_addr, _size):
+        _data = state.get('l1dc').peek(_addr, _size)
         if not _data:
             if len(state.get('pending_fetch')): return # only 1 pending fetch at a time is primitive, but good enough for now
-            fetch_block(service, state, addr)
+            fetch_block(service, state, _addr)
             return
-        service.tx({'info': '_data : @{} {}'.format(addr, _data)})
+        service.tx({'info': '_data : @{} {}'.format(_addr, _data)})
     else:
-        _blockaddr = state.get('l1dc').blockaddr(addr)
+        _blockaddr = state.get('l1dc').blockaddr(_addr)
         _blocksize = state.get('l1dc').nbytesperblock
-        _size = _blockaddr + _blocksize - addr
-        _ante = state.get('l1dc').peek(addr, _size)
+        _antesize = _blockaddr + _blocksize - _addr
+        _ante = state.get('l1dc').peek(_addr, _antesize)
         if not _ante:
             if len(state.get('pending_fetch')): return # only 1 pending fetch at a time is primitive, but good enough for now
-            fetch_block(service, state, addr)
+            fetch_block(service, state, _addr)
             return
-        _post = state.get('l1dc').peek(addr + _size, size - _size)
+        _post = state.get('l1dc').peek(_addr + len(_ante), _size - len(_ante))
         if not _post:
             if len(state.get('pending_fetch')): return # only 1 pending fetch at a time is primitive, but good enough for now
-            fetch_block(service, state, addr + _size)
+            fetch_block(service, state, _addr + len(_ante))
             return
-        service.tx({'info': '_ante : @{} {}'.format(addr, _ante)})
-        service.tx({'info': '_post : @{} {}'.format(addr + _size, _post)})
+        service.tx({'info': '_ante : @{} {}'.format(_addr, _ante)})
+        service.tx({'info': '_post : @{} {}'.format(_addr + len(_ante), _post)})
         # NOTE: In an L1DC with only a single block, an incoming _post would
         #       always displace _ante, and an incoming _ante would always displace
         #       _post... but an L1DC with only a single block would not be very
         #       useful in practice, so no effort will be made to handle that scenario.
         #       Like: No effort AT ALL.
         _data = _ante + _post
-        assert len(_data) == size
+        assert len(_data) == _size
     if data:
         # STORE
         service.tx({'result': {
-            'arrival': 2 + state.get('cycle'),
+            'arrival': 1 + state.get('cycle'),
             'coreid': state.get('coreid'),
             'l1dc': {
-                'addr': addr,
-                'size': size,
+                'addr': _addr,
+                'size': _size,
             },
         }})
         if _ante:
             assert _post
-            state.get('l1dc').poke(addr, _ante)
-            state.get('l1dc').poke(addr + size, _post)
+            service.tx({'info': '_ante : @{} {}'.format(_addr, _ante)})
+            service.tx({'info': '_post : @{} {}'.format(_addr + len(_ante), _post)})
+            state.get('l1dc').poke(_addr, _ante)
+            state.get('l1dc').poke(_addr + len(_ante), _post)
         else:
-            state.get('l1dc').poke(addr, data)
+            state.get('l1dc').poke(_addr, data)
         # writethrough
         service.tx({'event': {
             'arrival': 1 + state.get('cycle'),
             'coreid': state.get('coreid'),
             'l2': {
                 'cmd': 'poke',
-                'addr': addr,
+                'addr': _addr,
                 'size': len(data),
                 'data': data
             }
         }})
     else:
-        # LOAD
+       # LOAD
         service.tx({'result': {
-            'arrival': 2 + state.get('cycle'), # must not arrive in commit the same cycle as the LOAD instruction
+            'arrival': 1 + state.get('cycle'),
             'coreid': state.get('coreid'),
             'l1dc': {
-                'addr': addr,
-                'size': size,
+                'addr': _addr,
+                'size': _size,
                 'data': _data,
             },
         }})
@@ -111,7 +115,7 @@ def do_unimplemented(service, state, insn):
     service.tx({'undefined': insn})
 
 def do_load(service, state, insn):
-    do_l1dc(service, state, insn.get('operands').get('addr'), insn.get('nbytes'))
+    do_l1dc(service, state, insn)
 def do_store(service, state, insn):
     _data = insn.get('operands').get('data')
     _data = {
@@ -122,14 +126,19 @@ def do_store(service, state, insn):
         'SC.D': _data,
         'SC.W': _data[:4],
     }.get(insn.get('cmd'))
-    do_l1dc(service, state, insn.get('operands').get('addr'), insn.get('nbytes'), _data)
+    do_l1dc(service, state, insn, _data)
 
 def do_execute(service, state):
     # NOTE: simpliying to only one in-flight LOAD/STORE at a time
-    _insn = (state.get('executing')[0] if len(state.get('executing')) else (state.get('pending_execute')[0] if len(state.get('pending_execute')) else None))
+    _insn = (
+        state.get('executing')[0] if len(state.get('executing'))
+        else (
+            state.get('pending_execute').pop(0) if len(state.get('pending_execute')) and state.get('pending_execute')[0].get('confirmed')
+            else None
+        )
+    )
     if not _insn: return
-    if _insn.get('cmd') in riscv.constants.STORES and not _insn.get('retired'): return # must not allow flushed STORE instructions to change state
-    if not len(state.get('executing')): state.get('executing').append(state.get('pending_execute').pop(0))
+    if not len(state.get('executing')): state.get('executing').append(_insn)
     service.tx({'info': '_insn : {}'.format(_insn)})
     {
         'LD': do_load,
@@ -150,7 +159,7 @@ def do_execute(service, state):
     }.get(_insn.get('cmd'), do_unimplemented)(service, state, _insn)
 
 def do_tick(service, state, results, events):
-    for _flush, _retire in map(lambda y: (y.get('flush'), y.get('retire')), filter(lambda x: x.get('flush') or x.get('retire'), results)):
+    for _flush, _retire, _confirm in map(lambda y: (y.get('flush'), y.get('retire'), y.get('confirm')), filter(lambda x: x.get('flush') or x.get('retire') or x.get('confirm'), results)):
         if _flush:
             _ndx = next(filter(lambda x: _flush.get('iid') == state.get('pending_execute')[x].get('iid'), range(len(state.get('pending_execute')))), None)
             if not isinstance(_ndx, int): continue
@@ -163,6 +172,12 @@ def do_tick(service, state, results, events):
             logging.info('_retire : {}'.format(_retire))
             service.tx({'info': 'retiring : {}'.format(_retire)})
             state.get('pending_execute')[_ndx].update({'retired': True})
+        if _confirm:
+            _ndx = next(filter(lambda x: _confirm.get('iid') == state.get('pending_execute')[x].get('iid'), range(len(state.get('pending_execute')))), None)
+            if not isinstance(_ndx, int): continue
+            logging.info('_confirm : {}'.format(_confirm))
+            service.tx({'info': 'confirming : {}'.format(_confirm)})
+            state.get('pending_execute')[_ndx].update({'confirmed': True})
     for _l2 in filter(lambda x: x, map(lambda y: y.get('l2'), results)):
         _addr = _l2.get('addr')
         if _addr == state.get('operands').get('l2'):
