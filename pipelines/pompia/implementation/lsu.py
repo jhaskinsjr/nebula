@@ -130,15 +130,6 @@ def do_store(service, state, insn):
 
 def do_execute(service, state):
     # NOTE: simpliying to only one in-flight LOAD/STORE at a time
-#    _insn = (
-#        state.get('executing')[0] if len(state.get('executing'))
-#        else (
-#            state.get('pending_execute').pop(0) if len(state.get('pending_execute')) and state.get('pending_execute')[0].get('confirmed')
-#            else None
-#        )
-#    )
-#    if not _insn: return
-#    if not len(state.get('executing')): state.get('executing').append(_insn)
     if not len(state.get('executing')) and not len(state.get('pending_execute')): return
     if not len(state.get('executing')) and state.get('pending_execute')[0].get('confirmed'): state.get('executing').append(state.get('pending_execute').pop(0))
     if not len(state.get('executing')): return

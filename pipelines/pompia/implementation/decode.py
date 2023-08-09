@@ -31,8 +31,7 @@ def do_issue(service, state):
         _hazards = sum(map(lambda x: hazard(x, _insn), state.get('issued')), [])
         service.tx({'info': '_hazards : {}'.format(_hazards)})
         if len(_hazards): break
-#        if _insn.get('cmd') in riscv.constants.LOADS + riscv.constants.STORES and any(map(lambda x: x.get('cmd') in riscv.constants.LOADS + riscv.constants.STORES, state.get('issued'))): break # heavy-handed sequential consistency
-#        if _insn.get('cmd') in riscv.constants.STORES and any(map(lambda x: x.get('cmd') in riscv.constants.STORES, state.get('issued'))): break # total store ordering
+#        if _insn.get('cmd') in riscv.constants.LOADS + riscv.constants.STORES and any(map(lambda x: x.get('cmd') in riscv.constants.LOADS + riscv.constants.STORES, state.get('issued'))): break
         if _insn.get('cmd') not in ['ECALL', 'FENCE']:
             if 'rs1' in _insn.keys():
                 if 'operands' not in _insn.keys(): _insn.update({'operands': {}})

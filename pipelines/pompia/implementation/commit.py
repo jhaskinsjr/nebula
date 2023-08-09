@@ -135,7 +135,6 @@ def do_tick(service, state, results, events):
     for _l1dc in map(lambda y: y.get('l1dc'), filter(lambda x: x.get('l1dc'), results)):
         service.tx({'info': '_l1dc : {}'.format(_l1dc)})
         for _insn in filter(lambda a: a.get('cmd') in riscv.constants.LOADS + riscv.constants.STORES, state.get('pending_commit')):
-#            assert _insn.get('operands')
             if _insn.get('operands').get('addr') != _l1dc.get('addr'): continue
             if 'data' not in _l1dc.keys():
                 if _insn.get('cmd') in riscv.constants.LOADS: continue
@@ -173,38 +172,6 @@ def do_tick(service, state, results, events):
                         'result': _result,
                     },
                 }
-#            if _insn.get('cmd') in riscv.constants.LOADS and 'data' in _l1dc.keys():
-#                # LOAD
-#                _peeked  = _l1dc.get('data')
-#                _peeked += [-1] * (8 - len(_peeked))
-#                _result = { # HACK: This is 100% little-endian-specific
-#                    'LD': _peeked,
-#                    'LW': _peeked[:4] + [(0xff if ((_peeked[3] >> 7) & 0b1) else 0)] * 4,
-#                    'LH': _peeked[:2] + [(0xff if ((_peeked[1] >> 7) & 0b1) else 0)] * 6,
-#                    'LB': _peeked[:1] + [(0xff if ((_peeked[0] >> 7) & 0b1) else 0)] * 7,
-#                    'LWU': _peeked[:4] + [0] * 4,
-#                    'LHU': _peeked[:2] + [0] * 6,
-#                    'LBU': _peeked[:1] + [0] * 7,
-#                    'LR.D': _peeked,
-#                    'LR.W': _peeked[:4] + [(0xff if ((_peeked[3] >> 7) & 0b1) else 0)] * 4,
-#                }.get(_insn.get('cmd'))
-#                _index = state.get('pending_commit').index(_insn)
-#                state.get('pending_commit')[_index] = {
-#                    **_insn,
-#                    **{
-#                        'result': _result,
-#                    },
-#                }
-#            else:
-#                #STORE
-#                assert 'confirmed' in _insn.keys()
-#                _index = state.get('pending_commit').index(_insn)
-#                state.get('pending_commit')[_index] = {
-#                    **_insn,
-#                    **{
-#                        'result': None,
-#                    },
-#                }
     for _commit in map(lambda y: y.get('commit'), filter(lambda x: x.get('commit'), events)):
         state.get('pending_commit').append(_commit.get('insn'))
     state.update({'pending_commit': sorted(state.get('pending_commit'), key=lambda x: x.get('iid'))})

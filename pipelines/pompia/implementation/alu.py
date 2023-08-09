@@ -92,7 +92,6 @@ def do_jal(service, state, insn):
     }})
     return insn, True
 def do_jalr(service, state, insn):
-#    _rs1 = (insn.get('operands').get('rs1') if ('operands' in insn.keys() and 'rs1' in insn.get('operands').keys()) else state.get('operands').get(insn.get('rs1')))
     _rs1 = insn.get('operands').get('rs1')
     _next_pc, _ret_pc = riscv.execute.jalr(insn.get('%pc'), insn.get('imm'), _rs1, insn.get('size'))
     _taken = (int.from_bytes(insn.get('%pc'), 'little') + insn.get('size')) != int.from_bytes(_next_pc, 'little') 
@@ -106,9 +105,6 @@ def do_jalr(service, state, insn):
             'taken': _taken,
             'next_pc': _next_pc,
             'ret_pc': _ret_pc,
-#            'operands': {
-#                'rs1': _rs1,
-#            },
         },
     }
     service.tx({'event': {
@@ -122,8 +118,6 @@ def do_jalr(service, state, insn):
     }})
     return insn, True
 def do_branch(service, state, insn):
-#    _rs1 = (insn.get('operands').get('rs1') if ('operands' in insn.keys() and 'rs1' in insn.get('operands').keys()) else state.get('operands').get(insn.get('rs1')))
-#    _rs2 = (insn.get('operands').get('rs2') if ('operands' in insn.keys() and 'rs2' in insn.get('operands').keys()) else state.get('operands').get(insn.get('rs2')))
     _rs1 = insn.get('operands').get('rs1')
     _rs2 = insn.get('operands').get('rs2')
     _next_pc, _taken = {
@@ -144,10 +138,6 @@ def do_branch(service, state, insn):
         **{
             'taken': _taken,
             'next_pc': _next_pc,
-#            'operands': {
-#                'rs1': _rs1,
-#                'rs2': _rs2,
-#            },
         },
     }
     service.tx({'event': {
@@ -161,7 +151,6 @@ def do_branch(service, state, insn):
     }})
     return insn, True
 def do_itype(service, state, insn):
-#    _rs1 = (insn.get('operands').get('rs1') if ('operands' in insn.keys() and 'rs1' in insn.get('operands').keys()) else state.get('operands').get(insn.get('rs1')))
     _rs1 = insn.get('operands').get('rs1')
     _result = {
         'ADDI': riscv.execute.addi,
@@ -176,9 +165,6 @@ def do_itype(service, state, insn):
         **insn,
         **{
             'result': _result,
-#            'operands': {
-#                'rs1': _rs1,
-#            },
         },
     }
     service.tx({'event': {
@@ -192,8 +178,6 @@ def do_itype(service, state, insn):
     }})
     return insn, True
 def do_rtype(service, state, insn):
-#    _rs1 = (insn.get('operands').get('rs1') if ('operands' in insn.keys() and 'rs1' in insn.get('operands').keys()) else state.get('operands').get(insn.get('rs1')))
-#    _rs2 = (insn.get('operands').get('rs2') if ('operands' in insn.keys() and 'rs2' in insn.get('operands').keys()) else state.get('operands').get(insn.get('rs2')))
     _rs1 = insn.get('operands').get('rs1')
     _rs2 = insn.get('operands').get('rs2')
     _result = {
@@ -230,10 +214,6 @@ def do_rtype(service, state, insn):
         **insn,
         **{
             'result': _result,
-#            'operands': {
-#                'rs1': _rs1,
-#                'rs2': _rs2,
-#            },
         },
     }
     service.tx({'event': {
@@ -247,16 +227,9 @@ def do_rtype(service, state, insn):
     }})
     return insn, True
 def do_load(service, state, insn):
-#    _rs1 = (insn.get('operands').get('rs1') if ('operands' in insn.keys() and 'rs1' in insn.get('operands').keys()) else state.get('operands').get(insn.get('rs1')))
     _rs1 = insn.get('operands').get('rs1')
     insn = {
         **insn,
-#        **{
-#            'operands': {
-#                'rs1': _rs1,
-#                'addr': insn.get('imm') + int.from_bytes(_rs1, 'little'),
-#            },
-#        },
     }
     insn.get('operands').update({'addr': insn.get('imm') + int.from_bytes(_rs1, 'little')})
     service.tx({'event': {
@@ -272,21 +245,11 @@ def do_load(service, state, insn):
     }})
     return insn, True
 def do_store(service, state, insn):
-#    _rs1 = (insn.get('operands').get('rs1') if ('operands' in insn.keys() and 'rs1' in insn.get('operands').keys()) else state.get('operands').get(insn.get('rs1')))
-#    _rs2 = (insn.get('operands').get('rs2') if ('operands' in insn.keys() and 'rs2' in insn.get('operands').keys()) else state.get('operands').get(insn.get('rs2')))
     _rs1 = insn.get('operands').get('rs1')
     _rs2 = insn.get('operands').get('rs2')
     insn = {
         **insn,
         **{'confirmed': False},
-#        **{'result': None},
-#        **{
-#            'operands': {
-#                'rs1': _rs1,
-#                'data': _rs2,
-#                'addr': insn.get('imm') + int.from_bytes(_rs1, 'little'),
-#            },
-#        },
     }
     insn.get('operands').update({'data': _rs2})
     insn.get('operands').update({'addr': insn.get('imm') + int.from_bytes(_rs1, 'little')})
@@ -316,8 +279,6 @@ def do_atomic(service, state, insn):
             'SC.D': do_store,
         }.get(insn.get('cmd'), do_unimplemented)(service, state, insn)
     _done = False
-#    _rs1 = (insn.get('operands').get('rs1') if ('operands' in insn.keys() and 'rs1' in insn.get('operands').keys()) else state.get('operands').get(insn.get('rs1')))
-#    _rs2 = (insn.get('operands').get('rs2') if ('operands' in insn.keys() and 'rs2' in insn.get('operands').keys()) else state.get('operands').get(insn.get('rs2')))
     _rs1 = insn.get('operands').get('rs1')
     _rs2 = insn.get('operands').get('rs2')
     if not state.get('operands').get('mem'):
@@ -371,10 +332,6 @@ def do_atomic(service, state, insn):
                 **insn,
                 **{
                     'result': _data,
-#                    'operands': {
-#                        'rs1': _rs1,
-#                        'rs2': _rs2,
-#                    },
                 },
             }
             _addr = int.from_bytes(_rs1, 'little')
@@ -418,7 +375,6 @@ def do_nop(service, state, insn):
     }})
     return insn, True
 def do_shift(service, state, insn):
-#    _rs1 = (insn.get('operands').get('rs1') if ('operands' in insn.keys() and 'rs1' in insn.get('operands').keys()) else state.get('operands').get(insn.get('rs1')))
     _rs1 = insn.get('operands').get('rs1')
     _shamt = insn.get('shamt')
     _result = {
@@ -433,9 +389,6 @@ def do_shift(service, state, insn):
         **insn,
         **{
             'result': _result,
-#            'operands': {
-#                'rs1': _rs1,
-#            },
         },
     }
     service.tx({'event': {
@@ -449,13 +402,6 @@ def do_shift(service, state, insn):
     }})
     return insn, True
 def do_ecall(service, stats, insn):
-#    _x17 = state.get('operands').get(17)
-#    _x10 = state.get('operands').get(10)
-#    _x11 = state.get('operands').get(11)
-#    _x12 = state.get('operands').get(12)
-#    _x13 = state.get('operands').get(13)
-#    _x14 = state.get('operands').get(14)
-#    _x15 = state.get('operands').get(15)
     _x17 = insn.get('operands').get(17)
     _x10 = insn.get('operands').get(10)
     _x11 = insn.get('operands').get(11)
