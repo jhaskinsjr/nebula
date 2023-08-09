@@ -24,20 +24,7 @@ def do_commit(service, state):
     )))})
     _commit = []
     for _insn in state.get('pending_commit'):
-        if 'confirmed' in _insn.keys() and not _insn.get('confirmed'):
-                service.tx({'info': 'confirming {}'.format(_insn)})
-                service.tx({'result': {
-                    'arrival': 1 + state.get('cycle'),
-                    'coreid': state.get('coreid'),
-                    'confirm': {
-                        'cmd': _insn.get('cmd'),
-                        'iid': _insn.get('iid'),
-                        '%pc': _insn.get('%pc'),
-                    },
-                }})
-                _insn.update({'confirmed': True})
-        if not any(map(lambda x: x in _insn.keys(), ['next_pc', 'ret_pc', 'result'])): break
-        _commit.append(_insn)
+        if not any(map(lambda x: x in _insn.keys(), ['next_pc', 'ret_pc', 'result', 'confirmed'])): break
         if state.get('flush_until') and state.get('flush_until') != _insn.get('%pc'):
             service.tx({'info': 'flushing {}'.format(_insn)})
             service.tx({'result': {
@@ -50,8 +37,26 @@ def do_commit(service, state):
                 },
             }})
             toolbox.report_stats(service, state, 'flat', 'flushes')
+            _commit.append(_insn)
             continue
         state.update({'flush_until': None})
+        if 'confirmed' in _insn.keys():
+            if not _insn.get('confirmed'):
+                service.tx({'info': 'confirming {}'.format(_insn)})
+                service.tx({'result': {
+                    'arrival': 1 + state.get('cycle'),
+                    'coreid': state.get('coreid'),
+                    'confirm': {
+                        'cmd': _insn.get('cmd'),
+                        'iid': _insn.get('iid'),
+                        '%pc': _insn.get('%pc'),
+                    },
+                }})
+                _insn.update({'confirmed': True})
+                break
+            else:
+                if 'result' not in _insn.keys(): break
+        _commit.append(_insn)
         service.tx({'info': 'retiring {}'.format(_insn)})
         if _insn.get('next_pc'):
             service.tx({'result': {
