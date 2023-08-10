@@ -4,7 +4,7 @@ import socket
 import json
 
 class Service:
-    MESSAGE_SIZE = 8192
+    MESSAGE_SIZE = 2**14
     def __init__(self, name, coreid, host, port):
         self.name = '[{:04}] {}'.format(coreid, name)
         self.coreid = coreid
