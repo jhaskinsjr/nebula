@@ -86,110 +86,121 @@ module just did not report on any events, but could be modified to do so.
 
 ## JSON Output
 
-Consider the following example stats.json output:
+Consider the following example stats.json output (gathered by executing
+a 3SAT solver sample binary on Pompia):
 
-    {
-        "message_size": {
-            "19": 1,
-            "18": 1,
-            "150": 1,
-            ...
-            "972": 1,
-            "890": 1
-        },
-        "cycle": 14872,
-        "fetch": {
-            "l1ic_misses": 35,
-            "l1ic_accesses": 3929
-        },
-        "l2": {
-            "l2_misses": 55,
-            "l2_accesses": 385
-        },
-        "mainmem": {
-            "peek.size": {
-                "16": 55
-            },
-            "poke.size": {
-                "8": 57,
-                "4": 264
-            }
-        },
-        "decode": {
-            "decoded.insn": {
-                "ADDI": 759,
-                "SD": 85,
-                "SW": 264,
-                "JAL": 68,
-                "LW": 607,
-                "SLLI": 28,
-                ...
-                "SUBW": 27,
-                "JALR": 28
-            },
-            "issued.insn": {
-                "ADDI": 692,
-                "SD": 57,
-                "SW": 264,
-                "JAL": 68,
-                "LW": 607,
-                ...
-                "JALR": 28,
-                "SUBW": 13
-            }
-        },
-        "regfile": {
-            "get.register": {
-                "2": 170,
-                "1": 29,
-                "8": 1265,
-                "10": 82,
-                "11": 1,
-                "15": 1829,
-                "14": 626
-            },
-            "set.register": {
-                "2": 56,
-                "8": 56,
-                "15": 1829,
-                "0": 68,
-                "14": 575,
-                "10": 55,
-                "1": 28
-            }
-        },
-        "alu": {
-            "category": {
-                "do_itype": 1073,
-                "do_store": 321,
-                "do_jal": 68,
-                "do_load": 1235,
-                "do_branch": 184,
-                "do_shift": 129,
-                "do_rtype": 376,
-                "do_jalr": 28
-            }
-        },
-        "commit": {
-            "retires": 3173,
-            "flushes": 240,
-            "speculative_next_pc": 241,
-            "speculative_next_pc_correct": 180
-        },
-        "lsu": {
-            "l1dc_misses": 29,
-            "l1dc_accesses": 1556
-        }
+```
+{
+  "message_size": {
+    "19": 1,
+    "18": 1,
+    "150": 1,
+    ...
+    "972": 1,
+    "890": 1,
+  },
+  "cycle": 129550,
+  "0": {
+    "fetch": {
+      "l1ic_misses": 12035,
+      "l1ic_accesses": 29547
+    },
+    "l2": {
+      "l2_misses": 1229,
+      "l2_accesses": 18064
+    },
+    "decode": {
+      "decoded.insn": {
+        "ADD": 4834,
+        "JAL": 2456,
+        "LW": 2067,
+        ...
+        "MUL": 6,
+        "SLLW": 2,
+        "SRAI": 1
+      },
+      "issued.insn": {
+        "ADD": 3546,
+        "JAL": 2022,
+        "LW": 1890,
+        ...
+        "MUL": 4,
+        "SLLW": 2,
+        "SRAI": 1
+      }
+    },
+    "regfile": {
+      "get.register": {
+        "0": 5587,
+        "25": 230,
+        "8": 5074,
+        ...
+        "27": 98,
+        "28": 28,
+        "30": 14
+      },
+      "set.register": {
+        "11": 688,
+        "1": 914,
+        "15": 6394,
+        ...
+        "16": 713,
+        "30": 14,
+        "17": 77
+      }
+    },
+    "alu": {
+      "category": {
+        "do_rtype": 4486,
+        "do_jal": 2022,
+        "do_load": 9965,
+        "do_branch": 3366,
+        "do_itype": 6929,
+        "do_store": 4326,
+        "do_jalr": 971,
+        "do_nop": 336,
+        "do_lui": 700,
+        "do_shift": 1230,
+        "do_ecall": 6
+      }
+    },
+    "commit": {
+      "retires": 27828,
+      "flushes": 6507
+    },
+    "lsu": {
+      "l1dc_misses": 1945,
+      "l1dc_accesses": 11772
     }
+  },
+  "-1": {
+    "mainmem": {
+      "peek.size": {
+        "16": 1229,
+        "153": 1
+      },
+      "poke.size": {
+        "1": 142,
+        "4": 400,
+        "8": 3535,
+        "2": 8
+      }
+    }
+  }
+}
+```
 
-The JSON struct has 10 top-level keys: `message_size`, `cycle`, `fetch`,
-`l2`, `mainmem`, `decode`, `regfile`, `alu`, `commit` `lsu`. The
-`message_size` entry contains a histogram of the sizes of the messages
-passed between the various components, and `cycle` contains the count
-of simulated cycles when the simulator exited. The final eight keys
-correspond to pipeilne components of the same names, and offer statistcs
-about number of cache misses, cache accesses, number of times each
-register was read/written, number of instructions retired/flushed, etc.
+The JSON struct has several top-level keys including: `message_size`, `cycle`,
+`0`, and `-1`. The`message_size` entry contains a histogram of the sizes of
+the messages passed between the various components, and `cycle` contains the
+count of simulated cycles when the simulator exited. `0` contains several
+sub-keys corresponding to the pipeline components on simulated core 0:
+`fetch`, `l2`, `mainmem`, `decode`, `regfile`, `alu`, `commit`, `lsu`. They
+offer statistics about the number of cache misses, cache accesses, number of
+times each register was read/written, number of instructions retired/flushed,
+etc.
+Finally, `-1` contains sub-keys corresponding to components that are
+accessible by all simulated cores, in this case, only `mainmem`.
 
 # Software Architecture
 
@@ -362,12 +373,12 @@ This will create a series of files:
 Any of the pipelines can restore state from a snapshot and resume execution,
 e.g.:
 
-    cd  ${HOME}/src/nebula/pipelines/oroblanco/
+    cd  ${HOME}/src/nebula/pipelines/pompia/
     python3 ../../launcher.py \
-        --log /tmp/oroblanco/sum \
+        --log /tmp/pompia/sum \
         --service ../../toolbox/stats.py:localhost:-1 \
-        --config stats:output_filename:/tmp/oroblanco/sum/stats.json \
-        mainmem:filename:/tmp/oroblanco/sum/mainmem.raw \
+        --config stats:output_filename:/tmp/pompia/sum/stats.json \
+        mainmem:filename:/tmp/pompia/sum/mainmem.raw \
         mainmem:capacity:$(( 2**32 )) \
         --restore /tmp/amanatsu/sum/mainmem.raw.000000000000900.snapshot \
         -- \
@@ -375,19 +386,19 @@ e.g.:
         init.nebula
 
 Note: (1) the `--restore` parameter is included; and (2) the command that
-was executed to create the snapshots (`../../examples/bin/sum 2 3 5 7`...) is
-omitted. In this example, the Oroblanco pipeline should return
+was executed to create the snapshots (`../../examples/bin/sum 2 3 5 7 11 13 17 19 23 29`...) is
+omitted. In this example, the Pompia pipeline should return
 
     129
 
-On my laptop, resuming from this snapshot, Oroblanco finishes executing in
+On my laptop, resuming from this snapshot, Pompia finishes executing in
 a little more than 8 minutes, whereas executing the same command line
-end-to-end, Oroblanco requires more than 11 minutes.
+end-to-end, Pompia requires more than 11 minutes.
 
 # Simulator Scripts
 
 The simulator executes according to instructions in an execute script.
-Consider the script pipelines/oroblanco/init.nebula:
+Consider the script pipelines/pompia/init.nebula:
 
     # Sample μService-SIMulator script
     # NOTE: Nebula's multicore support can execute across multiple machines!
@@ -413,20 +424,15 @@ Consider the script pipelines/oroblanco/init.nebula:
     config fetch:l1ic_nways 2
     config fetch:l1ic_nbytesperblock 16
     config fetch:l1ic_evictionpolicy lru # random
-    config decode:buffer_capacity 16
-    config decode:btb_nentries 8
-    config decode:btb_nbytesperentry 8
-    config decode:btb_evictionpolicy lru # random
-    config alu:forwarding True
-    config lsu:l1dc_nsets 16
-    config lsu:l1dc_nways 2
-    config lsu:l1dc_nbytesperblock 16
-    config lsu:l1dc_evictionpolicy lru # random
+    config decode:max_instructions_to_decode 4
     config l2:l2_nsets 32
     config l2:l2_nways 16
     config l2:l2_nbytesperblock 16
     config l2:l2_evictionpolicy lru # random
     config l2:l2_hitlatency 5
+    config mainmem:peek_latency_in_cycles 25
+    config mainmem:filename /tmp/mainmem.raw
+    config mainmem:capacity 4294967296
     config stats:output_filename /tmp/stats.json
     run
     shutdown
@@ -449,7 +455,7 @@ services that communicate over a TCP network, the services need not execute
 on the same machine. This is what makes μService-SIMulator
 **the world's first cloud-native microarchitecture simulation framework**!
 
-Consider the following modified Oroblanco init.nebula file that
+Consider the following modified Pompia init.nebula file that
 spawns services on several different machines on my network:
 
     # Sample μService-SIMulator script
@@ -466,15 +472,7 @@ spawns services on several different machines on my network:
     config fetch:l1ic_nways 2
     config fetch:l1ic_nbytesperblock 16
     config fetch:l1ic_evictionpolicy lru # random
-    config decode:buffer_capacity 16
-    config decode:btb_nentries 8
-    config decode:btb_nbytesperentry 8
-    config decode:btb_evictionpolicy lru # random
-    config alu:forwarding True
-    config lsu:l1dc_nsets 16
-    config lsu:l1dc_nways 2
-    config lsu:l1dc_nbytesperblock 16
-    config lsu:l1dc_evictionpolicy lru # random
+    config decode:max_instructions_to_decode 4
     config l2:l2_nsets 32
     config l2:l2_nways 16
     config l2:l2_nbytesperblock 16
@@ -491,7 +489,7 @@ the "--service" command line parameter.
 
 Nebula also supports multicore simulations, and can place the services for
 each core on a single machine, and accommodate multiple cores spanning
-multiple machines. Consider the following modified Oroblanco init.nebula:
+multiple machines. Consider the following modified Pompia init.nebula:
 
     # Sample μService-SIMulator script
     # core 0
@@ -516,15 +514,7 @@ multiple machines. Consider the following modified Oroblanco init.nebula:
     config fetch:l1ic_nways 2
     config fetch:l1ic_nbytesperblock 16
     config fetch:l1ic_evictionpolicy lru # random
-    config decode:buffer_capacity 16
-    config decode:btb_nentries 8
-    config decode:btb_nbytesperentry 8
-    config decode:btb_evictionpolicy lru # random
-    config alu:forwarding True
-    config lsu:l1dc_nsets 16
-    config lsu:l1dc_nways 2
-    config lsu:l1dc_nbytesperblock 16
-    config lsu:l1dc_evictionpolicy lru # random
+    config decode:max_instructions_to_decode 4
     config l2:l2_nsets 32
     config l2:l2_nways 16
     config l2:l2_nbytesperblock 16
@@ -536,7 +526,7 @@ multiple machines. Consider the following modified Oroblanco init.nebula:
 
 Thus, all the services for core 0 are executed on the server picard.local,
 and all the services for core 1 are executed on the server riker.local.
-Both cores are Oroblanco cores, and both are identically configured. Both
+Both cores are Pompia cores, and both are identically configured. Both
 will commence execution when the init.nebula "run" command is executed by
 the launcher.
 
@@ -544,10 +534,10 @@ To execute across N cores, it is necessary to supply N binaries and their
 parameters, e.g.:
 
     python3 ../../launcher.py \
-        --log /tmp/oroblanco/sum \
+        --log /tmp/pompia/sum \
         --service ../../toolbox/stats.py:localhost:-1 implementation/mainmem.py:-1 \
-        --config stats:output_filename:/tmp/oroblanco/sum/stats.json \
-        mainmem:filename:/tmp/oroblanco/sum/mainmem.raw \
+        --config stats:output_filename:/tmp/pompia/sum/stats.json \
+        mainmem:filename:/tmp/pompia/sum/mainmem.raw \
         mainmem:capacity:$(( 2**32 )) \
         --max_instructions $(( 10**5 )) \
         -- \
@@ -570,6 +560,7 @@ The sample binaries...
 * examples/bin/negate
 * examples/bin/puts
 * examples/bin/cat
+* examples/bin/3sat
 
 were created using the RISC-V
 cross compiler at https://github.com/riscv-collab/riscv-gnu-toolchain,
@@ -720,13 +711,13 @@ i7-8565U, running Ubuntu MATE 22.04, Amanatsu executes at a rate of
 approximately 4,000 instructions/second. Recall, however, that Amanatsu does
 **not** perform cycle-accurate simulation, but, rather, merely executes
 instructions in a tight loop, updating state (main memory and the register
-file) as rapidly as possible. (This is what makes Amanatsu ideal for
+file) as rapidly as possible. This is what makes Amanatsu ideal for
 creating simulation snapshots for subsequent execution by the cycle-accurate
-pipeline models.)
+pipeline models.
 
-The Oroblanco sample pipeline, which does perform cycle-accurate simulation,
-executes at a rate of about 30 simulated cycles per real-world second at a
-steady state system load of less than 10%. While 30 cycles/second is not
+The Pompia sample pipeline, which does perform cycle-accurate simulation,
+executes at a rate of about 40 simulated cycles per real-world second at a
+steady state system load of less than 10%. While 40 cycles/second is not
 blazingly fast, as stated above (see: Software Architecture), I view the
 flexibilty enabeld by Nebula's software architecture as a
 more-than-worthwhile tradeoff. Also, consider that with the CPU utilization
@@ -745,7 +736,7 @@ cycles apiece in just under 3 hours with `--max_cpu_utilization` set to 90
 respectable aggregate simulation rate of roughly 3,700 cycles/second on a
 consumer-grade laptop!
 
-Finally, consider that I have made almost no effort to optimize the
+Finally, consider that I have so far made almost no effort to optimize the
 simulator, choosing instead at this early stage to focus primarily on
 correctness; future optimization efforts will doubtless increase the
 execution speed of both Amanatsu and the cycle-accurate pipeline models.
