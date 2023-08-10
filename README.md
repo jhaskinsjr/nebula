@@ -812,10 +812,10 @@ That said, since this is a toolkit intended to facilitate microarchitecture
 research, some of these, as my math textbooks used to say, "will be left as
 an exercise" for researchers.
 
-# Reaching The Author
+# Contact
 
-I am available to consult on the framework's use, development, and
-deploymnt.
+I am available to consult on the Nebula framework's use, development and
+deploymnt, and microprocessor simulation generally.
 
 Email: john.haskins.jr@gmail.com |
 LinkedIn: https://www.linkedin.com/in/john-haskins-jr-925235a1/
