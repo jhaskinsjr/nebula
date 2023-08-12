@@ -15,17 +15,17 @@ def do_tick(service, state, results, events):
     for _l1ic in map(lambda y: y.get('l1ic'), filter(lambda x: x.get('l1ic'), results)):
         assert _l1ic.get('addr') == state.get('pending_fetch').get('fetch').get('addr')
         state.update({'pending_fetch': None})
-        state.get('fetch_address').append({
-            'fetch': {
-                'cmd': 'get',
-                'addr': _l1ic.get('addr') + _l1ic.get('size'),
-            }
-        })
+        if not len(state.get('fetch_address')):
+            state.get('fetch_address').append({
+                'fetch': {
+                    'cmd': 'get',
+                    'addr': _l1ic.get('addr') + _l1ic.get('size'),
+                }
+            })
     for _retire in map(lambda y: y.get('retire'), filter(lambda x: x.get('retire'), results)):
         if not _retire.get('cmd') in riscv.constants.BRANCHES + riscv.constants.JUMPS: continue
         service.tx({'info': 'retiring : {}'.format(_retire)})
         if _retire.get('taken'):
-            state.get('fetch_address').clear()
             state.get('fetch_address').append({
                 'fetch': {
                     'cmd': 'get',
@@ -33,7 +33,7 @@ def do_tick(service, state, results, events):
                 }
             })
     for _brpred in map(lambda y: y.get('brpred'), filter(lambda x: x.get('brpred'), events)):
-        state.get('fetch_address').clear()
+        service.tx({'info': '_brpred : {}'.format(_brpred)})
         state.get('fetch_address').append({
             'fetch': {
                 'cmd': 'get',

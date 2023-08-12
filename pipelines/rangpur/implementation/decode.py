@@ -32,7 +32,7 @@ def do_issue(service, state):
         _hazards = sum(map(lambda x: hazard(x, _insn), state.get('issued')), [])
         service.tx({'info': '_hazards : {}'.format(_hazards)})
         if len(_hazards): break
-#        if _insn.get('cmd') in riscv.constants.LOADS + riscv.constants.STORES and any(map(lambda x: x.get('cmd') in riscv.constants.LOADS + riscv.constants.STORES, state.get('issued'))): break
+        if _insn.get('cmd') in riscv.constants.LOADS + riscv.constants.STORES and any(map(lambda x: x.get('cmd') in riscv.constants.LOADS + riscv.constants.STORES, state.get('issued'))): break
         if _insn.get('cmd') not in ['ECALL', 'FENCE']:
             if 'rs1' in _insn.keys():
                 if 'operands' not in _insn.keys(): _insn.update({'operands': {}})
@@ -107,20 +107,6 @@ def do_tick(service, state, results, events):
                 state.get('decoded').clear()
                 state.get('buffer').clear()
                 _next_pc = _retire.get('next_pc')
-#                if len(state.get('issued')): _next_pc = (
-#                    _retire.get('next_pc')
-#                    if not any(map(lambda x: _retire.get('next_pc') == x.get('%pc'), state.get('issued')))
-#                    else riscv.constants.integer_to_list_of_bytes(state.get('issued')[-1].get('_pc') + state.get('issued')[-1].get('size'), 64, 'little')
-#                )
-                if len(state.get('issued')) and any(map(lambda x: _retire.get('next_pc') == x.get('%pc'), state.get('issued'))):
-                    _next_pc = riscv.constants.integer_to_list_of_bytes(state.get('issued')[-1].get('_pc') + state.get('issued')[-1].get('size'), 64, 'little')
-                    service.tx({'event': {
-                        'arrival': 1 + state.get('cycle'),
-                        'coreid': state.get('coreid'),
-                        'brpred': {
-                            'addr': int.from_bytes(_next_pc, 'little'),
-                        },
-                    }})
                 state.update({'%pc': _next_pc})
                 state.update({'%jp': _next_pc})
         _commit = (_flush if _flush else _retire)
