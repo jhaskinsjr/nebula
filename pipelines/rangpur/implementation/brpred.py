@@ -32,14 +32,6 @@ def do_tick(service, state, results, events):
                     'addr': int.from_bytes(_retire.get('next_pc'), 'little'),
                 }
             })
-    for _brpred in map(lambda y: y.get('brpred'), filter(lambda x: x.get('brpred'), events)):
-        service.tx({'info': '_brpred : {}'.format(_brpred)})
-        state.get('fetch_address').append({
-            'fetch': {
-                'cmd': 'get',
-                'addr': _brpred.get('addr'),
-            }
-        })
     if not state.get('pending_fetch') and len(state.get('fetch_address')):
         state.update({'pending_fetch': state.get('fetch_address').pop(0)})
         service.tx({'event': {
