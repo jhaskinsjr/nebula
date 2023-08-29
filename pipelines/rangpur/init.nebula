@@ -4,6 +4,7 @@ service implementation/regfile.py:localhost:0
 service implementation/brpred.py:localhost:0
 service implementation/fetch.py:localhost:0
 service implementation/decode.py:localhost:0
+service implementation/issue.py:localhost:0
 service implementation/alu.py:localhost:0
 service implementation/lsu.py:localhost:0
 service implementation/commit.py:localhost:0
@@ -13,6 +14,7 @@ service implementation/l2.py:localhost:0
 #service implementation/brpred.py:localhost:1
 #service implementation/fetch.py:localhost:1
 #service implementation/decode.py:localhost:1
+#service implementation/issue.py:localhost:1
 #service implementation/alu.py:localhost:1
 #service implementation/lsu.py:localhost:1
 #service implementation/commit.py:localhost:1

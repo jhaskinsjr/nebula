@@ -15,127 +15,44 @@ import components.simplebtb
 import riscv.constants
 import riscv.decode
 
-def hazard(p, c):
-    if not 'rd' in p.keys(): return []
-    _conflict  = ([c.get('rs1')] if ('rs1' in c.keys() and p.get('rd') == c.get('rs1')) else  [])
-    _conflict += ([c.get('rs2')] if ('rs2' in c.keys() and p.get('rd') == c.get('rs2')) else  [])
-    return _conflict
-def do_issue(service, state):
-    for _dec in state.get('decoded'):
-        # ECALL/FENCE must execute alone, i.e., all issued instructions
-        # must retire before an ECALL/FENCE instruction will issue and no
-        # further instructions will issue so long as an ECALL/FENCE has
-        # yet to flush/retire
-        if len(state.get('issued')) and state.get('issued')[-1].get('cmd') in ['ECALL', 'FENCE']: break
-        _insn = _dec.get('insn')
-        _pc = _dec.get('%pc')
-        _hazards = sum(map(lambda x: hazard(x, _insn), state.get('issued')), [])
-        service.tx({'info': '_hazards : {}'.format(_hazards)})
-        if len(_hazards): break
-        if _insn.get('cmd') in riscv.constants.LOADS and any(map(lambda x: x.get('cmd') in riscv.constants.LOADS, state.get('issued'))): break
-        if _insn.get('cmd') not in ['ECALL', 'FENCE']:
-            if 'rs1' in _insn.keys():
-                if 'operands' not in _insn.keys(): _insn.update({'operands': {}})
-                service.tx({'event': {
-                    'arrival': 1 + state.get('cycle'),
-                    'coreid': state.get('coreid'),
-                    'register': {
-                        'cmd': 'get',
-                        'name': _insn.get('rs1'),
-                    },
-                }})
-            if 'rs2' in _insn.keys():
-                if 'operands' not in _insn.keys(): _insn.update({'operands': {}})
-                service.tx({'event': {
-                    'arrival': 1 + state.get('cycle'),
-                    'coreid': state.get('coreid'),
-                    'register': {
-                        'cmd': 'get',
-                        'name': _insn.get('rs2'),
-                    },
-                }})
-        else:
-            if len(state.get('issued')): break
-            # FIXME: This is not super-realistic because it
-            # requests all seven of the registers used by a
-            # RISC-V Linux syscall all at once (see: https://git.kernel.org/pub/scm/docs/man-pages/man-pages.git/tree/man2/syscall.2?h=man-pages-5.04#n332;
-            # basically, the syscall number is in x17, and
-            # as many as six parameters are in x10 through
-            # x15). But I just now I prefer to focus on
-            # syscall proxying, rather than realism.
-            for _reg in [10, 11, 12, 13, 14, 15, 17]:
-                service.tx({'event': {
-                    'arrival': 1 + state.get('cycle'),
-                    'coreid': state.get('coreid'),
-                    'register': {
-                        'cmd': 'get',
-                        'name': _reg,
-                    }
-                }})
-        state.get('remove_from_decoded').append(_dec)
-        _insn = {
-            **_insn,
-            **{'iid': state.get('iid')},
-            **{'%pc': _pc},
-            **{'_pc': int.from_bytes(_pc, 'little')},
-            **({'function': next(filter(lambda x: int.from_bytes(_pc, 'little') >= x[0], sorted(state.get('objmap').items(), reverse=True)))[-1].get('name', '')} if state.get('objmap') else {}),
-        }
-        state.update({'iid': 1 + state.get('iid')})
-        service.tx({'event': {
-            'arrival': 2 + state.get('cycle'),
-            'coreid': state.get('coreid'),
-            'alu': {
-                'insn': _insn,
-            },
-        }})
-        state.get('issued').append(_insn)
-        toolbox.report_stats(service, state, 'histo', 'issued.insn', _insn.get('cmd'))
-    service.tx({'info': 'state.remove_from_decoded       : {}'.format(state.get('remove_from_decoded'))})
-    for _dec in state.get('remove_from_decoded'): state.get('decoded').remove(_dec)
-    state.get('remove_from_decoded').clear()
 def do_tick(service, state, results, events):
     logging.debug('do_tick(): results : {}'.format(results))
-    state.get('forward').clear()
-    for _fwd in map(lambda y: y.get('forward'), filter(lambda x: x.get('forward'), results)):
-        state.get('forward').update({_fwd.get('rd'): _fwd.get('result')})
-    service.tx({'info': 'forward                : {}'.format(state.get('forward'))})
-    for _flush, _retire in map(lambda y: (y.get('flush'), y.get('retire')), filter(lambda x: x.get('flush') or x.get('retire'), results)):
-        if _flush: service.tx({'info': 'flushing : {}'.format(_flush)})
-        if _retire:
-            service.tx({'info': 'retiring : {}'.format(_retire)})
-            if 'next_pc' in _retire.keys() and _retire.get('taken'):
-                state.get('decoded').clear()
-                state.get('buffer').clear()
-                _next_pc = _retire.get('next_pc')
-                state.update({'%pc': _next_pc})
-                state.update({'%jp': _next_pc})
-        _commit = (_flush if _flush else _retire)
-        assert _commit.get('iid') == state.get('issued')[0].get('iid')
-        state.get('issued').pop(0)
+    for _retire in map(lambda y: y.get('retire'), filter(lambda x: x.get('retire'), results)):
+        service.tx({'info': 'retiring : {}'.format(_retire)})
+        if not _retire.get('cmd') in riscv.constants.BRANCHES + riscv.constants.JUMPS: continue
+        if _retire.get('taken'):
+            state.get('buffer').clear()
+            _next_pc = _retire.get('next_pc')
+            state.update({'%pc': _next_pc})
+            state.update({'%jp': _next_pc})
     for _dec in map(lambda y: y.get('decode'), filter(lambda x: x.get('decode'), events)):
         if state.get('%jp') and _dec.get('addr') != int.from_bytes(state.get('%jp'), 'little'): continue
         service.tx({'info': '_dec : {}'.format(_dec)})
         state.get('buffer').extend(_dec.get('data'))
         state.update({'%jp': riscv.constants.integer_to_list_of_bytes(_dec.get('addr') + len(_dec.get('data')), 64, 'little')})
-    if state.get('config').get('max_instructions_to_decode') > len(state.get('decoded')):
-        _insns_to_pop_from_buffer = []
-        logging.info('buffer : {} ({})'.format(state.get('buffer'), len(state.get('buffer'))))
-        for _insn in riscv.decode.do_decode(state.get('buffer'), state.get('config').get('max_instructions_to_decode') - len(state.get('decoded'))):
-            state.get('decoded').append({
+    _decoded = []
+    for _insn in riscv.decode.do_decode(state.get('buffer'), state.get('config').get('max_instructions_to_decode')):
+        _pc = int.from_bytes(state.get('%pc'), 'little')
+        _decoded.append({
+            **_insn,
+            **{'%pc': state.get('%pc')},
+            **{'_pc': _pc},
+            **({'function': next(filter(lambda x: _pc >= x[0], sorted(state.get('objmap').items(), reverse=True)))[-1].get('name', '')} if state.get('objmap') else {}),
+        })
+        toolbox.report_stats(service, state, 'histo', 'decoded.insn', _insn.get('cmd'))
+        state.update({'%pc': riscv.constants.integer_to_list_of_bytes(_insn.get('size') + int.from_bytes(state.get('%pc'), 'little'), 64, 'little')})
+    for _insn in _decoded:
+        service.tx({'event': {
+            'arrival': 1 + state.get('cycle'),
+            'coreid': state.get('coreid'),
+            'issue': {
                 'insn': _insn,
-                '%pc': state.get('%pc'),
-            })
-            toolbox.report_stats(service, state, 'histo', 'decoded.insn', _insn.get('cmd'))
-            _insns_to_pop_from_buffer.append(_insn)
-            state.update({'%pc': riscv.constants.integer_to_list_of_bytes(_insn.get('size') + int.from_bytes(state.get('%pc'), 'little'), 64, 'little')})
-            logging.info('_insns_to_pop_from_buffer : {} ({})'.format(_insns_to_pop_from_buffer, len(_insns_to_pop_from_buffer)))
-        for _ in range(sum(map(lambda x: x.get('size'), _insns_to_pop_from_buffer))): state.get('buffer').pop(0)
-    do_issue(service, state)
-    service.tx({'info': 'state.issued           : {} ({})'.format(state.get('issued'), len(state.get('issued')))})
+            },
+        }})
+    for _ in range(sum(map(lambda x: x.get('size'), _decoded))): state.get('buffer').pop(0)
     service.tx({'info': 'state.buffer           : {} ({})'.format(state.get('buffer'), len(state.get('buffer')))})
     service.tx({'info': 'state.%pc              : {} ({})'.format(state.get('%pc'), ('' if not state.get('%pc') else int.from_bytes(state.get('%pc'), 'little')))})
     service.tx({'info': 'state.%jp              : {} ({})'.format(state.get('%jp'), ('' if not state.get('%jp') else int.from_bytes(state.get('%jp'), 'little')))})
-    service.tx({'info': 'state.decoded          : {}'.format(state.get('decoded'))})
 
 if '__main__' == __name__:
     parser = argparse.ArgumentParser(description='μService-SIMulator: Instruction Decode')
@@ -170,10 +87,6 @@ if '__main__' == __name__:
         '%jp': None, # address of the first byte beyond the end of state.buffer
         'ack': True,
         'buffer': [],
-        'decoded': [],
-        'remove_from_decoded': [],
-        'issued': [],
-        'forward': {},
         'iid': 0,
         'objmap': None,
         'binary': '',
