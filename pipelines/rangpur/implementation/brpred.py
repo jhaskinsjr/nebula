@@ -3,6 +3,7 @@
 import os
 import sys
 import argparse
+import itertools
 import logging
 import time
 
@@ -11,25 +12,47 @@ import toolbox
 import components.simplecache
 import riscv.constants
 
+def contains(a0, s0, a1, s1):
+    return (False if not isinstance(a1, int) else all(map(lambda x: x in range(*itertools.accumulate((a0, s0))), [a1, a1+s1-1])))
 def do_tick(service, state, results, events):
+    for _retire in map(lambda y: y.get('retire'), filter(lambda x: x.get('retire'), results)):
+        if not _retire.get('cmd') in riscv.constants.BRANCHES + riscv.constants.JUMPS: continue
+        service.tx({'info': 'retiring : {}'.format(_retire)})
+        _branches = state.get('branches')
+        _pc = int.from_bytes(_retire.get('%pc'), 'little')
+        if not _pc in _branches.keys(): _branches.update({_pc: {'size': _retire.get('size')}})
+        if _retire.get('taken'):
+            if not 'targetpc' in _branches.get(_pc): _branches.update({_pc: {**_branches.get(_pc), **{'targetpc': int.from_bytes(_retire.get('next_pc'), 'little')}}})
+            state.get('fetch_address').append({
+                'fetch': {
+                    'cmd': 'get',
+                    'addr': int.from_bytes(_retire.get('next_pc'), 'little'),
+                }
+            })
     for _l1ic in map(lambda y: y.get('l1ic'), filter(lambda x: x.get('l1ic'), results)):
         assert _l1ic.get('addr') == state.get('pending_fetch').get('fetch').get('addr')
         state.update({'pending_fetch': None})
+        _br = next(filter(lambda x: contains(_l1ic.get('addr'), _l1ic.get('size'), x[0], x[1].get('size')), state.get('branches').items()), None)
+        _br = (dict([_br]) if _br else None)
+        if _br:
+            _brpc, _pr = next(iter(_br.items()))
+            _predict_taken = True # NOTE: always predict taken
+#            _predict_taken = False # NOTE: always predict not-taken
+            if _predict_taken:
+                service.tx({'result': {
+                    'arrival': 1 + state.get('cycle'),
+                    'coreid': state.get('coreid'),
+                    'prediction': {
+                        'type': 'branch',
+                        'branchpc': _brpc,
+                        **_pr,
+                    }
+                }})
         if not len(state.get('fetch_address')):
             state.get('fetch_address').append({
                 'fetch': {
                     'cmd': 'get',
                     'addr': _l1ic.get('addr') + _l1ic.get('size'),
-                }
-            })
-    for _retire in map(lambda y: y.get('retire'), filter(lambda x: x.get('retire'), results)):
-        if not _retire.get('cmd') in riscv.constants.BRANCHES + riscv.constants.JUMPS: continue
-        service.tx({'info': 'retiring : {}'.format(_retire)})
-        if _retire.get('taken'):
-            state.get('fetch_address').append({
-                'fetch': {
-                    'cmd': 'get',
-                    'addr': int.from_bytes(_retire.get('next_pc'), 'little'),
                 }
             })
     if not state.get('pending_fetch') and len(state.get('fetch_address')):
@@ -41,6 +64,7 @@ def do_tick(service, state, results, events):
         }})
     service.tx({'info': 'state.pending_fetch : {}'.format(state.get('pending_fetch'))})
     service.tx({'info': 'state.fetch_address : {}'.format(state.get('fetch_address'))})
+    service.tx({'info': 'state.branches      : {} ({})'.format(state.get('branches'), len(state.get('branches')))})
     
 
 if '__main__' == __name__:
@@ -74,6 +98,7 @@ if '__main__' == __name__:
         'fetch_address': [],
         'active': True,
         'running': False,
+        'branches': {},
         '%jp': None, # This is the fetch pointer. Why %jp? Who knows?
         '%pc': None,
         'ack': True,

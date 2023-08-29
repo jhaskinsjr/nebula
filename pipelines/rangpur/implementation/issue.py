@@ -109,11 +109,22 @@ def do_tick(service, state, results, events):
         _commit = (_flush if _flush else _retire)
         assert _commit.get('iid') == state.get('issued')[0].get('iid')
         state.get('issued').pop(0)
+    _predictions = []
+    for _pr in map(lambda x: x.get('prediction'), filter(lambda y: y.get('prediction'), results)):
+        if 'branch' != _pr.get('type'): continue
+        service.tx({'info': '_pr : {}'.format(_pr)})
+        _predictions.append(_pr)
     for _iss in map(lambda y: y.get('issue'), filter(lambda x: x.get('issue'), events)):
         if state.get('drop_until') and 'insn' in _iss.keys() and _iss.get('insn').get('%pc') != state.get('drop_until'): continue
         state.update({'drop_until': None})
         state.get('decoded').append(_iss.get('insn'))
+    for _pr in _predictions:
+        for x in range(len(state.get('decoded'))):
+            if _pr.get('branchpc') == state.get('decoded')[x].get('_pc'):
+                state.get('decoded')[x].update({**state.get('decoded')[x], **{'prediction': _pr}})
+                break
     do_issue(service, state)
+    service.tx({'info': '_predictions           : {} ({})'.format(_predictions, len(_predictions))})
     service.tx({'info': 'state.issued           : {} ({})'.format(state.get('issued'), len(state.get('issued')))})
 #    service.tx({'info': 'state.decoded          : {}'.format(state.get('decoded'))})
     service.tx({'info': 'state.decoded          : ... ({})'.format(len(state.get('decoded')))})

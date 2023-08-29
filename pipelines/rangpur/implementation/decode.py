@@ -25,6 +25,9 @@ def do_tick(service, state, results, events):
             _next_pc = _retire.get('next_pc')
             state.update({'%pc': _next_pc})
             state.update({'%jp': _next_pc})
+    for _pr in map(lambda x: x.get('prediction'), filter(lambda y: y.get('prediction'), results)):
+        if 'branch' != _pr.get('type'): continue
+        service.tx({'info': '_pr : {}'.format(_pr)})
     for _dec in map(lambda y: y.get('decode'), filter(lambda x: x.get('decode'), events)):
         if state.get('%jp') and _dec.get('addr') != int.from_bytes(state.get('%jp'), 'little'): continue
         service.tx({'info': '_dec : {}'.format(_dec)})
