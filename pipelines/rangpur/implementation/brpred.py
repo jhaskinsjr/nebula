@@ -55,6 +55,8 @@ def do_tick(service, state, results, events):
                     'addr': _l1ic.get('addr') + _l1ic.get('size'),
                 }
             })
+    for _mispr in map(lambda y: y.get('mispredict'), filter(lambda x: x.get('mispredict'), results)):
+        service.tx({'info': '_mispr : {}'.format(_mispr)})
     if not state.get('pending_fetch') and len(state.get('fetch_address')):
         state.update({'pending_fetch': state.get('fetch_address').pop(0)})
         service.tx({'event': {

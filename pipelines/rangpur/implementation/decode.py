@@ -28,6 +28,8 @@ def do_tick(service, state, results, events):
     for _pr in map(lambda x: x.get('prediction'), filter(lambda y: y.get('prediction'), results)):
         if 'branch' != _pr.get('type'): continue
         service.tx({'info': '_pr : {}'.format(_pr)})
+    for _mispr in map(lambda y: y.get('mispredict'), filter(lambda x: x.get('mispredict'), results)):
+        service.tx({'info': '_mispr : {}'.format(_mispr)})
     for _dec in map(lambda y: y.get('decode'), filter(lambda x: x.get('decode'), events)):
         if state.get('%jp') and _dec.get('addr') != int.from_bytes(state.get('%jp'), 'little'): continue
         service.tx({'info': '_dec : {}'.format(_dec)})

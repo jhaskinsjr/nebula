@@ -114,6 +114,8 @@ def do_tick(service, state, results, events):
         if 'branch' != _pr.get('type'): continue
         service.tx({'info': '_pr : {}'.format(_pr)})
         _predictions.append(_pr)
+    for _mispr in map(lambda y: y.get('mispredict'), filter(lambda x: x.get('mispredict'), results)):
+        service.tx({'info': '_mispr : {}'.format(_mispr)})
     for _iss in map(lambda y: y.get('issue'), filter(lambda x: x.get('issue'), events)):
         if state.get('drop_until') and 'insn' in _iss.keys() and _iss.get('insn').get('%pc') != state.get('drop_until'): continue
         state.update({'drop_until': None})
