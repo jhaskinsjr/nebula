@@ -11,6 +11,7 @@ import struct
 import service
 import toolbox
 import riscv.execute
+import riscv.constants
 import riscv.syscall.linux
 
 def do_unimplemented(service, state, insn):
@@ -551,7 +552,6 @@ def do_execute(service, state):
     if not len(state.get('pending_execute')): return
     _remove_from_pending_execute = []
     service.tx({'info': 'state.pending_execute : {}'.format(state.get('pending_execute'))})
-    _mispredict = None
     for _insn in state.get('pending_execute'):
         service.tx({'info': '_insn : {}'.format(_insn)})
         _pc = int.from_bytes(_insn.get('%pc'), 'little')
@@ -661,24 +661,9 @@ def do_execute(service, state):
             }})
         if _done:
             _remove_from_pending_execute.append(_insn)
-            if 'prediction' in _insn_prime.keys():
-                _prediction = _insn_prime.get('prediction')
-                if 'branch' == _prediction.get('type'):
-                    if int.from_bytes(_insn_prime.get('next_pc'), 'little') != _prediction.get('targetpc'):
-                        _mispredict = _insn_prime
-                elif 'value' == _prediction.get('type'):
-                    pass # NOTE: place-holder for value prediction
         else:
             break
     for _insn in _remove_from_pending_execute: state.get('pending_execute').remove(_insn)
-    if _mispredict:
-        service.tx({'result': {
-            'arrival': 1 + state.get('cycle'),
-            'coreid': state.get('coreid'),
-            'mispredict': {
-                'insn': _mispredict,
-            }
-        }})
 
 def do_tick(service, state, results, events):
     for k in filter(lambda x: isinstance(x, int), list(state.get('operands').keys())): state.get('operands').pop(k)
@@ -693,6 +678,7 @@ def do_tick(service, state, results, events):
     for _alu in map(lambda y: y.get('alu'), filter(lambda x: x.get('alu'), events)):
         _insn = _alu.get('insn')
         logging.debug('_insn : {}'.format(_insn))
+        assert _insn.get('cmd') not in riscv.constants.BRANCHES + riscv.constants.JUMPS or _insn.get('prediction'), '{} without prediction field!'.format(_insn)
         if 'ECALL' == _insn.get('cmd'):
             _patch = {'operands': {
                 17: state.get('operands').get(17),

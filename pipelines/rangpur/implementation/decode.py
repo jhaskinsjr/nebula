@@ -17,21 +17,22 @@ import riscv.decode
 
 def do_tick(service, state, results, events):
     logging.debug('do_tick(): results : {}'.format(results))
-    for _retire in map(lambda y: y.get('retire'), filter(lambda x: x.get('retire'), results)):
-        service.tx({'info': 'retiring : {}'.format(_retire)})
-        if not _retire.get('cmd') in riscv.constants.BRANCHES + riscv.constants.JUMPS: continue
-        if _retire.get('taken'):
-            state.get('buffer').clear()
-            _next_pc = _retire.get('next_pc')
-            state.update({'%pc': _next_pc})
-            state.update({'%jp': _next_pc})
-    for _pr in map(lambda x: x.get('prediction'), filter(lambda y: y.get('prediction'), results)):
-        if 'branch' != _pr.get('type'): continue
-        service.tx({'info': '_pr : {}'.format(_pr)})
     for _mispr in map(lambda y: y.get('mispredict'), filter(lambda x: x.get('mispredict'), results)):
         service.tx({'info': '_mispr : {}'.format(_mispr)})
+        _insn = _mispr.get('insn')
+        if 'branch' == _insn.get('prediction').get('type'):
+            state.get('buffer').clear()
+            _next_pc = _insn.get('next_pc')
+            state.update({'%pc': _next_pc})
+            state.update({'%jp': _next_pc})
+            state.update({'drop_until': _next_pc})
     for _dec in map(lambda y: y.get('decode'), filter(lambda x: x.get('decode'), events)):
-        if state.get('%jp') and _dec.get('addr') != int.from_bytes(state.get('%jp'), 'little'): continue
+        if state.get('drop_until') and int.from_bytes(state.get('drop_until'), 'little') != _dec.get('addr'): continue
+        state.update({'drop_until': None})
+        if _dec.get('addr') != int.from_bytes(state.get('%jp'), 'little'):
+            state.get('buffer').clear()
+            state.update({'%pc': riscv.constants.integer_to_list_of_bytes(_dec.get('addr'), 64, 'little')})
+            state.update({'%jp': riscv.constants.integer_to_list_of_bytes(_dec.get('addr'), 64, 'little')})
         service.tx({'info': '_dec : {}'.format(_dec)})
         state.get('buffer').extend(_dec.get('data'))
         state.update({'%jp': riscv.constants.integer_to_list_of_bytes(_dec.get('addr') + len(_dec.get('data')), 64, 'little')})
@@ -58,6 +59,7 @@ def do_tick(service, state, results, events):
     service.tx({'info': 'state.buffer           : {} ({})'.format(state.get('buffer'), len(state.get('buffer')))})
     service.tx({'info': 'state.%pc              : {} ({})'.format(state.get('%pc'), ('' if not state.get('%pc') else int.from_bytes(state.get('%pc'), 'little')))})
     service.tx({'info': 'state.%jp              : {} ({})'.format(state.get('%jp'), ('' if not state.get('%jp') else int.from_bytes(state.get('%jp'), 'little')))})
+    service.tx({'info': 'state.drop_until       : {} ({})'.format(state.get('drop_until'), ('' if not state.get('drop_until') else int.from_bytes(state.get('drop_until'), 'little')))})
 
 if '__main__' == __name__:
     parser = argparse.ArgumentParser(description='μService-SIMulator: Instruction Decode')
@@ -90,6 +92,7 @@ if '__main__' == __name__:
         'running': False,
         '%pc': None,
         '%jp': None, # address of the first byte beyond the end of state.buffer
+        'drop_until': None,
         'ack': True,
         'buffer': [],
         'iid': 0,
@@ -165,4 +168,5 @@ if '__main__' == __name__:
                 if not 'set' == v.get('cmd'): continue
                 _pc = v.get('data')
                 state.update({'%pc': _pc})
+                state.update({'%jp': _pc})
         if state.get('ack') and state.get('running'): _service.tx({'ack': {'cycle': state.get('cycle')}})
