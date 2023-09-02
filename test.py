@@ -1426,7 +1426,7 @@ class Harness:
             os.path.join(args.dir, 'bin', '{}'.format(test)),
             os.path.join(args.dir, 'src', '{}.s'.format(test))
         ).split())
-        _script  = ['# μService-SIMulator test harness script']
+        _script  = ['# Nebula test harness script']
 #        _script += ['port 10000']
         _script += ['service pipelines/bergamot/implementation/{}:localhost:0'.format(s) for s in ('simplecore.py', 'regfile.py', 'decode.py', 'execute.py')]
         _script += ['spawn']
@@ -1476,7 +1476,7 @@ if __name__ == '__main__':
     if '--list' in sys.argv:
         for x in _harness.tests.keys(): print(x)
         sys.exit(0)
-    parser = argparse.ArgumentParser(description='μService-SIMulator')
+    parser = argparse.ArgumentParser(description='Nebula')
     parser.add_argument('--debug', '-D', dest='debug', action='store_true', help='print debug messages')
     parser.add_argument('--loop', dest='loop', type=int, default=1, help='number of times to repeat tests')
     parser.add_argument('--insns', dest='insns', type=str, nargs='+', help='specific instruction(s) to test')

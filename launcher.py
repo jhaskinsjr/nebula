@@ -241,7 +241,7 @@ def get_startsymbol(binary, start_symbol):
         return _start.entry.st_value
 
 if __name__ == '__main__':
-    parser = argparse.ArgumentParser(description='μService-SIMulator')
+    parser = argparse.ArgumentParser(description='Nebula')
     parser.add_argument('--debug', '-D', dest='debug', action='store_true', help='output debug messages')
     parser.add_argument('--break_on_undefined', '-B', dest='break_on_undefined', action='store_true', help='cease execution on undefined instruction')
     parser.add_argument('--services', dest='services', nargs='+', help='code:host')
@@ -253,7 +253,7 @@ if __name__ == '__main__':
     parser.add_argument('--max_instructions', type=int, dest='max_instructions', default=None, help='maximum number of instructions to execute')
     parser.add_argument('--snapshots', type=int, dest='snapshots', nargs='+', help='list of snapshot locations (in instructions)')
     parser.add_argument('port', type=int, help='port for accepting connections')
-    parser.add_argument('script', type=str, help='script to be executed by μService-SIMulator')
+    parser.add_argument('script', type=str, help='script to be executed by Nebula')
     parser.add_argument('cmdline', nargs='*', help='binary to be executed and parameters')
     args = parser.parse_args()
     assert not os.path.isfile(args.log), '--log must point to directory, not file'

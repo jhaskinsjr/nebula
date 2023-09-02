@@ -227,11 +227,11 @@ class SimpleMainMemory:
 
 
 if '__main__' == __name__:
-    parser = argparse.ArgumentParser(description='μService-SIMulator: Main Memory')
+    parser = argparse.ArgumentParser(description='Nebula: Main Memory')
     parser.add_argument('--debug', '-D', dest='debug', action='store_true', help='output debug messages')
     parser.add_argument('--log', type=str, dest='log', default='/tmp', help='logging output directory (absolute path!)')
     parser.add_argument('--pagesize', type=int, dest='pagesize', default=2**16, help='MMU page size in bytes')
-    parser.add_argument('launcher', help='host:port of μService-SIMulator launcher')
+    parser.add_argument('launcher', help='host:port of Nebula launcher')
     args = parser.parse_args()
     assert not os.path.isfile(args.log), '--log must point to directory, not file'
     while not os.path.isdir(args.log):

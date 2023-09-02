@@ -29,10 +29,10 @@ def do_tick(service, state, results, events):
             state.get('stats').get(_c).get(_s).update({_n: _increment + state.get('stats').get(_c).get(_s).get(_n)})
 
 if '__main__' == __name__:
-    parser = argparse.ArgumentParser(description='μService-SIMulator: Statistics')
+    parser = argparse.ArgumentParser(description='Nebula: Statistics')
     parser.add_argument('--debug', '-D', dest='debug', action='store_true', help='output debug messages')
     parser.add_argument('--log', type=str, dest='log', default='/tmp', help='logging output directory (absolute path!)')
-    parser.add_argument('launcher', help='host:port of μService-SIMulator launcher')
+    parser.add_argument('launcher', help='host:port of Nebula launcher')
     args = parser.parse_args()
     logging.basicConfig(
         filename=os.path.join(args.log, '{}.log'.format(os.path.basename(__file__))),

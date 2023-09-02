@@ -178,11 +178,11 @@ def do_tick(service, state, results, events):
     do_commit(service, state)
 
 if '__main__' == __name__:
-    parser = argparse.ArgumentParser(description='μService-SIMulator: Commit')
+    parser = argparse.ArgumentParser(description='Nebula: Commit')
     parser.add_argument('--debug', '-D', dest='debug', action='store_true', help='output debug messages')
     parser.add_argument('--log', type=str, dest='log', default='/tmp', help='logging output directory (absolute path!)')
     parser.add_argument('--coreid', type=int, dest='coreid', default=0, help='core ID number')
-    parser.add_argument('launcher', help='host:port of μService-SIMulator launcher')
+    parser.add_argument('launcher', help='host:port of Nebula launcher')
     args = parser.parse_args()
     assert not os.path.isfile(args.log), '--log must point to directory, not file'
     while not os.path.isdir(args.log):
