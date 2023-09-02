@@ -312,17 +312,14 @@ well on any Unix-like OS with a Python3 port.
 
 # Sample Pipelines
 
-At present, there are six sample pipeline implementations: Amanatsu,
-Bergamot, Clementine, Lime, Oroblanco, and Pompia.
+At present, there are seven sample pipeline implementations: Amanatsu,
+Bergamot, Clementine, Lime, Oroblanco, Pompia, and Rangpur.
 
 The Quick Start section above shows how to execute the examples/bin/sum program
 using the Pompia implementation; to use the Amanatsu implementation, "cd"
 into the pipelines/amanatsu subdirectory (instead of pipelines/pompia); to
 use the Bergamot implementation, "cd" into the pipelines/bergamot subdirectory;
-to use the Clementine implementation, "cd" into the pipelines/clementine
-subdirectory; to use the Lime implementation, "cd" into the
-pipelines/lime subdirectory; to use the Oroblanco implementation, "cd" into
-the pipelines/oroblanco subdirectory.
+etc.
 
 For a brief overview of each pipeline implmentation, follow the links below:
 
@@ -332,6 +329,7 @@ For a brief overview of each pipeline implmentation, follow the links below:
 * [Lime](pipelines/lime/README.md)
 * [Oroblanco](pipelines/oroblanco/README.md)
 * [Pompia](pipelines/pompia/README.md)
+* [Rangpur](pipelines/rangpur/README.md)
 
 # Snapshots
 
@@ -790,7 +788,6 @@ Presented in no particular order, here are some additional features that will
 extend and enhance the simulator:
 
 1. pipeline implementation with value prediction
-1. pipeline implementation with decoupled fetch engine
 1. pipeline implementation with out-of-order execution
 1. Kubernetes deployment
 1. perfect branch predictor
@@ -803,6 +800,7 @@ extend and enhance the simulator:
 1. x86_64 instruction set support
 1. SPARC v9 instruction set support
 1. sample Jupyter Notebook for fetching and processing data from MongoDB
+1. ~~pipeline implementation with decoupled fetch engine~~
 1. ~~multi-core support with cache sharing~~
 1. ~~syscall proxying~~
 1. ~~launch from binary's `_start` label rather than `main` label~~
