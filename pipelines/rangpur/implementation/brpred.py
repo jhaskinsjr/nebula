@@ -55,6 +55,8 @@ def do_tick(service, state, results, events):
                         'addr': _pr.get('targetpc'),
                     }
                 })
+                toolbox.report_stats(service, state, 'flat', 'predict_taken')
+        toolbox.report_stats(service, state, 'flat', 'predictions')
         if not len(state.get('fetch_address')):
             state.get('fetch_address').append({
                 'fetch': {
@@ -74,6 +76,7 @@ def do_tick(service, state, results, events):
                 }
             })
             state.update({'drop_until': int.from_bytes(_insn.get('next_pc'), 'little')})
+            toolbox.report_stats(service, state, 'flat', 'mispredictions')
     if not state.get('pending_fetch') and len(state.get('fetch_address')):
         state.update({'pending_fetch': state.get('fetch_address').pop(0)})
         service.tx({'event': {
