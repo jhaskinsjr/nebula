@@ -95,7 +95,6 @@ def do_issue(service, state):
             state.update({'recovery_iid': None})
         state.get('issued').append(_insn)
         toolbox.report_stats(service, state, 'histo', 'issued.insn', _insn.get('cmd'))
-#    service.tx({'info': '_remove_from_decoded       : {}'.format(_remove_from_decoded)})
     for _insn in _remove_from_decoded: state.get('decoded').remove(_insn)
 def do_tick(service, state, results, events):
     logging.debug('do_tick(): results : {}'.format(results))
