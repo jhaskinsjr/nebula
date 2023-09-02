@@ -69,7 +69,7 @@ def do_tick(service, state, results, events):
     
 
 if '__main__' == __name__:
-    parser = argparse.ArgumentParser(description='μService-SIMulator: Simple Core')
+    parser = argparse.ArgumentParser(description='μService-SIMulator: Instruction Fetch')
     parser.add_argument('--debug', '-D', dest='debug', action='store_true', help='output debug messages')
     parser.add_argument('--log', type=str, dest='log', default='/tmp', help='logging output directory (absolute path!)')
     parser.add_argument('--coreid', type=int, dest='coreid', default=0, help='core ID number')

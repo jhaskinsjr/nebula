@@ -122,7 +122,7 @@ def do_tick(service, state, results, events):
         do_l2(service, state, _addr, _size, _data)
 
 if '__main__' == __name__:
-    parser = argparse.ArgumentParser(description='μService-SIMulator: Load-Store Unit')
+    parser = argparse.ArgumentParser(description='μService-SIMulator: L2')
     parser.add_argument('--debug', '-D', dest='debug', action='store_true', help='output debug messages')
     parser.add_argument('--log', type=str, dest='log', default='/tmp', help='logging output directory (absolute path!)')
     parser.add_argument('--coreid', type=int, dest='coreid', default=0, help='core ID number')
