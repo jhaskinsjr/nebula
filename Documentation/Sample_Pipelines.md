@@ -11,10 +11,10 @@ etc.
 
 For a brief overview of each pipeline implmentation, follow the links below:
 
-* [Amanatsu](pipelines/amanatsu/README.md)
-* [Bergamot](pipelines/bergamot/README.md)
-* [Clementine](pipelines/clementine/README.md)
-* [Lime](pipelines/lime/README.md)
-* [Oroblanco](pipelines/oroblanco/README.md)
-* [Pompia](pipelines/pompia/README.md)
-* [Rangpur](pipelines/rangpur/README.md)
+* [Amanatsu](../pipelines/amanatsu/README.md)
+* [Bergamot](../pipelines/bergamot/README.md)
+* [Clementine](../pipelines/clementine/README.md)
+* [Lime](../pipelines/lime/README.md)
+* [Oroblanco](../pipelines/oroblanco/README.md)
+* [Pompia](../pipelines/pompia/README.md)
+* [Rangpur](../pipelines/rangpur/README.md)
