@@ -37,7 +37,7 @@ def do_tick(service, state, results, events):
         state.get('buffer').extend(_dec.get('data'))
         state.update({'%jp': riscv.constants.integer_to_list_of_bytes(_dec.get('addr') + len(_dec.get('data')), 64, 'little')})
     _decoded = []
-    for _insn in riscv.decode.do_decode(state.get('buffer'), state.get('config').get('max_instructions_to_decode')):
+    for _insn in riscv.decode.do_decode(state.get('buffer')[:state.get('config').get('max_bytes_to_decode')]):
         _pc = int.from_bytes(state.get('%pc'), 'little')
         _decoded.append({
             **_insn,
@@ -103,7 +103,7 @@ if '__main__' == __name__:
             'btb_nentries': 32,
             'btb_nbytesperentry': 16,
             'btb_evictionpolicy': 'lru',
-            'max_instructions_to_decode': 2,
+            'max_bytes_to_decode': 4,
             'toolchain': '',
         },
     }
