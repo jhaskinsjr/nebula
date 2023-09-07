@@ -95,6 +95,9 @@ def do_issue(service, state):
             state.update({'recovery_iid': None})
         state.get('issued').append(_insn)
         toolbox.report_stats(service, state, 'histo', 'issued.insn', _insn.get('cmd'))
+        if _insn.get('cmd') in riscv.constants.BRANCHES + riscv.constants.JUMPS and 'prediction' in _insn.keys():
+            _prediction = _insn.get('prediction')
+            if 'branch' == _prediction.get('type') and _prediction.get('targetpc') != _insn.get('_pc') + _insn.get('size'): break
     for _insn in _remove_from_decoded: state.get('decoded').remove(_insn)
 def do_tick(service, state, results, events):
     logging.debug('do_tick(): results : {}'.format(results))
