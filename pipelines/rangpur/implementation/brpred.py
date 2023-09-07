@@ -19,22 +19,22 @@ def do_tick(service, state, results, events):
         if _retire:
             if not _retire.get('cmd') in riscv.constants.BRANCHES + riscv.constants.JUMPS: continue
             service.tx({'info': 'retiring : {}'.format(_retire)})
-            _branches = state.get('branches')
+            _btac = state.get('btac')
             _pc = int.from_bytes(_retire.get('%pc'), 'little')
-            if not _pc in _branches.keys(): _branches.update({_pc: {'size': _retire.get('size'), 'targetpc': _pc + _retire.get('size')}})
-            if _retire.get('taken'): _branches.update({_pc: {**_branches.get(_pc), **{'targetpc': int.from_bytes(_retire.get('next_pc'), 'little')}}})
+            if not _pc in _btac.keys(): _btac.update({_pc: {'size': _retire.get('size'), 'targetpc': _pc + _retire.get('size')}})
+            if _retire.get('taken'): _btac.update({_pc: {**_btac.get(_pc), **{'targetpc': int.from_bytes(_retire.get('next_pc'), 'little')}}})
         if _flush:
             if not _flush.get('cmd') in riscv.constants.BRANCHES + riscv.constants.JUMPS: continue
             service.tx({'info': 'flushing : {}'.format(_retire)})
-            _branches = state.get('branches')
-            _branches.pop(int.from_bytes(_flush.get('%pc'), 'little'), None)
+            _btac = state.get('btac')
+            _btac.pop(int.from_bytes(_flush.get('%pc'), 'little'), None)
     for _l1ic in map(lambda y: y.get('l1ic'), filter(lambda x: x.get('l1ic'), results)):
         assert _l1ic.get('addr') == state.get('pending_fetch').get('fetch').get('addr')
         state.update({'pending_fetch': None})
         if next(filter(lambda x: x.get('mispredict'), results), None): continue
         if state.get('drop_until') and _l1ic.get('addr') != state.get('drop_until'): continue
         state.update({'drop_until': None})
-        _br = next(filter(lambda x: contains(_l1ic.get('addr'), _l1ic.get('size'), x[0], x[1].get('size')), state.get('branches').items()), None)
+        _br = next(filter(lambda x: contains(_l1ic.get('addr'), _l1ic.get('size'), x[0], x[1].get('size')), state.get('btac').items()), None)
         _br = (dict([_br]) if _br else None)
         if _br:
             _brpc, _pr = next(iter(_br.items()))
@@ -86,7 +86,7 @@ def do_tick(service, state, results, events):
         }})
     service.tx({'info': 'state.pending_fetch : {}'.format(state.get('pending_fetch'))})
     service.tx({'info': 'state.fetch_address : {} ({})'.format(state.get('fetch_address'), len(state.get('fetch_address')))})
-    service.tx({'info': 'state.branches      : {} ({})'.format(state.get('branches'), len(state.get('branches')))})
+    service.tx({'info': 'state.btac          : {} ({})'.format(state.get('btac'), len(state.get('btac')))})
     service.tx({'info': 'state.drop_until    : {} ({})'.format('' if not state.get('drop_until') else list(state.get('drop_until').to_bytes(8, 'little')), state.get('drop_until'))})
     service.tx({'info': 'filter(mispredict, results) : {}'.format(len(list(filter(lambda x: x.get('mispredict'), results))))})
     
@@ -122,7 +122,7 @@ if '__main__' == __name__:
         'fetch_address': [],
         'active': True,
         'running': False,
-        'branches': {},
+        'btac': {},
         'drop_until': None,
         '%jp': None, # This is the fetch pointer. Why %jp? Who knows?
         '%pc': None,
