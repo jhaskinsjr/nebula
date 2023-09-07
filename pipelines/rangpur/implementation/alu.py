@@ -550,6 +550,7 @@ def do_fence(service, state, insn):
 
 def do_execute(service, state):
     if not len(state.get('pending_execute')): return
+    toolbox.report_stats(service, state, 'flat', 'pending_execute_not_empty')
     _remove_from_pending_execute = []
     service.tx({'info': 'state.pending_execute : {}'.format(state.get('pending_execute'))})
     for _insn in state.get('pending_execute'):
