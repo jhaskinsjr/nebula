@@ -94,10 +94,6 @@ def do_issue(service, state):
     state.get('remove_from_decoded').clear()
 def do_tick(service, state, results, events):
     logging.debug('do_tick(): results : {}'.format(results))
-    state.get('forward').clear()
-    for _fwd in map(lambda y: y.get('forward'), filter(lambda x: x.get('forward'), results)):
-        state.get('forward').update({_fwd.get('rd'): _fwd.get('result')})
-    service.tx({'info': 'forward                : {}'.format(state.get('forward'))})
     for _flush, _retire in map(lambda y: (y.get('flush'), y.get('retire')), filter(lambda x: x.get('flush') or x.get('retire'), results)):
         if _flush: service.tx({'info': 'flushing : {}'.format(_flush)})
         if _retire:
@@ -199,7 +195,6 @@ if '__main__' == __name__:
         'decoded': [],
         'remove_from_decoded': [],
         'issued': [],
-        'forward': {},
         'iid': 0,
         'objmap': None,
         'binary': '',

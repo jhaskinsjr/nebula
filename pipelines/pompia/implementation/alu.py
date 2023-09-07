@@ -648,16 +648,6 @@ def do_execute(service, state):
         }.get(_insn.get('cmd'), do_unimplemented)
         _insn_prime, _done = _f(service, state, _insn)
         toolbox.report_stats(service, state, 'histo', 'category', _f.__name__)
-        if state.get('config').get('forwarding') and 'rd' in _insn_prime.keys() and _insn_prime.get('result'):
-            service.tx({'result': {
-                'arrival': 1 + state.get('cycle'),
-                'coreid': state.get('coreid'),
-                'forward': {
-                    'rd': _insn_prime.get('rd'),
-                    'result': _insn_prime.get('result'),
-                    'iid': _insn_prime.get('iid'),
-                },
-            }})
         if _done:
             _remove_from_pending_execute.append(_insn)
         else:
@@ -734,7 +724,6 @@ if '__main__' == __name__:
             **{x: riscv.constants.integer_to_list_of_bytes(0, 64, 'little') for x in range(32)},
         },
         'config': {
-            'forwarding': True,
         },
     }
     _service = service.Service(state.get('service'), state.get('coreid'), _launcher.get('host'), _launcher.get('port'))
