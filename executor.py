@@ -28,13 +28,14 @@ def launch(cmd, runpath, pipeline, script):
     _pr = multiprocessing.Process(
         target=subprocess.run,
         args=(cmd.split(),),
-        kwargs={'cwd': os.path.join(os.getcwd(), pipeline)},
+        kwargs={'cwd': os.path.join(os.getcwd(), pipeline), 'capture_output': True},
         daemon=True,
     )
     _pr.start()
     return _pr
 def conclude(pr, purge):
     pr.get('process').join()
+    # FIXME: retool to capture stdout, stderr
     with open(os.path.join(pr.get('runpath'), 'exitcode'), 'w') as fp: print('{}'.format(pr.get('process').exitcode), file=fp)
     with open(os.path.join(pr.get('runpath'), 'sha'), 'w') as fp: print(_sha, file=fp)
     with open(os.path.join(pr.get('runpath'), 'branch'), 'w') as fp: print(_branch, file=fp)
@@ -46,10 +47,13 @@ def conclude(pr, purge):
         'exec_script': args.exec_script,
         'exitcode': pr.get('process').exitcode,
         'stats': _stats,
-        'log': {
-            f: open(os.path.join(pr.get('runpath'), 'log', f)).read()
-            for f in {x:y for x, y, in zip(['root', 'directories', 'files'], *os.walk(os.path.join(pr.get('runpath'), 'log')))}.get('files')
-        },
+# XXX: MongoDB's maximum document size is only 16MB
+#      so I'm temporarily disabling storing the log files
+#      until I have a workaround
+#        'log': {
+#            f: open(os.path.join(pr.get('runpath'), 'log', f)).read()
+#            for f in {x:y for x, y, in zip(['root', 'directories', 'files'], *os.walk(os.path.join(pr.get('runpath'), 'log')))}.get('files')
+#        },
         'config': pr.get('config'),
         'runpath': pr.get('runpath'),
         'pipeline': pr.get('pipeline'),
@@ -91,6 +95,8 @@ if '__main__' == __name__:
             for x in itertools.product(*_exec.get(p).get('config').values())
         ] for p in _pipelines
     }
+    if args.debug: print('_runs : {}'.format(_runs))
+    if args.debug: print('_exec : {}'.format(_exec))
     _processes = []
     _port = 10000
     for _p in _runs.keys():
@@ -115,7 +121,7 @@ if '__main__' == __name__:
             _cmdline = ' '.join([
                 'python3', os.path.join(os.getcwd(), 'launcher.py'),
                 '--log', os.path.join(_runpath, 'log'),
-                '--mainmem', os.path.join(_runpath, 'mainmem.raw:{}'.format(_exec.get(_p).get('mainmem'))), # HACK: hard-wired main memory size
+                '--service', ':'.join([os.path.join(os.getcwd(), 'toolbox', 'stats.py'), 'localhost', '-1']), ':'.join([os.path.join('implementation', 'mainmem.py'), 'localhost', '-1']),
                 ('--max_cycles {}'.format(_exec.get(_p).get('max_cycles')) if 'max_cycles' in _exec.get(_p).keys() else ''),
                 ('--snapshots {}'.format(_exec.get(_p).get('snapshots')) if 'snapshots' in _exec.get(_p).keys() else ''),
                 ('--break_on_undefined' if 'break_on_undefined' in _exec.get(_p).keys() else ''),
