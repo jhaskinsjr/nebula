@@ -3,11 +3,19 @@
 import os
 import sys
 import argparse
+import itertools
 import logging
 
 import service
 
 import json
+
+def log2(A):
+    return (
+        None
+        if 1 > A else
+        len(list(itertools.takewhile(lambda x: x, map(lambda y: A >> y, range(A))))) - 1
+    )
 
 def do_tick(service, state, results, events):
     for _c, _stats in map(lambda y: (y.get('coreid', -1), y.get('stats')), filter(lambda x: x.get('stats'), events)):
@@ -62,7 +70,8 @@ if '__main__' == __name__:
         state.update({'ack': True})
         msg = _service.rx()
         _tmp = json.dumps(msg)
-        state.get('stats').get('message_size').update({len(_tmp): 1 + state.get('stats').get('message_size').get(len(_tmp), 0)})
+#        state.get('stats').get('message_size').update({len(_tmp): 1 + state.get('stats').get('message_size').get(len(_tmp), 0)})
+        state.get('stats').get('message_size').update({2**log2(len(_tmp)): 1 + state.get('stats').get('message_size').get(2**log2(len(_tmp)), 0)})
         state.get('stats').update({'cycle': state.get('cycle')})
 #        _service.tx({'info': {'msg': msg, 'msg.size()': len(msg)}})
 #        print('msg : {}'.format(msg))
