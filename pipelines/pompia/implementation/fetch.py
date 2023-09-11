@@ -27,7 +27,7 @@ def fetch_block(service, state, jp):
     toolbox.report_stats(service, state, 'flat', 'l1ic_misses')
 def do_l1ic(service, state):
     _req = state.get('fetch_buffer')[0]
-    logging.info('_req : {}'.format(_req))
+    logging.debug('_req : {}'.format(_req))
     _jp = _req.get('addr')
     service.tx({'info': '_jp : {} ({})'.format(list(_jp.to_bytes(8, 'little')), _jp)})
     _blockaddr = state.get('l1ic').blockaddr(_jp)
