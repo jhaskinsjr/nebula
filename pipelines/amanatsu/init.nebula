@@ -1,5 +1,6 @@
 # Sample μService-SIMulator script
 service implementation/fastcore.py:localhost:0
+service implementation/watchdog.py:localhost:0
 spawn
 config mainmem:filename /tmp/mainmem.raw
 config mainmem:capacity 4294967296
