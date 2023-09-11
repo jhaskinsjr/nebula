@@ -14,55 +14,74 @@ import datetime
 import pymongo
 import time
 
-def launch(cmd, runpath, pipeline, script):
-    print('cwd      : {}'.format(os.getcwd()))
-    print('runpath  : {}'.format(runpath))
-    print('pipeline : {}'.format(pipeline))
-    print('script   : {}'.format(script))
-    print('cmd      : {}'.format(cmd))
+def go(*args, **kwargs):
+    try:
+        _runpath = kwargs.pop('runpath')
+        _run = subprocess.run(*args, **kwargs)
+        with open(os.path.join(_runpath, 'stdout'), 'w') as fp: print(_run.stdout.decode('ascii'), file=fp)
+        with open(os.path.join(_runpath, 'stderr'), 'w') as fp: print(_run.stderr.decode('ascii'), file=fp)
+    except Exception as ex:
+        print('go(): e : {}'.format(ex))
+def launch(cmd, runpath, pipeline, script, **kwargs):
+#    print('cwd      : {}'.format(os.getcwd()))
+#    print('runpath  : {}'.format(runpath))
+#    print('pipeline : {}'.format(pipeline))
+#    print('script   : {}'.format(script))
+#    print('cmd      : {}'.format(cmd))
+#    print('kwargs   : {}'.format(kwargs))
+    _timeout = kwargs.get('timeout')
     os.mkdir(runpath)
     os.mkdir(os.path.join(runpath, 'log'))
     with open(os.path.join(runpath, 'cwd'), 'w') as fp: print(os.path.join(os.getcwd(), pipeline), file=fp)
     with open(os.path.join(runpath, 'cmdline'), 'w') as fp: print(cmd, file=fp)
     with open(os.path.join(runpath, 'script'), 'w') as fp: print(''.join(open(script, 'r').readlines()), file=fp)
     _pr = multiprocessing.Process(
-        target=subprocess.run,
+        target=go,
         args=(cmd.split(),),
-        kwargs={'cwd': os.path.join(os.getcwd(), pipeline), 'capture_output': True},
+        kwargs={'cwd': os.path.join(os.getcwd(), pipeline), 'capture_output': True, 'timeout': _timeout, 'runpath': runpath},
         daemon=True,
     )
     _pr.start()
     return _pr
 def conclude(pr, purge):
     pr.get('process').join()
-    # FIXME: retool to capture stdout, stderr
-    with open(os.path.join(pr.get('runpath'), 'exitcode'), 'w') as fp: print('{}'.format(pr.get('process').exitcode), file=fp)
-    with open(os.path.join(pr.get('runpath'), 'sha'), 'w') as fp: print(_sha, file=fp)
-    with open(os.path.join(pr.get('runpath'), 'branch'), 'w') as fp: print(_branch, file=fp)
-    with open(os.path.join(pr.get('runpath'), 'exec_script'), 'w') as fp: print(args.exec_script, file=fp)
-    with open(os.path.join(pr.get('runpath'), 'stats.json'), 'r') as fp: _stats = json.load(fp)
-    if _mongodb: _mongodb.get('collection').insert_one({
-        'sha': _sha,
-        'branch': _branch,
-        'exec_script': args.exec_script,
-        'exitcode': pr.get('process').exitcode,
-        'stats': _stats,
+    try:
+        _stats = None
+        _stdout = None
+        _stderr = None
+        with open(os.path.join(pr.get('runpath'), 'exitcode'), 'w') as fp: print('{}'.format(pr.get('process').exitcode), file=fp)
+        with open(os.path.join(pr.get('runpath'), 'sha'), 'w') as fp: print(_sha, file=fp)
+        with open(os.path.join(pr.get('runpath'), 'branch'), 'w') as fp: print(_branch, file=fp)
+        with open(os.path.join(pr.get('runpath'), 'exec_script'), 'w') as fp: print(args.exec_script, file=fp)
+        if os.path.exists(os.path.join(pr.get('runpath'), 'stats.json')): _stats = json.load(open(os.path.join(pr.get('runpath'), 'stats.json')))
+        if os.path.exists(os.path.join(pr.get('runpath'), 'stdout')): _stdout = '\n'.join(open(os.path.join(pr.get('runpath'), 'stdout'), 'r').readlines())
+        if os.path.exists(os.path.join(pr.get('runpath'), 'stderr')): _stderr = '\n'.join(open(os.path.join(pr.get('runpath'), 'stderr'), 'r').readlines())
+        if _mongodb: _mongodb.get('collection').insert_one({
+            'sha': _sha,
+            'branch': _branch,
+            'exec_script': args.exec_script,
+            'exitcode': pr.get('process').exitcode,
+            'stats': (_stats if _stats else ''),
 # XXX: MongoDB's maximum document size is only 16MB
-#      so I'm temporarily disabling storing the log files
+#      so I'm temporarily disabling storing the launcher.py.log file
 #      until I have a workaround
-#        'log': {
-#            f: open(os.path.join(pr.get('runpath'), 'log', f)).read()
-#            for f in {x:y for x, y, in zip(['root', 'directories', 'files'], *os.walk(os.path.join(pr.get('runpath'), 'log')))}.get('files')
-#        },
-        'config': pr.get('config'),
-        'runpath': pr.get('runpath'),
-        'pipeline': pr.get('pipeline'),
-        'script': pr.get('script'),
-        'cmdline': pr.get('cmdline'),
-        'date': int(_now.strftime('%Y%m%d')),
-        'time': int(_now.strftime('%H%M%S')),
-    })
-    if purge and 0 == pr.get('process').exitcode: shutil.rmtree(pr.get('runpath'))
+            'log': {
+                f: open(os.path.join(pr.get('runpath'), 'log', f)).read()
+                for f in filter(lambda a: 'launcher.py' not in a, {x:y for x, y, in zip(['root', 'directories', 'files'], *os.walk(os.path.join(pr.get('runpath'), 'log')))}.get('files'))
+            },
+            'config': pr.get('config'),
+            'runpath': pr.get('runpath'),
+            'pipeline': pr.get('pipeline'),
+            'script': pr.get('script'),
+            'cmdline': pr.get('cmdline'),
+            'stdout': (_stdout if _stdout else ''),
+            'stderr': (_stderr if _stderr else ''),
+            'date': int(_now.strftime('%Y%m%d')),
+            'time': int(_now.strftime('%H%M%S')),
+        })
+        if purge and 0 == pr.get('process').exitcode: shutil.rmtree(pr.get('runpath'))
+    except Exception as ex:
+        print('conclude(): e : {}'.format(ex))
 
 if '__main__' == __name__:
     parser = argparse.ArgumentParser(description='Nebula: Executor')
@@ -72,6 +91,7 @@ if '__main__' == __name__:
     parser.add_argument('--script', type=str, dest='script', default='init.nebula', help='script to be executed by Nebula')
     parser.add_argument('--max_cpu_utilization', type=int, dest='max_cpu_utilization', default=90, help='CPU utilization ceiling')
     parser.add_argument('--stochastic', type=float, dest='stochastic', default=1, help='Fraction (0, 1] of runs to execute')
+    parser.add_argument('--timeout', type=int, dest='timeout', default=None, help='Time (in seconds) before forceful task termination')
     parser.add_argument('--mongodb', type=str, nargs=3, dest='mongodb', default=None, help='MongoDB server, database, collection')
     parser.add_argument('exec_script', help='executor script')
     args = parser.parse_args()
@@ -120,12 +140,14 @@ if '__main__' == __name__:
             _script = os.path.join(os.getcwd(), _p, args.script)
             _cmdline = ' '.join([
                 'python3', os.path.join(os.getcwd(), 'launcher.py'),
+                ('-D' if args.debug else ''),
                 '--log', os.path.join(_runpath, 'log'),
                 '--service', ':'.join([os.path.join(os.getcwd(), 'toolbox', 'stats.py'), 'localhost', '-1']), ':'.join([os.path.join('implementation', 'mainmem.py'), 'localhost', '-1']),
                 ('--max_cycles {}'.format(_exec.get(_p).get('max_cycles')) if 'max_cycles' in _exec.get(_p).keys() else ''),
                 ('--snapshots {}'.format(_exec.get(_p).get('snapshots')) if 'snapshots' in _exec.get(_p).keys() else ''),
                 ('--break_on_undefined' if 'break_on_undefined' in _exec.get(_p).keys() else ''),
                 '--config', ' '.join(map(lambda r: '{}:{}'.format(*r), _run)), 'stats:output_filename:{}'.format(os.path.join(_runpath, 'stats.json')),
+                'mainmem:filename:{}'.format(os.path.join(_runpath, 'mainmem.raw')),
                 '--',
                 str(_port),
                 _script,
@@ -135,6 +157,7 @@ if '__main__' == __name__:
             _config = filter(lambda x: 'config' in x, f.readlines())
             _config = map(lambda x: x.replace('config ', ''), _config)
             _config = map(lambda x: (x[:x.index('#')] if '#' in x else x), _config)
+            _config = filter(lambda x: len(x), _config)
             _config = map(lambda x: x.strip(), _config)
             _config = filter(lambda x: not any(map(lambda r: r[0] in x, _run)), _config)
             _config = list(_config) + list(map(lambda r: '{} {}'.format(*r), _run))
@@ -146,7 +169,7 @@ if '__main__' == __name__:
             f.close()
             while psutil.cpu_percent(1) > args.max_cpu_utilization: pass
             _processes.append({
-                'process': launch(_cmdline, _runpath, _p, _script),
+                'process': launch(_cmdline, _runpath, _p, _script, timeout=args.timeout),
                 'cmdline': _cmdline,
                 'runpath': _runpath,
                 'pipeline': _p,
@@ -154,4 +177,8 @@ if '__main__' == __name__:
                 'script': _script,
                 'port': _port,
             })
-    for pr in _processes: conclude(pr, args.purge_successful)
+    for pr in _processes:
+        try:
+            conclude(pr, args.purge_successful)
+        except:
+            pass
