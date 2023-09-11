@@ -1,0 +1,60 @@
+{
+    "pipelines/bergamot": {
+        "config": {
+            "mainmem:peek_latency_in_cycles": [1, 5, 25],
+            "mainmem:capacity": [4297967296]
+        },
+        "max_cycles": 100000,
+        "script": "init.nebula",
+        "command": "../../examples/bin/negate 2"
+    },
+    "pipelines/clementine": {
+        "config": {
+            "mainmem:peek_latency_in_cycles": [1, 5, 25],
+            "mainmem:capacity": [4297967296]
+        },
+        "max_cycles": 100000,
+        "script": "init.nebula",
+        "command": "../../examples/bin/negate 2"
+    },
+    "pipelines/lime": {
+        "config": {
+            "l2:l2_hitlatency": [1, 5],
+            "mainmem:peek_latency_in_cycles": [1, 5, 25],
+            "mainmem:capacity": [4297967296]
+        },
+        "max_cycles": 100000,
+        "script": "init.nebula",
+        "command": "../../examples/bin/negate 2"
+    },
+    "pipelines/oroblanco": {
+        "config": {
+            "l2:l2_hitlatency": [1, 5],
+            "mainmem:peek_latency_in_cycles": [1, 5, 25],
+            "mainmem:capacity": [4297967296]
+        },
+        "max_cycles": 100000,
+        "script": "init.nebula",
+        "command": "../../examples/bin/negate 2"
+    },
+    "pipelines/pompia": {
+        "config": {
+            "l2:l2_hitlatency": [1, 5],
+            "mainmem:peek_latency_in_cycles": [1, 5, 25],
+            "mainmem:capacity": [4297967296]
+        },
+        "max_cycles": 100000,
+        "script": "init.nebula",
+        "command": "../../examples/bin/negate 2"
+    },
+    "pipelines/rangpur": {
+        "config": {
+            "l2:l2_hitlatency": [1, 5],
+            "mainmem:peek_latency_in_cycles": [1, 5, 25],
+            "mainmem:capacity": [4297967296]
+        },
+        "max_cycles": 100000,
+        "script": "init.nebula",
+        "command": "../../examples/bin/negate 2"
+    }
+}
