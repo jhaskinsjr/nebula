@@ -8,7 +8,7 @@ comprised of many thousands or even millions of different configurations of
 the caches, the branch predictor, decoder, etc. Manually launching such
 large numbers of experiments is a significant challenge.
 
-Therefore, to facilitate large-scale studies, the μService-SIMulator
+Therefore, to facilitate large-scale studies, Nebula
 includes `executor.py`, which takes as input a JSON-formatted expression of
 the state space to be explored. Consider the included `executor.py` script
 l1ic_size.exec:
@@ -16,44 +16,67 @@ l1ic_size.exec:
 ```
 {
     "pipelines/lime": {
-        "mainmem": 4297967296,
         "config": {
             "fetch:l1ic_nsets": [16, 64],
             "fetch:l1ic_nways": [2, 4],
             "fetch:l1ic_nbytesperblock": [16, 32],
             "fetch:l1ic_evictionpolicy": ["random", "lru"],
-            "l2:l2_nbytesperblock": [64]
+            "l2:l2_nbytesperblock": [64],
+            "mainmem:capacity": [4297967296]
         },
-        "max_cycles": 32000,
-        "snapshots": 1000,
-        "break_on_undefined": true,
+        "max_cycles": 100000,
         "script": "init.nebula",
         "command": "../../examples/bin/sum 2 3 -5 7"
     },
     "pipelines/oroblanco": {
-        "mainmem": 4297967296,
         "config": {
             "fetch:l1ic_nsets": [16, 64],
             "fetch:l1ic_nways": [2, 4],
             "fetch:l1ic_nbytesperblock": [16, 32],
             "fetch:l1ic_evictionpolicy": ["random", "lru"],
-            "l2:l2_nbytesperblock": [64]
+            "l2:l2_nbytesperblock": [64],
+            "mainmem:capacity": [4297967296]
         },
-        "max_cycles": 32000,
-        "snapshots": 1000,
-        "break_on_undefined": true,
+        "max_cycles": 100000,
+        "script": "init.nebula",
+        "command": "../../examples/bin/sum 2 3 -5 7"
+    },
+    "pipelines/pompia": {
+        "config": {
+            "fetch:l1ic_nsets": [16, 64],
+            "fetch:l1ic_nways": [2, 4],
+            "fetch:l1ic_nbytesperblock": [16, 32],
+            "fetch:l1ic_evictionpolicy": ["random", "lru"],
+            "l2:l2_nbytesperblock": [64],
+            "mainmem:capacity": [4297967296]
+        },
+        "max_cycles": 100000,
+        "script": "init.nebula",
+        "command": "../../examples/bin/sum 2 3 -5 7"
+    },
+    "pipelines/rangpur": {
+        "config": {
+            "fetch:l1ic_nsets": [16, 64],
+            "fetch:l1ic_nways": [2, 4],
+            "fetch:l1ic_nbytesperblock": [16, 32],
+            "fetch:l1ic_evictionpolicy": ["random", "lru"],
+            "l2:l2_nbytesperblock": [64],
+            "mainmem:capacity": [4297967296]
+        },
+        "max_cycles": 100000,
         "script": "init.nebula",
         "command": "../../examples/bin/sum 2 3 -5 7"
     }
 }
 ```
 
-This script spawns runs of two pipelines: Lime and Oroblanco, the only two
+This script spawns runs of four pipelines: Lime, Oroblanco, Pompia,
+and Rangpur, the only
 pipelines that have L1 instruction caches. Separate runs will be spawned
 for the cross product of two configurations of the number of sets (16 or
 64), the number of ways (2 or 4), the number of bytes/block (16 or 32),
 the eviction policy (LRU or random); for a total of 16 configurations for
-Lime and 16 configurations for Oroblanco. To execute the all 32 runs, from
+each pipeline. To execute the all 64 runs, from
 the top-level directory of the source tree, execute:
 
 ```
@@ -61,8 +84,8 @@ mkdir /tmp/runs
 python3 ./executor.py \
     --purge_successful \
     --basepath /tmp/runs \
-    --stochastic 0.5 \
     --max_cpu_utilization 80 \
+    --timeout 3600 \
     -- \
     l1ic_size.exec
 ```
@@ -72,14 +95,14 @@ the artifacts (e.g., log files, the mainmem file, stats.json) produced by
 each execution of the simulator that returns error code 0. The `--basepath`
 parameter
 points to the place for all the file system artifacts to be deposited during
-the execution of the simulations; default: /tmp. The `--stochastic` parameter
-sets the approximate probability that each run will execute, so that only a
-random subset of the cross product of runs executes; default 1 (i.e., launch
-100% of the runs).  The `--max_cpu_utilization`
+the execution of the simulations; default: /tmp. The `--max_cpu_utilization`
 parameter caps the CPU utilization so that many thousands of simulations do
-not launch simultanesouly and cripple the system that the simulations are
-running on; default: 90. And, `l1ic_size.exec` is the input to
-`executor.py`.
+not launch simultanesouly and cripple the host; default: 90. The `--timeout`
+parameter caps the amount of time each simulation is allowed to run. Here,
+any simulation that does not end in an hour (i.e., 3,600 seconds) will be
+forcibly terminated, preventing an errant simulation from preventing
+`executor.py` from successfully concluding; default: no limit. And
+`l1ic_size.exec` is the input to `executor.py`.
 
 Finally, since wrangling all the output generated by the simulations is
 also a significant challenge, `exeuctor.py` also includes simple support
@@ -92,7 +115,7 @@ python3 ./executor.py \
     --purge_successful \
     --basepath /tmp/runs \
     --max_cpu_utilization 80 \
-    --stochastic 0.5 \
+    --timeout 3600 \
     --mongodb mongodb://citrus.local:27017 nebula experiments \
     -- \
     l1ic_size.exec
@@ -103,10 +126,16 @@ documents into the MongoDB server running on my internal network named
 `citrus.local` at port `27017`, in a database named `nebula`, in a collection
 named `experiments`. It inserts one document per configuration, and the
 documents contain all the data generated by the simulation execution
-(i.e., its stats.json) and important metadata about the simulation
+and important metadata about the simulation
 including the date, time, the Git SHA of the source tree, the branch of
 the source tree, the exit code, the log files generated by the execution,
 the configuration used by the simulation, the path within which the
 execution artifacts were deposited during the execution, the pipeline
 that executed, the simulator execution script (e.g., init.nebula), and the
 command line to invoke the simulation.
+
+For an example of how to use Jupyter Notebooks and the Pandas data 
+anaylsis software to study data generated by `executor.py` and placed
+into a MongoDB database, load the `MongoDB_Data_Analysis_Example.ipynb`
+into a Jupyter Notebook interpreter,
+e.g., https://code.visualstudio.com/docs/datascience/jupyter-notebooks.
