@@ -1,9 +1,9 @@
 {
     "pipelines/bergamot": {
-        "mainmem": 4297967296,
         "config": {
             "l2:l2_hitlatency": [1, 10],
             "mainmem:peek_latency_in_cycles": [1, 10, 100],
+            "mainmem:capacity": [4297967296],
             "watchdog:event_name": ["commit"],
             "watchdog:event_cycles": [10]
         },
@@ -12,10 +12,10 @@
         "command": "../../examples/bin/negate 2"
     },
     "pipelines/clementine": {
-        "mainmem": 4297967296,
         "config": {
             "l2:l2_hitlatency": [1, 10],
             "mainmem:peek_latency_in_cycles": [1, 10, 100],
+            "mainmem:capacity": [4297967296],
             "watchdog:result_name": ["retire"],
             "watchdog:result_cycles": [10]
         },
@@ -24,10 +24,10 @@
         "command": "../../examples/bin/negate 2"
     },
     "pipelines/lime": {
-        "mainmem": 4297967296,
         "config": {
             "l2:l2_hitlatency": [1, 10],
             "mainmem:peek_latency_in_cycles": [1, 10, 100],
+            "mainmem:capacity": [4297967296],
             "watchdog:result_name": ["retire"],
             "watchdog:result_cycles": [10]
         },
@@ -36,10 +36,10 @@
         "command": "../../examples/bin/negate 2"
     },
     "pipelines/oroblanco": {
-        "mainmem": 4297967296,
         "config": {
             "l2:l2_hitlatency": [1, 10],
             "mainmem:peek_latency_in_cycles": [1, 10, 100],
+            "mainmem:capacity": [4297967296],
             "watchdog:result_name": ["retire"],
             "watchdog:result_cycles": [10]
         },
@@ -48,10 +48,10 @@
         "command": "../../examples/bin/negate 2"
     },
     "pipelines/pompia": {
-        "mainmem": 4297967296,
         "config": {
             "l2:l2_hitlatency": [1, 10],
             "mainmem:peek_latency_in_cycles": [1, 10, 100],
+            "mainmem:capacity": [4297967296],
             "watchdog:result_name": ["retire"],
             "watchdog:result_cycles": [10]
         },
@@ -60,10 +60,10 @@
         "command": "../../examples/bin/negate 2"
     },
     "pipelines/rangpur": {
-        "mainmem": 4297967296,
         "config": {
             "l2:l2_hitlatency": [1, 10],
             "mainmem:peek_latency_in_cycles": [1, 10, 100],
+            "mainmem:capacity": [4297967296],
             "watchdog:result_name": ["retire"],
             "watchdog:result_cycles": [10]
         },

@@ -1,31 +1,53 @@
 {
     "pipelines/lime": {
-        "mainmem": 4297967296,
         "config": {
             "fetch:l1ic_nsets": [16, 64],
             "fetch:l1ic_nways": [2, 4],
             "fetch:l1ic_nbytesperblock": [16, 32],
             "fetch:l1ic_evictionpolicy": ["random", "lru"],
-            "l2:l2_nbytesperblock": [64]
+            "l2:l2_nbytesperblock": [64],
+            "mainmem:capacity": [4297967296]
         },
-        "max_cycles": 32000,
-        "snapshots": 1000,
-        "break_on_undefined": true,
+        "max_cycles": 100000,
         "script": "init.nebula",
         "command": "../../examples/bin/sum 2 3 -5 7"
     },
     "pipelines/oroblanco": {
-        "mainmem": 4297967296,
         "config": {
             "fetch:l1ic_nsets": [16, 64],
             "fetch:l1ic_nways": [2, 4],
             "fetch:l1ic_nbytesperblock": [16, 32],
             "fetch:l1ic_evictionpolicy": ["random", "lru"],
-            "l2:l2_nbytesperblock": [64]
+            "l2:l2_nbytesperblock": [64],
+            "mainmem:capacity": [4297967296]
         },
-        "max_cycles": 32000,
-        "snapshots": 1000,
-        "break_on_undefined": true,
+        "max_cycles": 100000,
+        "script": "init.nebula",
+        "command": "../../examples/bin/sum 2 3 -5 7"
+    },
+    "pipelines/pompia": {
+        "config": {
+            "fetch:l1ic_nsets": [16, 64],
+            "fetch:l1ic_nways": [2, 4],
+            "fetch:l1ic_nbytesperblock": [16, 32],
+            "fetch:l1ic_evictionpolicy": ["random", "lru"],
+            "l2:l2_nbytesperblock": [64],
+            "mainmem:capacity": [4297967296]
+        },
+        "max_cycles": 100000,
+        "script": "init.nebula",
+        "command": "../../examples/bin/sum 2 3 -5 7"
+    },
+    "pipelines/rangpur": {
+        "config": {
+            "fetch:l1ic_nsets": [16, 64],
+            "fetch:l1ic_nways": [2, 4],
+            "fetch:l1ic_nbytesperblock": [16, 32],
+            "fetch:l1ic_evictionpolicy": ["random", "lru"],
+            "l2:l2_nbytesperblock": [64],
+            "mainmem:capacity": [4297967296]
+        },
+        "max_cycles": 100000,
         "script": "init.nebula",
         "command": "../../examples/bin/sum 2 3 -5 7"
     }

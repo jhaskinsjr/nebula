@@ -1,31 +1,27 @@
 {
     "pipelines/bergamot": {
-        "mainmem": 4297967296,
         "config": {
-            "mainmem:peek_latency_in_cycles": [1, 10, 100]
+            "mainmem:peek_latency_in_cycles": [1, 10, 100],
+            "mainmem:capacity": [4297967296]
         },
-        "max_cycles": 32000,
-        "snapshots": 1000,
-        "break_on_undefined": true,
+        "max_cycles": 100000,
         "script": "init.nebula",
         "command": "../../examples/bin/sum 2 3"
     },
     "pipelines/clementine": {
-        "mainmem": 4297967296,
         "config": {
             "mainmem:peek_latency_in_cycles": [1, 10, 100],
+            "mainmem:capacity": [4297967296],
             "decode:buffer_capacity": [16, 64]
         },
-        "max_cycles": 32000,
-        "snapshots": 1000,
-        "break_on_undefined": true,
+        "max_cycles": 100000,
         "script": "init.nebula",
         "command": "../../examples/bin/sum 2 3"
     },
     "pipelines/lime": {
-        "mainmem": 4297967296,
         "config": {
             "mainmem:peek_latency_in_cycles": [1, 10, 100],
+            "mainmem:capacity": [4297967296],
             "fetch:l1ic_nsets": [16, 64],
             "fetch:l1ic_nways": [1, 4],
             "fetch:l1ic_nbytesperblock": [16, 32],
@@ -38,18 +34,17 @@
             "l2:l2_nsets": [16, 64],
             "l2:l2_nways": [1, 8],
             "l2:l2_nbytesperblock": [64, 128],
-            "l2:l2_evictionpolicy": ["random", "lru"]
+            "l2:l2_evictionpolicy": ["random", "lru"],
+            "l2:l2_hitlatency": [1, 10, 100]
         },
-        "max_cycles": 32000,
-        "snapshots": 1000,
-        "break_on_undefined": true,
+        "max_cycles": 100000,
         "script": "init.nebula",
         "command": "../../examples/bin/sum 2 3"
     },
     "pipelines/oroblanco": {
-        "mainmem": 4297967296,
         "config": {
             "mainmem:peek_latency_in_cycles": [1, 10, 100],
+            "mainmem:capacity": [4297967296],
             "fetch:l1ic_nsets": [16, 64],
             "fetch:l1ic_nways": [1, 4],
             "fetch:l1ic_nbytesperblock": [16, 32],
@@ -66,11 +61,56 @@
             "l2:l2_nsets": [16, 64],
             "l2:l2_nways": [1, 8],
             "l2:l2_nbytesperblock": [64, 128],
-            "l2:l2_evictionpolicy": ["random", "lru"]
+            "l2:l2_evictionpolicy": ["random", "lru"],
+            "l2:l2_hitlatency": [1, 10, 100]
         },
-        "max_cycles": 32000,
-        "snapshots": 1000,
-        "break_on_undefined": true,
+        "max_cycles": 100000,
+        "script": "init.nebula",
+        "command": "../../examples/bin/sum 2 3"
+    },
+    "pipelines/pompia": {
+        "config": {
+            "mainmem:peek_latency_in_cycles": [1, 10, 100],
+            "mainmem:capacity": [4297967296],
+            "fetch:l1ic_nsets": [16, 64],
+            "fetch:l1ic_nways": [1, 4],
+            "fetch:l1ic_nbytesperblock": [16, 32],
+            "fetch:l1ic_evictionpolicy": ["random", "lru"],
+            "decode:max_instructions_to_decode": [1, 2, 4],
+            "lsu:l1dc_nsets": [16, 64],
+            "lsu:l1dc_nways": [1, 4],
+            "lsu:l1dc_nbytesperblock": [16, 32],
+            "lsu:l1dc_evictionpolicy": ["random", "lru"],
+            "l2:l2_nsets": [16, 64],
+            "l2:l2_nways": [1, 8],
+            "l2:l2_nbytesperblock": [64, 128],
+            "l2:l2_evictionpolicy": ["random", "lru"],
+            "l2:l2_hitlatency": [1, 10, 100]
+        },
+        "max_cycles": 100000,
+        "script": "init.nebula",
+        "command": "../../examples/bin/sum 2 3"
+    },
+    "pipelines/rangpur": {
+        "config": {
+            "mainmem:peek_latency_in_cycles": [1, 10, 100],
+            "mainmem:capacity": [4297967296],
+            "fetch:l1ic_nsets": [16, 64],
+            "fetch:l1ic_nways": [1, 4],
+            "fetch:l1ic_nbytesperblock": [16, 32],
+            "fetch:l1ic_evictionpolicy": ["random", "lru"],
+            "decode:max_bytes_to_decode": [4, 8, 16],
+            "lsu:l1dc_nsets": [16, 64],
+            "lsu:l1dc_nways": [1, 4],
+            "lsu:l1dc_nbytesperblock": [16, 32],
+            "lsu:l1dc_evictionpolicy": ["random", "lru"],
+            "l2:l2_nsets": [16, 64],
+            "l2:l2_nways": [1, 8],
+            "l2:l2_nbytesperblock": [64, 128],
+            "l2:l2_evictionpolicy": ["random", "lru"],
+            "l2:l2_hitlatency": [1, 10, 100]
+        },
+        "max_cycles": 100000,
         "script": "init.nebula",
         "command": "../../examples/bin/sum 2 3"
     }
