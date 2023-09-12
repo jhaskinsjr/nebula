@@ -48,7 +48,7 @@ def do_tick(service, state, results, events):
                     **_pr,
                 }
             }})
-            if _pr.get('targetpc') != _brpc + _pr.get('size'): # i.e., if the branch is predicted taken
+            if _pr.get('targetpc') != _brpc + _pr.get('size') and not contains(_l1ic.get('addr'), _l1ic.get('size'), _pr.get('targetpc'), 0): # i.e., if the branch is predicted taken and no portion of _br \in _l1ic
                 state.get('fetch_address').append({
                     'fetch': {
                         'cmd': 'get',
