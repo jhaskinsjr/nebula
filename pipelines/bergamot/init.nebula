@@ -1,4 +1,4 @@
-# Sample μService-SIMulator script
+# Sample Nebula script
 # core 0
 service implementation/simplecore.py:localhost:0
 service implementation/regfile.py:localhost:0

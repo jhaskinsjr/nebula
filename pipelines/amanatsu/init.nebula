@@ -1,4 +1,4 @@
-# Sample μService-SIMulator script
+# Sample Nebula script
 service implementation/fastcore.py:localhost:0
 service implementation/watchdog.py:localhost:0
 spawn
