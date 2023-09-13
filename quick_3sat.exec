@@ -1,0 +1,32 @@
+{
+    "pipelines/amanatsu": {
+        "config": {
+            "mainmem:capacity": [4294967296]
+        },
+        "max_cycles": 1000000,
+        "script": "init.nebula",
+        "restore": "../../snapshots/3sat/mainmem.raw.000000000480000.snapshot"
+    },
+    "pipelines/pompia": {
+        "config": {
+            "l2:l2_hitlatency": [1, 5],
+            "mainmem:peek_latency_in_cycles": [1, 5, 25],
+            "mainmem:capacity": [4294967296]
+        },
+        "max_cycles": 1000000,
+        "script": "init.nebula",
+        "service": ["implementation/mainmem.py:localhost:-1"],
+        "restore": "../../snapshots/3sat/mainmem.raw.000000000480000.snapshot"
+    },
+    "pipelines/rangpur": {
+        "config": {
+            "l2:l2_hitlatency": [1, 5],
+            "mainmem:peek_latency_in_cycles": [1, 5, 25],
+            "mainmem:capacity": [4294967296]
+        },
+        "max_cycles": 1000000,
+        "script": "init.nebula",
+        "service": ["implementation/mainmem.py:localhost:-1"],
+        "restore": "../../snapshots/3sat/mainmem.raw.000000000480000.snapshot"
+    }
+}

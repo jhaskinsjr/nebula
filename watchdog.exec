@@ -3,72 +3,78 @@
         "config": {
             "l2:l2_hitlatency": [1, 10],
             "mainmem:peek_latency_in_cycles": [1, 10, 100],
-            "mainmem:capacity": [4297967296],
+            "mainmem:capacity": [4294967296],
             "watchdog:event_name": ["commit"],
             "watchdog:event_cycles": [10]
         },
         "max_cycles": 100000,
         "script": "init.nebula",
+        "service": ["implementation/mainmem.py:localhost:-1"],
         "command": "../../examples/bin/negate 2"
     },
     "pipelines/clementine": {
         "config": {
             "l2:l2_hitlatency": [1, 10],
             "mainmem:peek_latency_in_cycles": [1, 10, 100],
-            "mainmem:capacity": [4297967296],
+            "mainmem:capacity": [4294967296],
             "watchdog:result_name": ["retire"],
             "watchdog:result_cycles": [10]
         },
         "max_cycles": 100000,
         "script": "init.nebula",
+        "service": ["implementation/mainmem.py:localhost:-1"],
         "command": "../../examples/bin/negate 2"
     },
     "pipelines/lime": {
         "config": {
             "l2:l2_hitlatency": [1, 10],
             "mainmem:peek_latency_in_cycles": [1, 10, 100],
-            "mainmem:capacity": [4297967296],
+            "mainmem:capacity": [4294967296],
             "watchdog:result_name": ["retire"],
             "watchdog:result_cycles": [10]
         },
         "max_cycles": 100000,
         "script": "init.nebula",
+        "service": ["implementation/mainmem.py:localhost:-1"],
         "command": "../../examples/bin/negate 2"
     },
     "pipelines/oroblanco": {
         "config": {
             "l2:l2_hitlatency": [1, 10],
             "mainmem:peek_latency_in_cycles": [1, 10, 100],
-            "mainmem:capacity": [4297967296],
+            "mainmem:capacity": [4294967296],
             "watchdog:result_name": ["retire"],
             "watchdog:result_cycles": [10]
         },
         "max_cycles": 100000,
         "script": "init.nebula",
+        "service": ["implementation/mainmem.py:localhost:-1"],
         "command": "../../examples/bin/negate 2"
     },
     "pipelines/pompia": {
         "config": {
             "l2:l2_hitlatency": [1, 10],
             "mainmem:peek_latency_in_cycles": [1, 10, 100],
-            "mainmem:capacity": [4297967296],
+            "mainmem:capacity": [4294967296],
             "watchdog:result_name": ["retire"],
             "watchdog:result_cycles": [10]
         },
         "max_cycles": 100000,
         "script": "init.nebula",
+        "service": ["implementation/mainmem.py:localhost:-1"],
         "command": "../../examples/bin/negate 2"
     },
     "pipelines/rangpur": {
         "config": {
             "l2:l2_hitlatency": [1, 10],
             "mainmem:peek_latency_in_cycles": [1, 10, 100],
-            "mainmem:capacity": [4297967296],
+            "mainmem:capacity": [4294967296],
             "watchdog:result_name": ["retire"],
             "watchdog:result_cycles": [10]
         },
         "max_cycles": 100000,
         "script": "init.nebula",
+        "service": ["implementation/mainmem.py:localhost:-1"],
         "command": "../../examples/bin/negate 2"
     }
 }

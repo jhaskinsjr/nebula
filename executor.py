@@ -52,14 +52,14 @@ def conclude(pr, purge):
         with open(os.path.join(pr.get('runpath'), 'exitcode'), 'w') as fp: print('{}'.format(pr.get('process').exitcode), file=fp)
         with open(os.path.join(pr.get('runpath'), 'sha'), 'w') as fp: print(_sha, file=fp)
         with open(os.path.join(pr.get('runpath'), 'branch'), 'w') as fp: print(_branch, file=fp)
-        with open(os.path.join(pr.get('runpath'), 'exec_script'), 'w') as fp: print(args.exec_script, file=fp)
+        with open(os.path.join(pr.get('runpath'), 'exec_script'), 'w') as fp: print(pr.get('exec_script'), file=fp)
         if os.path.exists(os.path.join(pr.get('runpath'), 'stats.json')): _stats = json.load(open(os.path.join(pr.get('runpath'), 'stats.json')))
         if os.path.exists(os.path.join(pr.get('runpath'), 'stdout')): _stdout = '\n'.join(open(os.path.join(pr.get('runpath'), 'stdout'), 'r').readlines())
         if os.path.exists(os.path.join(pr.get('runpath'), 'stderr')): _stderr = '\n'.join(open(os.path.join(pr.get('runpath'), 'stderr'), 'r').readlines())
         if _mongodb: _mongodb.get('collection').insert_one({
             'sha': _sha,
             'branch': _branch,
-            'exec_script': args.exec_script,
+            'exec_script': pr.get('exec_script'),
             'exitcode': pr.get('process').exitcode,
             'stats': (_stats if _stats else ''),
 # XXX: MongoDB's maximum document size is only 16MB
@@ -138,20 +138,27 @@ if '__main__' == __name__:
             while len(list(_still_running)) == 2**16 - 10000: time.sleep(1)
             _runpath = os.path.join(args.basepath, str(uuid.uuid4()))
             _script = os.path.join(os.getcwd(), _p, args.script)
+            _command = _exec.get(_p).get('command')
+            _restore = _exec.get(_p).get('restore')
+            _service = _exec.get(_p).get('service')
+            assert not (_command and _restore), 'Cannot give both a command and a snapshot to restore!'
+            assert _command or _restore, 'Must specify either a command or a snapshot to restore!'
             _cmdline = ' '.join([
                 'python3', os.path.join(os.getcwd(), 'launcher.py'),
                 ('-D' if args.debug else ''),
                 '--log', os.path.join(_runpath, 'log'),
-                '--service', ':'.join([os.path.join(os.getcwd(), 'toolbox', 'stats.py'), 'localhost', '-1']), ':'.join([os.path.join('implementation', 'mainmem.py'), 'localhost', '-1']),
+                '--service', ':'.join([os.path.join(os.getcwd(), 'toolbox', 'stats.py'), 'localhost', '-1']), (' '.join(_service) if _service else ''),
+                #':'.join([os.path.join('implementation', 'mainmem.py'), 'localhost', '-1']),
                 ('--max_cycles {}'.format(_exec.get(_p).get('max_cycles')) if 'max_cycles' in _exec.get(_p).keys() else ''),
                 ('--snapshots {}'.format(_exec.get(_p).get('snapshots')) if 'snapshots' in _exec.get(_p).keys() else ''),
                 ('--break_on_undefined' if 'break_on_undefined' in _exec.get(_p).keys() else ''),
-                '--config', ' '.join(map(lambda r: '{}:{}'.format(*r), _run)), 'stats:output_filename:{}'.format(os.path.join(_runpath, 'stats.json')),
-                'mainmem:filename:{}'.format(os.path.join(_runpath, 'mainmem.raw')),
+                '--config', 'stats:output_filename:{}'.format(os.path.join(_runpath, 'stats.json')),
+                'mainmem:filename:{}'.format(os.path.join(_runpath, 'mainmem.raw')), ' '.join(map(lambda r: '{}:{}'.format(*r), _run)),
+                ('--restore {}'.format(os.path.join(os.getcwd(), _p, _restore)) if _restore else ''),
                 '--',
                 str(_port),
                 _script,
-                _exec.get(_p).get('command')
+                (_command if _command else '')
             ])
             f = open(_script, 'r')
             _config = filter(lambda x: 'config' in x, f.readlines())
@@ -175,6 +182,7 @@ if '__main__' == __name__:
                 'pipeline': _p,
                 'config': _config,
                 'script': _script,
+                'exec_script': args.exec_script,
                 'port': _port,
             })
     for pr in _processes:
