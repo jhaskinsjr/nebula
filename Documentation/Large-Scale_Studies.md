@@ -17,6 +17,8 @@ l1ic_size.exec:
 {
     "pipelines/lime": {
         "config": {
+            "watchdog:result_name": ["retire"],
+            "watchdog:result_cycles": [1000],
             "fetch:l1ic_nsets": [16, 64],
             "fetch:l1ic_nways": [2, 4],
             "fetch:l1ic_nbytesperblock": [16, 32],
@@ -31,6 +33,8 @@ l1ic_size.exec:
     },
     "pipelines/oroblanco": {
         "config": {
+            "watchdog:result_name": ["retire"],
+            "watchdog:result_cycles": [1000],
             "fetch:l1ic_nsets": [16, 64],
             "fetch:l1ic_nways": [2, 4],
             "fetch:l1ic_nbytesperblock": [16, 32],
@@ -45,6 +49,8 @@ l1ic_size.exec:
     },
     "pipelines/pompia": {
         "config": {
+            "watchdog:result_name": ["retire"],
+            "watchdog:result_cycles": [1000],
             "fetch:l1ic_nsets": [16, 64],
             "fetch:l1ic_nways": [2, 4],
             "fetch:l1ic_nbytesperblock": [16, 32],
@@ -59,6 +65,8 @@ l1ic_size.exec:
     },
     "pipelines/rangpur": {
         "config": {
+            "watchdog:result_name": ["retire"],
+            "watchdog:result_cycles": [1000],
             "fetch:l1ic_nsets": [16, 64],
             "fetch:l1ic_nways": [2, 4],
             "fetch:l1ic_nbytesperblock": [16, 32],

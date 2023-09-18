@@ -108,6 +108,7 @@ LinkedIn: https://www.linkedin.com/in/john-haskins-jr-925235a1/
 1. [JSON Output](Documentation/JSON_Output.md)
 1. [Software Architecture](Documentation/Software_Architecture.md)
 1. [Sample Pipelines](Documentation/Sample_Pipelines.md)
+1. [Watchdog Tool](Documentation/Watchdog.md)
 1. [Snapshots](Documentation/Snapshots.md)
 1. [Simulator Scripts](Documentation/Simulator_Scripts.md)
 1. [Distributed Simulation](Documentation/Distributed_Simulation.md)
