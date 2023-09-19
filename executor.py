@@ -1,6 +1,8 @@
 # Copyright (C) 2021, 2022, 2023 John Haskins Jr.
 
+import re
 import os
+import sys
 import json
 import argparse
 import random
@@ -43,22 +45,22 @@ def launch(cmd, runpath, pipeline, script, **kwargs):
     )
     _pr.start()
     return _pr
-def conclude(pr, purge):
+def conclude(pr, purge, sha, branch, now):
     pr.get('process').join()
     try:
         _stats = None
         _stdout = None
         _stderr = None
         with open(os.path.join(pr.get('runpath'), 'exitcode'), 'w') as fp: print('{}'.format(pr.get('process').exitcode), file=fp)
-        with open(os.path.join(pr.get('runpath'), 'sha'), 'w') as fp: print(_sha, file=fp)
-        with open(os.path.join(pr.get('runpath'), 'branch'), 'w') as fp: print(_branch, file=fp)
+        with open(os.path.join(pr.get('runpath'), 'sha'), 'w') as fp: print(sha, file=fp)
+        with open(os.path.join(pr.get('runpath'), 'branch'), 'w') as fp: print(branch, file=fp)
         with open(os.path.join(pr.get('runpath'), 'exec_script'), 'w') as fp: print(pr.get('exec_script'), file=fp)
         if os.path.exists(os.path.join(pr.get('runpath'), 'stats.json')): _stats = json.load(open(os.path.join(pr.get('runpath'), 'stats.json')))
         if os.path.exists(os.path.join(pr.get('runpath'), 'stdout')): _stdout = '\n'.join(open(os.path.join(pr.get('runpath'), 'stdout'), 'r').readlines())
         if os.path.exists(os.path.join(pr.get('runpath'), 'stderr')): _stderr = '\n'.join(open(os.path.join(pr.get('runpath'), 'stderr'), 'r').readlines())
         if _mongodb: _mongodb.get('collection').insert_one({
-            'sha': _sha,
-            'branch': _branch,
+            'sha': sha,
+            'branch': branch,
             'exec_script': pr.get('exec_script'),
             'exitcode': pr.get('process').exitcode,
             'stats': (_stats if _stats else ''),
@@ -76,38 +78,14 @@ def conclude(pr, purge):
             'cmdline': pr.get('cmdline'),
             'stdout': (_stdout if _stdout else ''),
             'stderr': (_stderr if _stderr else ''),
-            'date': int(_now.strftime('%Y%m%d')),
-            'time': int(_now.strftime('%H%M%S')),
+            'date': int(now.strftime('%Y%m%d')),
+            'time': int(now.strftime('%H%M%S')),
         })
         if purge and 0 == pr.get('process').exitcode: shutil.rmtree(pr.get('runpath'))
     except Exception as ex:
         print('conclude(): e : {}'.format(ex))
-
-if '__main__' == __name__:
-    parser = argparse.ArgumentParser(description='Nebula: Executor')
-    parser.add_argument('--debug', '-D', dest='debug', action='store_true', help='output debug messages')
-    parser.add_argument('--purge_successful', '-P', dest='purge_successful', action='store_true', help='purge files of successful runs')
-    parser.add_argument('--basepath', type=str, dest='basepath', default='/tmp', help='directory to hold runtime artifacts')
-    parser.add_argument('--script', type=str, dest='script', default='init.nebula', help='script to be executed by Nebula')
-    parser.add_argument('--max_cpu_utilization', type=int, dest='max_cpu_utilization', default=90, help='CPU utilization ceiling')
-    parser.add_argument('--stochastic', type=float, dest='stochastic', default=1, help='Fraction (0, 1] of runs to execute')
-    parser.add_argument('--timeout', type=int, dest='timeout', default=None, help='Time (in seconds) before forceful task termination')
-    parser.add_argument('--mongodb', type=str, nargs=3, dest='mongodb', default=None, help='MongoDB server, database, collection')
-    parser.add_argument('exec_script', help='executor script')
-    args = parser.parse_args()
-    assert args.stochastic > 0, '--stochastic must be greater than 0!'
-    assert args.stochastic <= 1, '--stochastic must be less than or equal to 1!'
-    _mongodb = None
-    if args.mongodb:
-        _mongodb = {
-            'client': pymongo.MongoClient(args.mongodb[0]),
-        }
-        _mongodb.update({'db': _mongodb.get('client')[args.mongodb[1]]})
-        _mongodb.update({'collection': _mongodb.get('db')[args.mongodb[2]]})
-    _sha = subprocess.run('git rev-parse HEAD'.split(), capture_output=True).stdout.decode('ascii').strip()
-    _branch = subprocess.run('git rev-parse --abbrev-ref HEAD'.split(), capture_output=True).stdout.decode('ascii').strip()
-    _now = datetime.datetime.now()
-    _exec = json.load(open(args.exec_script, 'r'))
+def do_exec_script(exec_script, sha, branch, now, **kwargs):
+    _exec = json.load(open(exec_script, 'r'))
     _pipelines = list(_exec.keys())
     _runs = {
         p: [
@@ -115,6 +93,8 @@ if '__main__' == __name__:
             for x in itertools.product(*_exec.get(p).get('config').values())
         ] for p in _pipelines
     }
+    if 'include' in kwargs.keys():_runs = {k:_runs.get(k) for k in filter(lambda x: any(map(lambda y: re.search(y, x), kwargs.get('include'))), _runs.keys())}
+    if 'exclude' in kwargs.keys():_runs = {k:_runs.get(k) for k in filter(lambda x: not any(map(lambda y: re.search(y, x), kwargs.get('exclude'))), _runs.keys())}
     if args.debug: print('_runs : {}'.format(_runs))
     if args.debug: print('_exec : {}'.format(_exec))
     _processes = []
@@ -123,7 +103,7 @@ if '__main__' == __name__:
         for _run in _runs.get(_p):
             _concluded_processes = []
             for pr in filter(lambda p: isinstance(p.get('process').exitcode, int), _processes):
-                conclude(pr, args.purge_successful)
+                conclude(pr, args.purge_successful, sha, branch, now)
                 _concluded_processes.append(pr)
             for pr in _concluded_processes: _processes.remove(pr)
             if random.uniform(0, 1) > args.stochastic: continue
@@ -182,11 +162,44 @@ if '__main__' == __name__:
                 'pipeline': _p,
                 'config': _config,
                 'script': _script,
-                'exec_script': args.exec_script,
+                'exec_script': exec_script,
                 'port': _port,
             })
+    return _processes
+
+if '__main__' == __name__:
+    parser = argparse.ArgumentParser(description='Nebula: Executor')
+    parser.add_argument('--debug', '-D', dest='debug', action='store_true', help='output debug messages')
+    parser.add_argument('--purge_successful', '-P', dest='purge_successful', action='store_true', help='purge files of successful runs')
+    parser.add_argument('--basepath', type=str, dest='basepath', default='/tmp', help='directory to hold runtime artifacts')
+    parser.add_argument('--script', type=str, dest='script', default='init.nebula', help='script to be executed by Nebula')
+    parser.add_argument('--max_cpu_utilization', type=int, dest='max_cpu_utilization', default=90, help='CPU utilization ceiling')
+    parser.add_argument('--stochastic', type=float, dest='stochastic', default=1, help='Fraction (0, 1] of runs to execute')
+    parser.add_argument('--timeout', type=int, dest='timeout', default=None, help='Time (in seconds) before forceful task termination')
+    parser.add_argument('--mongodb', type=str, nargs=3, dest='mongodb', default=None, help='MongoDB server, database, collection')
+    parser.add_argument('--include', type=str, nargs='+', dest='include', help='pipelines to simulate')
+    parser.add_argument('--exclude', type=str, nargs='+', dest='exclude', help='pipelines to NOT simulate')
+    parser.add_argument('exec_script', nargs='+', help='executor script')
+    args = parser.parse_args()
+    assert args.stochastic > 0, '--stochastic must be greater than 0!'
+    assert args.stochastic <= 1, '--stochastic must be less than or equal to 1!'
+    assert not (None != args.include and None != args.exclude), 'Cannot use both --include and --exclude!'
+    _mongodb = None
+    if args.mongodb:
+        _mongodb = {
+            'client': pymongo.MongoClient(args.mongodb[0]),
+        }
+        _mongodb.update({'db': _mongodb.get('client')[args.mongodb[1]]})
+        _mongodb.update({'collection': _mongodb.get('db')[args.mongodb[2]]})
+    _sha = subprocess.run('git rev-parse HEAD'.split(), capture_output=True).stdout.decode('ascii').strip()
+    _branch = subprocess.run('git rev-parse --abbrev-ref HEAD'.split(), capture_output=True).stdout.decode('ascii').strip()
+    _now = datetime.datetime.now()
+    _processes = sum(map(lambda x: do_exec_script(x, _sha, _branch, _now, **{
+        **({'include': args.include} if args.include else {}),
+        **({'exclude': args.exclude} if args.exclude else {}),
+    }), args.exec_script), [])
     for pr in _processes:
         try:
-            conclude(pr, args.purge_successful)
+            conclude(pr, args.purge_successful, _sha, _branch, _now)
         except:
             pass
