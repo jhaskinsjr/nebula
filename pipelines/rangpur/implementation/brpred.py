@@ -86,7 +86,7 @@ def do_tick(service, state, results, events):
         }})
     service.tx({'info': 'state.pending_fetch : {}'.format(state.get('pending_fetch'))})
     service.tx({'info': 'state.fetch_address : {} ({})'.format(state.get('fetch_address'), len(state.get('fetch_address')))})
-    service.tx({'info': 'state.btac          : {} ({})'.format(state.get('btac'), len(state.get('btac')))})
+    service.tx({'info': 'state.btac          : ... ({})'.format(len(state.get('btac')))})
     service.tx({'info': 'state.drop_until    : {} ({})'.format('' if not state.get('drop_until') else list(state.get('drop_until').to_bytes(8, 'little')), state.get('drop_until'))})
     service.tx({'info': 'filter(mispredict, results) : {}'.format(len(list(filter(lambda x: x.get('mispredict'), results))))})
     
