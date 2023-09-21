@@ -18,6 +18,7 @@ For a brief overview of each pipeline implmentation, follow the links below:
 * [Oroblanco](../pipelines/oroblanco/README.md)
 * [Pompia](../pipelines/pompia/README.md)
 * [Rangpur](../pipelines/rangpur/README.md)
+* [Shangjuan](../pipelines/shangjuan/README.md)
 
 Please note that the Clementine, Lime, and Oroblanco pipelines were very
 early efforts to forge Nebula pipeline examples. No longer under active

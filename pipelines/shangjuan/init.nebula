@@ -1,0 +1,46 @@
+# Sample Nebula script
+# core 0
+service implementation/regfile.py:localhost:0
+service implementation/brpred.py:localhost:0
+service implementation/fetch.py:localhost:0
+service implementation/decode.py:localhost:0
+service implementation/issue.py:localhost:0
+service implementation/alu.py:localhost:0
+service implementation/lsu.py:localhost:0
+service implementation/commit.py:localhost:0
+service implementation/l2.py:localhost:0
+service implementation/watchdog.py:localhost:0
+## core 1
+#service implementation/regfile.py:localhost:1
+#service implementation/brpred.py:localhost:1
+#service implementation/fetch.py:localhost:1
+#service implementation/decode.py:localhost:1
+#service implementation/issue.py:localhost:1
+#service implementation/alu.py:localhost:1
+#service implementation/lsu.py:localhost:1
+#service implementation/commit.py:localhost:1
+#service implementation/l2.py:localhost:1
+#service implementation/watchdog.py:localhost:1
+spawn
+config fetch:l1ic_nsets 16
+config fetch:l1ic_nways 2
+config fetch:l1ic_nbytesperblock 16
+config fetch:l1ic_evictionpolicy lru # random
+config decode:max_bytes_to_decode 16
+config lsu:l1dc_nsets 16
+config lsu:l1dc_nways 2
+config lsu:l1dc_nbytesperblock 16
+config lsu:l1dc_evictionpolicy lru # random
+config l2:l2_nsets 32
+config l2:l2_nways 16
+config l2:l2_nbytesperblock 16
+config l2:l2_evictionpolicy lru # random
+config l2:l2_hitlatency 5
+config mainmem:peek_latency_in_cycles 25
+config mainmem:filename /tmp/mainmem.raw
+config mainmem:capacity 4294967296
+config stats:output_filename /tmp/stats.json
+#config watchdog:result_name retire
+#config watchdog:result_cycles 1000
+run
+shutdown

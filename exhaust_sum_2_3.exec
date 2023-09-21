@@ -140,5 +140,32 @@
         "service": ["implementation/mainmem.py:localhost:-1"],
         "command": "../../examples/bin/sum 2 3",
         "_comment": "decode:max_bytes_to_decode must be >= fetch:l1ic_nbytesperblock"
+    },
+    "pipelines/shangjuan": {
+        "config": {
+            "watchdog:result_name": ["retire"],
+            "watchdog:result_cycles": [1000],
+            "mainmem:peek_latency_in_cycles": [1, 10, 100],
+            "mainmem:capacity": [4294967296],
+            "fetch:l1ic_nsets": [16, 64],
+            "fetch:l1ic_nways": [1, 4],
+            "fetch:l1ic_nbytesperblock": [16, 32],
+            "fetch:l1ic_evictionpolicy": ["random", "lru"],
+            "decode:max_bytes_to_decode": [32],
+            "lsu:l1dc_nsets": [16, 64],
+            "lsu:l1dc_nways": [1, 4],
+            "lsu:l1dc_nbytesperblock": [16, 32],
+            "lsu:l1dc_evictionpolicy": ["random", "lru"],
+            "l2:l2_nsets": [16, 64],
+            "l2:l2_nways": [1, 8],
+            "l2:l2_nbytesperblock": [64, 128],
+            "l2:l2_evictionpolicy": ["random", "lru"],
+            "l2:l2_hitlatency": [1, 10, 100]
+        },
+        "max_cycles": 200000,
+        "script": "init.nebula",
+        "service": ["implementation/mainmem.py:localhost:-1"],
+        "command": "../../examples/bin/sum 2 3",
+        "_comment": "decode:max_bytes_to_decode must be >= fetch:l1ic_nbytesperblock"
     }
 }
