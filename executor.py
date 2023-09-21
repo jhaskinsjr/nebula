@@ -97,8 +97,8 @@ def do_exec_script(exec_script, sha, branch, now, **kwargs):
     if 'exclude' in kwargs.keys():_runs = {k:_runs.get(k) for k in filter(lambda x: not any(map(lambda y: re.search(y, x), kwargs.get('exclude'))), _runs.keys())}
     if args.debug: print('_runs : {}'.format(_runs))
     if args.debug: print('_exec : {}'.format(_exec))
+    _port = globals().get('port', 10000)
     _processes = []
-    _port = 10000
     for _p in _runs.keys():
         for _run in _runs.get(_p):
             _concluded_processes = []
@@ -154,7 +154,7 @@ def do_exec_script(exec_script, sha, branch, now, **kwargs):
             _config = map(lambda x: ((x[0], False) if 'False' == x[1] else x), _config)
             _config = dict(_config)
             f.close()
-            while psutil.cpu_percent(1) > args.max_cpu_utilization: pass
+            while psutil.cpu_percent(2) > args.max_cpu_utilization: pass
             _processes.append({
                 'process': launch(_cmdline, _runpath, _p, _script, timeout=args.timeout),
                 'cmdline': _cmdline,
@@ -165,6 +165,7 @@ def do_exec_script(exec_script, sha, branch, now, **kwargs):
                 'exec_script': exec_script,
                 'port': _port,
             })
+    globals().update({'port': _port})
     return _processes
 
 if '__main__' == __name__:
