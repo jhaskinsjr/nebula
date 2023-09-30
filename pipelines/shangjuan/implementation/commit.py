@@ -128,6 +128,7 @@ def do_commit(service, state):
                 **({'ret_pc': _insn.get('ret_pc')} if 'ret_pc' in _insn.keys() else {}),
                 **({'taken': _insn.get('taken')} if 'taken' in _insn.keys() else {}),
                 **({'result': _insn.get('result')} if 'result' in _insn.keys() else {}),
+                **({'prediction': _insn.get('prediction')} if 'prediction' in _insn.keys() else {}),
             },
         }})
         if _insn.get('speculative_next_pc'):
