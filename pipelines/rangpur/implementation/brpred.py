@@ -9,7 +9,6 @@ import time
 
 import service
 import toolbox
-import components.simplecache
 import riscv.constants
 
 def contains(a0, s0, a1, s1):
@@ -117,7 +116,6 @@ if '__main__' == __name__:
         'service': 'brpred',
         'cycle': 0,
         'coreid': args.coreid,
-        'l1ic': None,
         'pending_fetch': None,
         'fetch_address': [],
         'active': True,
@@ -128,10 +126,6 @@ if '__main__' == __name__:
         '%pc': None,
         'ack': True,
         'config': {
-            'l1ic_nsets': 2**4,
-            'l1ic_nways': 2**1,
-            'l1ic_nbytesperblock': 2**4,
-            'l1ic_evictionpolicy': 'lru',
         },
     }
     _service = service.Service(state.get('service'), state.get('coreid'), _launcher.get('host'), _launcher.get('port'))
@@ -148,12 +142,6 @@ if '__main__' == __name__:
                 state.update({'running': True})
                 state.update({'ack': False})
                 _service.tx({'info': 'state.config : {}'.format(state.get('config'))})
-                state.update({'l1ic': components.simplecache.SimpleCache(
-                    state.get('config').get('l1ic_nsets'),
-                    state.get('config').get('l1ic_nways'),
-                    state.get('config').get('l1ic_nbytesperblock'),
-                    state.get('config').get('l1ic_evictionpolicy'),
-                )})
             elif 'config' == k:
                 logging.debug('config : {}'.format(v))
                 if state.get('service') != v.get('service'): continue
