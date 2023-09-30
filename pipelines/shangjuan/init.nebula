@@ -22,8 +22,11 @@ service implementation/watchdog.py:localhost:0
 #service implementation/l2.py:localhost:1
 #service implementation/watchdog.py:localhost:1
 spawn
-config fetch:l1ic_nsets 16
-config fetch:l1ic_nways 2
+config brpred:btac_entries 32
+config brpred:predictor_type bimodal
+config brpred:predictor_entries 32
+config fetch:l1ic_nsets 32
+config fetch:l1ic_nways 1
 config fetch:l1ic_nbytesperblock 16
 config fetch:l1ic_evictionpolicy lru # random
 config decode:max_bytes_to_decode 16

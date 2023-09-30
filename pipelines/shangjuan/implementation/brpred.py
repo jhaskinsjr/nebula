@@ -9,35 +9,94 @@ import time
 
 import service
 import toolbox
-import components.simplecache
 import riscv.constants
+
+class SaturatingCounter:
+    def __init__(self, nbit = 2):
+        self.nbit = nbit
+        self.count = 0
+    def add(self, n):
+        self.count += n
+        self.count = (self.count if self.count < (1 << self.nbit) else ((1 << self.nbit) - 1))
+        self.count = (self.count if self.count >= 0 else 0)
+    def __repr__(self):
+        return ('{' + ':0{}b'.format(self.nbit) + '}').format(self.count)
+class CounterTablePredictor:
+    def __init__(self, kind, ncounter, nbit = 2):
+        assert kind in ['gshare', 'bimodal'], 'kind must be either "gshare" or "bimodal"'
+        assert 0 == (ncounter & (ncounter - 1)), 'ncounter must be a power of 2'
+        self.kind = kind
+        self.ncounter = ncounter
+        self.nbit = nbit
+        self.countertable = [SaturatingCounter(self.nbit) for _ in range(self.ncounter)]
+        self.history = 0
+    def index(self, addr): return (self.history ^ (addr >> 1)) & (self.ncounter - 1)
+    def istaken(self, addr): return 1 == (self.countertable[self.index(addr)].count >> (self.nbit - 1))
+    def update(self, addr, taken):
+        logging.debug('update({:8x}, {})'.format(addr, taken))
+        logging.debug('self.history         : {:b}'.format(self.history))
+        logging.debug('self.countertable[{}] : {}'.format(self.index(addr), self.countertable[self.index(addr)]))
+        self.countertable[self.index(addr)].add(1 if taken else -1)
+        logging.debug('self.countertable[{}] : {}'.format(self.index(addr), self.countertable[self.index(addr)]))
+        self.history <<= 1
+        self.history |= (0 if not taken or 'bimodal' == self.kind else 1)
+        self.history &= ((1 << self.nbit) - 1)
+    def __repr__(self):
+        return '[' + ','.join(['{:4}: {}'.format(x, y) for x, y in enumerate(self.countertable)]) + ']'
+class BranchTargetAddressCache:
+    def __init__(self, nentry):
+        assert 0 == (nentry & (nentry - 1)), 'nentry must be power of 2'
+        self.nentry = nentry
+        self.cache = {}
+        self.lru = []
+    def get(self, k, default=None): return self.cache.get(k, default)
+    def keys(self): return self.cache.keys()
+    def pop(self, k, default=None):
+        _retval = self.cache.pop(k, None)
+        if _retval: self.lru.remove(k)
+        return (default if not _retval else _retval)
+    def update(self, d):
+        _k, _ = next(iter(d.items()))
+        if _k in self.cache.keys():
+            self.cache.pop(_k)
+            self.lru.remove(_k)
+        self.cache.update(d)
+        self.lru.insert(0, _k)
+        if len(self.keys()) > self.nentry: self.cache.pop(self.lru.pop(-1))
+    def items(self): return self.cache.items()
+    def __len__(self): return len(self.lru)
+    def __repr__(self):
+        return '[' + ','.join([str({x: self.cache.get(x)}) for x in self.lru]) + ']' + ' ({})'.format(len(self.lru))
 
 def contains(a0, s0, a1, s1):
     return (False if not isinstance(a1, int) else all(map(lambda x: x in range(*itertools.accumulate((a0, s0))), [a1, a1+s1-1])))
 def do_tick(service, state, results, events):
+    _btac = state.get('btac')
     for _flush, _retire in map(lambda y: (y.get('flush'), y.get('retire')), filter(lambda x: x.get('flush') or x.get('retire'), results)):
         if _retire:
             if not _retire.get('cmd') in riscv.constants.BRANCHES + riscv.constants.JUMPS: continue
             service.tx({'info': 'retiring : {}'.format(_retire)})
-            _btac = state.get('btac')
             _pc = int.from_bytes(_retire.get('%pc'), 'little')
-            if not _pc in _btac.keys(): _btac.update({_pc: {'size': _retire.get('size'), 'targetpc': _pc + _retire.get('size')}})
-            if _retire.get('taken'): _btac.update({_pc: {**_btac.get(_pc), **{'targetpc': int.from_bytes(_retire.get('next_pc'), 'little')}}})
+            if isinstance(_btac, BranchTargetAddressCache):
+                if not _pc in _btac.keys(): _btac.update({_pc: {'size': _retire.get('size'), 'targetpc': _pc + _retire.get('size')}})
+                if _retire.get('taken'): _btac.update({_pc: {**_btac.get(_pc), **{'targetpc': int.from_bytes(_retire.get('next_pc'), 'little')}}})
+            if state.get('predictor'): state.get('predictor').update(_pc, _retire.get('taken'))
         if _flush:
             if not _flush.get('cmd') in riscv.constants.BRANCHES + riscv.constants.JUMPS: continue
             service.tx({'info': 'flushing : {}'.format(_retire)})
-            _btac = state.get('btac')
-            _btac.pop(int.from_bytes(_flush.get('%pc'), 'little'), None)
+            if _btac: _btac.pop(int.from_bytes(_flush.get('%pc'), 'little'), None)
     for _l1ic in map(lambda y: y.get('l1ic'), filter(lambda x: x.get('l1ic'), results)):
         assert _l1ic.get('addr') == state.get('pending_fetch').get('fetch').get('addr')
         state.update({'pending_fetch': None})
         if next(filter(lambda x: x.get('mispredict'), results), None): continue
         if state.get('drop_until') and _l1ic.get('addr') != state.get('drop_until'): continue
         state.update({'drop_until': None})
-        _br = next(filter(lambda x: contains(_l1ic.get('addr'), _l1ic.get('size'), x[0], x[1].get('size')), state.get('btac').items()), None)
+        _br = (next(filter(lambda x: contains(_l1ic.get('addr'), _l1ic.get('size'), x[0], x[1].get('size')), _btac.items()), None) if _btac else None)
         _br = (dict([_br]) if _br else None)
-        if _br:
-            _brpc, _pr = next(iter(_br.items()))
+        _brpc, _pr = (next(iter(_br.items())) if _br else (None, None))
+#        if _br:
+#            _brpc, _pr = next(iter(_br.items()))
+        if _br and (state.get('predictor').istaken(_brpc) if state.get('predictor') else True):
             service.tx({'info': '_br : {}'.format(_br)})
             service.tx({'result': {
                 'arrival': 1 + state.get('cycle'),
@@ -86,7 +145,8 @@ def do_tick(service, state, results, events):
         }})
     service.tx({'info': 'state.pending_fetch : {}'.format(state.get('pending_fetch'))})
     service.tx({'info': 'state.fetch_address : {} ({})'.format(state.get('fetch_address'), len(state.get('fetch_address')))})
-    service.tx({'info': 'state.btac          : ... ({})'.format(len(state.get('btac')))})
+    service.tx({'info': 'state.predictor     : {}'.format(state.get('predictor'))})
+    service.tx({'info': 'state.btac          : {}'.format(state.get('btac'))})
     service.tx({'info': 'state.drop_until    : {} ({})'.format('' if not state.get('drop_until') else list(state.get('drop_until').to_bytes(8, 'little')), state.get('drop_until'))})
     service.tx({'info': 'filter(mispredict, results) : {}'.format(len(list(filter(lambda x: x.get('mispredict'), results))))})
     
@@ -117,21 +177,20 @@ if '__main__' == __name__:
         'service': 'brpred',
         'cycle': 0,
         'coreid': args.coreid,
-        'l1ic': None,
         'pending_fetch': None,
         'fetch_address': [],
         'active': True,
         'running': False,
-        'btac': {},
+        'predictor': None, # CounterTablePredictor('bimodal', 2**2),
+        'btac': None, # BranchTargetAddressCache(4), # {},
         'drop_until': None,
         '%jp': None, # This is the fetch pointer. Why %jp? Who knows?
         '%pc': None,
         'ack': True,
         'config': {
-            'l1ic_nsets': 2**4,
-            'l1ic_nways': 2**1,
-            'l1ic_nbytesperblock': 2**4,
-            'l1ic_evictionpolicy': 'lru',
+            'btac_entries': None,
+            'predictor_type': None, # 'bimodal', 'gshare'
+            'predictor_entries': None,
         },
     }
     _service = service.Service(state.get('service'), state.get('coreid'), _launcher.get('host'), _launcher.get('port'))
@@ -148,12 +207,12 @@ if '__main__' == __name__:
                 state.update({'running': True})
                 state.update({'ack': False})
                 _service.tx({'info': 'state.config : {}'.format(state.get('config'))})
-                state.update({'l1ic': components.simplecache.SimpleCache(
-                    state.get('config').get('l1ic_nsets'),
-                    state.get('config').get('l1ic_nways'),
-                    state.get('config').get('l1ic_nbytesperblock'),
-                    state.get('config').get('l1ic_evictionpolicy'),
+                if state.get('config').get('btac_entries'): state.update({'btac': BranchTargetAddressCache(state.get('config').get('btac_entries'))})
+                if state.get('config').get('predictor_type') and state.get('config').get('predictor_entries'): state.update({'predictor': CounterTablePredictor(
+                    state.get('config').get('predictor_type'),
+                    state.get('config').get('predictor_entries'),
                 )})
+                logging.info('state : {}'.format(state))
             elif 'config' == k:
                 logging.debug('config : {}'.format(v))
                 if state.get('service') != v.get('service'): continue
@@ -184,3 +243,5 @@ if '__main__' == __name__:
                     }
                 })
         if state.get('ack') and state.get('running'): _service.tx({'ack': {'cycle': state.get('cycle')}})
+        logging.debug('state : {}'.format(state))
+    logging.info('state : {}'.format(state))
