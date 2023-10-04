@@ -11,7 +11,7 @@
         "config": {
             "watchdog:event_name": ["commit"],
             "watchdog:event_cycles": [1000],
-            "mainmem:peek_latency_in_cycles": [1, 5, 25],
+            "mainmem:peek_latency_in_cycles": [1, 25],
             "mainmem:capacity": [4294967296]
         },
         "max_cycles": 100000,
@@ -23,7 +23,7 @@
         "config": {
             "watchdog:result_name": ["retire"],
             "watchdog:result_cycles": [1000],
-            "mainmem:peek_latency_in_cycles": [1, 5, 25],
+            "mainmem:peek_latency_in_cycles": [1, 25],
             "mainmem:capacity": [4294967296]
         },
         "max_cycles": 100000,
@@ -36,7 +36,7 @@
             "watchdog:result_name": ["retire"],
             "watchdog:result_cycles": [1000],
             "l2:l2_hitlatency": [1, 5],
-            "mainmem:peek_latency_in_cycles": [1, 5, 25],
+            "mainmem:peek_latency_in_cycles": [1, 25],
             "mainmem:capacity": [4294967296]
         },
         "max_cycles": 100000,
@@ -49,7 +49,7 @@
             "watchdog:result_name": ["retire"],
             "watchdog:result_cycles": [1000],
             "l2:l2_hitlatency": [1, 5],
-            "mainmem:peek_latency_in_cycles": [1, 5, 25],
+            "mainmem:peek_latency_in_cycles": [1, 25],
             "mainmem:capacity": [4294967296]
         },
         "max_cycles": 100000,
@@ -62,7 +62,7 @@
             "watchdog:result_name": ["retire"],
             "watchdog:result_cycles": [1000],
             "l2:l2_hitlatency": [1, 5],
-            "mainmem:peek_latency_in_cycles": [1, 5, 25],
+            "mainmem:peek_latency_in_cycles": [1, 25],
             "mainmem:capacity": [4294967296]
         },
         "max_cycles": 100000,
@@ -75,7 +75,7 @@
             "watchdog:result_name": ["retire"],
             "watchdog:result_cycles": [1000],
             "l2:l2_hitlatency": [1, 5],
-            "mainmem:peek_latency_in_cycles": [1, 5, 25],
+            "mainmem:peek_latency_in_cycles": [1, 25],
             "mainmem:capacity": [4294967296]
         },
         "max_cycles": 100000,
@@ -88,7 +88,7 @@
             "watchdog:result_name": ["retire"],
             "watchdog:result_cycles": [1000],
             "l2:l2_hitlatency": [1, 5],
-            "mainmem:peek_latency_in_cycles": [1, 5, 25],
+            "mainmem:peek_latency_in_cycles": [1, 25],
             "mainmem:capacity": [4294967296],
             "brpred:btac_entries": [1, 64],
             "brpred:predictor_type": ["bimodal", "gshare"],

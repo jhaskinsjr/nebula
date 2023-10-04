@@ -11,7 +11,7 @@
         "config": {
             "watchdog:event_name": ["commit"],
             "watchdog:event_cycles": [1000],
-            "mainmem:peek_latency_in_cycles": [1, 10, 100],
+            "mainmem:peek_latency_in_cycles": [1, 100],
             "mainmem:capacity": [4294967296]
         },
         "max_cycles": 1000000,
@@ -23,7 +23,7 @@
         "config": {
             "watchdog:result_name": ["retire"],
             "watchdog:result_cycles": [1000],
-            "mainmem:peek_latency_in_cycles": [1, 10, 100],
+            "mainmem:peek_latency_in_cycles": [1, 100],
             "mainmem:capacity": [4294967296],
             "decode:buffer_capacity": [16, 64]
         },
@@ -36,7 +36,7 @@
         "config": {
             "watchdog:result_name": ["retire"],
             "watchdog:result_cycles": [1000],
-            "mainmem:peek_latency_in_cycles": [1, 10, 100],
+            "mainmem:peek_latency_in_cycles": [1, 100],
             "mainmem:capacity": [4294967296],
             "fetch:l1ic_nsets": [16, 64],
             "fetch:l1ic_nways": [1, 4],
@@ -51,7 +51,7 @@
             "l2:l2_nways": [1, 8],
             "l2:l2_nbytesperblock": [64, 128],
             "l2:l2_evictionpolicy": ["random", "lru"],
-            "l2:l2_hitlatency": [1, 10, 100]
+            "l2:l2_hitlatency": [1, 10]
         },
         "max_cycles": 200000,
         "script": "localhost.nebula",
@@ -62,14 +62,14 @@
         "config": {
             "watchdog:result_name": ["retire"],
             "watchdog:result_cycles": [1000],
-            "mainmem:peek_latency_in_cycles": [1, 10, 100],
+            "mainmem:peek_latency_in_cycles": [1, 100],
             "mainmem:capacity": [4294967296],
             "fetch:l1ic_nsets": [16, 64],
             "fetch:l1ic_nways": [1, 4],
             "fetch:l1ic_nbytesperblock": [16, 32],
             "fetch:l1ic_evictionpolicy": ["random", "lru"],
             "decode:buffer_capacity": [16, 64],
-            "decode:btb_nentries": [0, 8, 64],
+            "decode:btb_nentries": [0, 64],
             "decode:btb_nbytesperentry": [8, 32],
             "decode:btb_evictionpolicy": ["random", "lru"],
             "alu:forwarding": [true, false],
@@ -81,7 +81,7 @@
             "l2:l2_nways": [1, 8],
             "l2:l2_nbytesperblock": [64, 128],
             "l2:l2_evictionpolicy": ["random", "lru"],
-            "l2:l2_hitlatency": [1, 10, 100]
+            "l2:l2_hitlatency": [1, 10]
         },
         "max_cycles": 200000,
         "script": "localhost.nebula",
@@ -92,13 +92,13 @@
         "config": {
             "watchdog:result_name": ["retire"],
             "watchdog:result_cycles": [1000],
-            "mainmem:peek_latency_in_cycles": [1, 10, 100],
+            "mainmem:peek_latency_in_cycles": [1, 100],
             "mainmem:capacity": [4294967296],
             "fetch:l1ic_nsets": [16, 64],
             "fetch:l1ic_nways": [1, 4],
             "fetch:l1ic_nbytesperblock": [16, 32],
             "fetch:l1ic_evictionpolicy": ["random", "lru"],
-            "decode:max_instructions_to_decode": [1, 2, 4],
+            "decode:max_instructions_to_decode": [1, 4],
             "lsu:l1dc_nsets": [16, 64],
             "lsu:l1dc_nways": [1, 4],
             "lsu:l1dc_nbytesperblock": [16, 32],
@@ -107,7 +107,7 @@
             "l2:l2_nways": [1, 8],
             "l2:l2_nbytesperblock": [64, 128],
             "l2:l2_evictionpolicy": ["random", "lru"],
-            "l2:l2_hitlatency": [1, 10, 100]
+            "l2:l2_hitlatency": [1, 10]
         },
         "max_cycles": 200000,
         "script": "localhost.nebula",
@@ -118,7 +118,7 @@
         "config": {
             "watchdog:result_name": ["retire"],
             "watchdog:result_cycles": [1000],
-            "mainmem:peek_latency_in_cycles": [1, 10, 100],
+            "mainmem:peek_latency_in_cycles": [1, 100],
             "mainmem:capacity": [4294967296],
             "fetch:l1ic_nsets": [16, 64],
             "fetch:l1ic_nways": [1, 4],
@@ -133,7 +133,7 @@
             "l2:l2_nways": [1, 8],
             "l2:l2_nbytesperblock": [64, 128],
             "l2:l2_evictionpolicy": ["random", "lru"],
-            "l2:l2_hitlatency": [1, 10, 100]
+            "l2:l2_hitlatency": [1, 10]
         },
         "max_cycles": 200000,
         "script": "localhost.nebula",
@@ -145,7 +145,7 @@
         "config": {
             "watchdog:result_name": ["retire"],
             "watchdog:result_cycles": [1000],
-            "mainmem:peek_latency_in_cycles": [1, 10, 100],
+            "mainmem:peek_latency_in_cycles": [1, 100],
             "mainmem:capacity": [4294967296],
             "brpred:btac_entries": [1, 64],
             "brpred:predictor_type": ["bimodal", "gshare"],
@@ -163,7 +163,7 @@
             "l2:l2_nways": [1, 8],
             "l2:l2_nbytesperblock": [64, 128],
             "l2:l2_evictionpolicy": ["random", "lru"],
-            "l2:l2_hitlatency": [1, 10, 100]
+            "l2:l2_hitlatency": [1, 10]
         },
         "max_cycles": 200000,
         "script": "localhost.nebula",

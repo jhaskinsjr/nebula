@@ -12,10 +12,11 @@
             "watchdog:result_name": ["retire"],
             "watchdog:result_cycles": [1000],
             "l2:l2_hitlatency": [1, 5],
-            "mainmem:peek_latency_in_cycles": [1, 5, 25],
+            "mainmem:peek_latency_in_cycles": [1, 25],
             "mainmem:capacity": [4294967296]
         },
         "max_cycles": 1000000,
+        "max_instructions": 10000,
         "script": "localhost.nebula",
         "service": ["implementation/mainmem.py:localhost:-1"],
         "restore": "../../snapshots/3sat/mainmem.raw.000000000480000.snapshot"
@@ -25,10 +26,11 @@
             "watchdog:result_name": ["retire"],
             "watchdog:result_cycles": [1000],
             "l2:l2_hitlatency": [1, 5],
-            "mainmem:peek_latency_in_cycles": [1, 5, 25],
+            "mainmem:peek_latency_in_cycles": [1, 25],
             "mainmem:capacity": [4294967296]
         },
         "max_cycles": 1000000,
+        "max_instructions": 10000,
         "script": "localhost.nebula",
         "service": ["implementation/mainmem.py:localhost:-1"],
         "restore": "../../snapshots/3sat/mainmem.raw.000000000480000.snapshot"
@@ -38,13 +40,14 @@
             "watchdog:result_name": ["retire"],
             "watchdog:result_cycles": [1000],
             "l2:l2_hitlatency": [1, 5],
-            "mainmem:peek_latency_in_cycles": [1, 5, 25],
+            "mainmem:peek_latency_in_cycles": [1, 25],
             "mainmem:capacity": [4294967296],
             "brpred:btac_entries": [1, 64],
             "brpred:predictor_type": ["bimodal", "gshare"],
             "brpred:predictor_entries": [1, 64]
         },
         "max_cycles": 1000000,
+        "max_instructions": 10000,
         "script": "localhost.nebula",
         "service": ["implementation/mainmem.py:localhost:-1"],
         "restore": "../../snapshots/3sat/mainmem.raw.000000000480000.snapshot"

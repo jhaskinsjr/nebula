@@ -130,6 +130,7 @@ def do_exec_script(exec_script, sha, branch, now, **kwargs):
                 '--service', ':'.join([os.path.join(os.getcwd(), 'toolbox', 'stats.py'), 'localhost', '-1']), (' '.join(_service) if _service else ''),
                 #':'.join([os.path.join('implementation', 'mainmem.py'), 'localhost', '-1']),
                 ('--max_cycles {}'.format(_exec.get(_p).get('max_cycles')) if 'max_cycles' in _exec.get(_p).keys() else ''),
+                ('--max_instructions {}'.format(_exec.get(_p).get('max_instructions')) if 'max_instructions' in _exec.get(_p).keys() else ''),
                 ('--snapshots {}'.format(_exec.get(_p).get('snapshots')) if 'snapshots' in _exec.get(_p).keys() else ''),
                 ('--break_on_undefined' if 'break_on_undefined' in _exec.get(_p).keys() else ''),
                 '--config', 'stats:output_filename:{}'.format(os.path.join(_runpath, 'stats.json')),
