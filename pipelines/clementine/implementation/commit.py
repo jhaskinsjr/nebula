@@ -23,11 +23,12 @@ def do_commit(service, state):
         state.get('pending_commit')
     )))})
     _retire = []
+    _commit = []
     service.tx({'info': 'pending_commit : {}'.format(state.get('pending_commit'))})
     for _insn in state.get('pending_commit'):
         service.tx({'info': '_insn : {}'.format(_insn)})
         if not any(map(lambda x: x in _insn.keys(), ['next_pc', 'ret_pc', 'result'])): break
-        _retire.append(_insn)
+        _commit.append(_insn)
         if state.get('flush_until') and state.get('flush_until') != _insn.get('%pc'):
             service.tx({'info': 'flushing {}'.format(_insn)})
             service.tx({'result': {
@@ -39,6 +40,7 @@ def do_commit(service, state):
             }})
             toolbox.report_stats(service, state, 'flat', 'flushes')
             continue
+        _retire.append(_insn)
         state.update({'flush_until': None})
         service.tx({'info': 'retiring {}'.format(_insn)})
         if _insn.get('next_pc') and _insn.get('taken'):
@@ -79,7 +81,8 @@ def do_commit(service, state):
             },
         }})
         toolbox.report_stats(service, state, 'flat', 'retires')
-    for _insn in _retire: state.get('pending_commit').remove(_insn)
+    service.tx({'committed': len(_retire)})
+    for _insn in _commit: state.get('pending_commit').remove(_insn)
 
 def do_tick(service, state, results, events):
     for _mem in map(lambda y: y.get('mem'), filter(lambda x: x.get('mem'), results)):

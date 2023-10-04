@@ -22,6 +22,7 @@ def do_commit(service, state):
         ),
         state.get('pending_commit')
     )))})
+    _retire = []
     _commit = []
     for _insn in state.get('pending_commit'):
         if not any(map(lambda x: x in _insn.keys(), ['next_pc', 'ret_pc', 'result', 'confirmed'])): break
@@ -57,6 +58,7 @@ def do_commit(service, state):
                 break
             else:
                 if 'result' not in _insn.keys(): break
+        _retire.append(_insn)
         _commit.append(_insn)
         service.tx({'info': 'retiring {}'.format(_insn)})
         if _insn.get('next_pc'):
@@ -139,6 +141,7 @@ def do_commit(service, state):
         _pc = _insn.get('_pc')
         _word = ('{:08x}'.format(_insn.get('word')) if 4 == _insn.get('size') else '    {:04x}'.format(_insn.get('word')))
         logging.info('do_commit(): {:8x}: {} : {:10} ({:12}, {})'.format(_pc, _word, _insn.get('cmd'), state.get('cycle'), _insn.get('function', '')))
+    service.tx({'committed': len(_retire)})
     for _insn in _commit: state.get('pending_commit').remove(_insn)
 
 def do_tick(service, state, results, events):
