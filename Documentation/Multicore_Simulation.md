@@ -2,9 +2,9 @@
 
 Nebula also supports multicore simulations, and can place the services for
 each core on a single machine, and accommodate multiple cores spanning
-multiple machines. Consider the following modified Pompia init.nebula:
+multiple machines. Consider the following modified Pompia localhost.nebula:
 
-    # Sample μService-SIMulator script
+    # Sample multicore Nebula script
     # core 0
     service implementation/regfile.py:picard.local:0   # not run on localhost!
     service implementation/fetch.py:picard.local:0     # not run on localhost!
@@ -40,7 +40,7 @@ multiple machines. Consider the following modified Pompia init.nebula:
 Thus, all the services for core 0 are executed on the server picard.local,
 and all the services for core 1 are executed on the server riker.local.
 Both cores are Pompia cores, and both are identically configured. Both
-will commence execution when the init.nebula "run" command is executed by
+will commence execution when the localhost.nebula "run" command is executed by
 the launcher.
 
 To execute across N cores, it is necessary to supply N binaries and their
@@ -55,7 +55,7 @@ parameters, e.g.:
         --max_instructions $(( 10**5 )) \
         -- \
         12345 \
-        init.nebula \
+        localhost.nebula \
         ../../examples/bin/sum 2 3 5 7 11 13 , ../../examples/bin/sort 7 2 3 5
 
 where each binary-parameter set is separated by a comma.

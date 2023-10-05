@@ -21,7 +21,7 @@ example binary:
         --max_instructions $(( 10**5 )) \
         -- \
         12345 \
-        init.nebula \
+        localhost.nebula \
         ../../examples/bin/sum 2 3 5 7 11 13
 
 Notice the `watchdog:result_name` and `watchdog:result_cycles` parameters
@@ -46,7 +46,7 @@ pipeline:
         --max_instructions $(( 10**5 )) \
         -- \
         12345 \
-        init.nebula \
+        localhost.nebula \
         ../../examples/bin/sum 2 3 5 7 11 13
 
 Notice that `watchdog:event_name` and `watchdog:event_cycles` are used

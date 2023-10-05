@@ -1,9 +1,9 @@
 # Simulator Scripts
 
 The simulator executes according to instructions in an execute script.
-Consider the script pipelines/pompia/init.nebula:
+Consider the script pipelines/pompia/localhost.nebula:
 
-    # Sample μService-SIMulator script
+    # Sample Nebula script
     # NOTE: Nebula's multicore support can execute across multiple machines!
     # core 0
     service implementation/regfile.py:localhost:0

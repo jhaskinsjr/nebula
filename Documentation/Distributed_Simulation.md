@@ -1,14 +1,14 @@
 # Distributed Simulations
 
-Because the μService-SIMulator framework spawns multiple independent
+Because the Nebula framework spawns multiple independent
 services that communicate over a TCP network, the services need not execute
-on the same machine. This is what makes μService-SIMulator
+on the same machine. This is what makes Nebula
 **the world's first cloud-native microarchitecture simulation framework**!
 
-Consider the following modified Pompia init.nebula file that
-spawns services on several different machines on my network:
+Consider the following Pompia `.nebula` file (modified from localhost.nebula)
+that spawns services on several different machines on my network:
 
-    # Sample μService-SIMulator script
+    # Sample distributed Nebula script
     service implementation/regfile.py:picard.local:0   # not run on localhost!
     service implementation/fetch.py:riker.local:0      # not run on localhost!
     service implementation/decode.py:laforge.local:0   # not run on localhost!

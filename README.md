@@ -52,12 +52,12 @@ example, we will use the Pompia pipeline:
         --max_instructions $(( 10**5 )) \
         -- \
         12345 \
-        init.nebula \
+        localhost.nebula \
         ../../examples/bin/sum 2 3 5 7 11 13
 
 The "python3" command executes the Nebula launcher (launcher.py),
 which begins by opening a socket and accepting connections on port 12345,
-executing the script init.nebula, and loading the binary
+executing the script localhost.nebula, and loading the binary
 (${HOME}/src/nebula/examples/bin/sum) together with its command-line
 parameters "2 3 5 7 11 13", into the simulated main memory. With this
 foundation established, the simulator will execute a maximum of 100,000

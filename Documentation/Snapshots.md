@@ -23,7 +23,7 @@ execution:
         --snapshots 100 300 900 2700 \
         -- \
         12345 \
-        init.nebula \
+        localhost.nebula \
         ../../examples/bin/sum 2 3 5 7 11 13 17 19 23 29
 
 This will create a series of files:
@@ -48,7 +48,7 @@ e.g.:
         --restore /tmp/amanatsu/sum/mainmem.raw.000000000000900.snapshot \
         -- \
         12345 \
-        init.nebula
+        localhost.nebula
 
 Note: (1) the `--restore` parameter is included; and (2) the command that
 was executed to create the snapshots (`../../examples/bin/sum 2 3 5 7 11 13 17 19 23 29`...) is
