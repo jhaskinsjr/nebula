@@ -31,7 +31,6 @@ def do_issue(service, state):
         _hazards = sum(map(lambda x: hazard(x, _insn), state.get('issued')), [])
         service.tx({'info': '_hazards : {}'.format(_hazards)})
         if len(_hazards): break
-#        if _insn.get('cmd') in riscv.constants.LOADS and any(map(lambda x: x.get('cmd') in riscv.constants.LOADS, state.get('issued'))): break
         if _insn.get('cmd') not in ['ECALL', 'FENCE']:
             if 'rs1' in _insn.keys():
                 if 'operands' not in _insn.keys(): _insn.update({'operands': {}})
@@ -130,7 +129,7 @@ def do_tick(service, state, results, events):
                 })
             _insn.update({'cycle': state.get('cycle')})
             state.get('decoded').append(_insn)
-            logging.info('{:8x}: {}'.format(_insn.get('_pc'), _insn))
+            logging.debug('{:8x}: {}'.format(_insn.get('_pc'), _insn))
         do_issue(service, state)
     else:
         for _mispr in map(lambda y: y.get('mispredict'), filter(lambda x: x.get('mispredict'), results)):
