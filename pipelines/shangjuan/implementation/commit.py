@@ -143,6 +143,8 @@ def do_commit(service, state):
         _word = ('{:08x}'.format(_insn.get('word')) if 4 == _insn.get('size') else '    {:04x}'.format(_insn.get('word')))
         logging.info('do_commit(): {:8x}: {} : {:10} ({:12}, {})'.format(_pc, _word, _insn.get('cmd'), state.get('cycle'), _insn.get('function', '')))
     service.tx({'committed': len(_retire)})
+    toolbox.report_stats(service, state, 'histo', 'retired_per_cycle', len(_retire))
+    toolbox.report_stats(service, state, 'histo', 'flushed_per_cycle', len(_commit) - len(_retire))
     for _insn in _commit: state.get('pending_commit').remove(_insn)
 
 def do_tick(service, state, results, events):
