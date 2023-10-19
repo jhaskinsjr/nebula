@@ -555,6 +555,20 @@ def do_execute(service, state):
     service.tx({'info': 'state.pending_execute : {}'.format(state.get('pending_execute'))})
     for _insn in state.get('pending_execute'):
         service.tx({'info': '_insn : {}'.format(_insn)})
+        if state.get('flush_until') and _insn.get('%pc') != state.get('flush_until'):
+            service.tx({'result': {
+                'arrival': 1 + state.get('cycle'),
+                'coreid': state.get('coreid'),
+                'flush': {
+                    'cmd': _insn.get('cmd'),
+                    'iid': _insn.get('iid'),
+                    '%pc': _insn.get('%pc'),
+                },
+            }})
+            toolbox.report_stats(service, state, 'flat', 'flushes')
+            _remove_from_pending_execute.append(_insn)
+            continue
+        state.update({'flush_until': None})
         _pc = int.from_bytes(_insn.get('%pc'), 'little')
         _word = ('{:08x}'.format(_insn.get('word')) if 4 == _insn.get('size') else '    {:04x}'.format(_insn.get('word')))
         logging.info('do_execute(): {:8x}: {} : {:10} ({:12}, {})'.format(_pc, _word, _insn.get('cmd'), state.get('cycle'), _insn.get('function', '')))
@@ -650,6 +664,21 @@ def do_execute(service, state):
         }.get(_insn.get('cmd'), do_unimplemented)
         _insn_prime, _done = _f(service, state, _insn)
         toolbox.report_stats(service, state, 'histo', 'category', _f.__name__)
+        _pr = _insn_prime.get('prediction')
+        if _insn.get('cmd') in riscv.constants.BRANCHES + riscv.constants.JUMPS:
+            assert _pr, 'All BRANCH instructions MUST have a prediction field!'
+            state.update({'flush_until': _insn_prime.get('next_pc')})
+            if int.from_bytes(_insn_prime.get('next_pc'), 'little') != _pr.get('targetpc'):
+                service.tx({'result': {
+                    'arrival': 1 + state.get('cycle'),
+                    'coreid': state.get('coreid'),
+                    'mispredict': {
+                        'insn': _insn_prime,
+                    }
+                }})
+                state.update({'recovery_iid': -1}) # place holder value
+                _remove_from_pending_execute = state.get('pending_execute')[:]
+                break
         if _done:
             _remove_from_pending_execute.append(_insn)
         else:
@@ -658,6 +687,9 @@ def do_execute(service, state):
 
 def do_tick(service, state, results, events):
     for k in filter(lambda x: isinstance(x, int), list(state.get('operands').keys())): state.get('operands').pop(k)
+    for _riid in map(lambda y: y.get('recovery_iid'), filter(lambda x: x.get('recovery_iid'), results)):
+        assert -1 == state.get('recovery_iid')
+        state.update({'recovery_iid': _riid.get('iid')})
     for _mem in filter(lambda x: x, map(lambda y: y.get('mem'), results)):
         _addr = _mem.get('addr')
         if _addr == state.get('operands').get('mem'):
@@ -668,6 +700,8 @@ def do_tick(service, state, results, events):
         state.get('operands').update({_name: _data})
     for _alu in map(lambda y: y.get('alu'), filter(lambda x: x.get('alu'), events)):
         _insn = _alu.get('insn')
+        if state.get('recovery_iid') and _insn.get('iid') != state.get('recovery_iid'): continue
+        state.update({'recovery_iid': None})
         logging.debug('_insn : {}'.format(_insn))
         assert _insn.get('cmd') not in riscv.constants.BRANCHES + riscv.constants.JUMPS or _insn.get('prediction'), '{} without prediction field!'.format(_insn)
         if 'ECALL' == _insn.get('cmd'):
@@ -720,6 +754,8 @@ if '__main__' == __name__:
         'active': True,
         'running': False,
         'ack': True,
+        'recovery_iid': None,
+        'flush_until': None,
         'pending_execute': [],
         'syscall_kwargs': {},
         'system': riscv.syscall.linux.System(),

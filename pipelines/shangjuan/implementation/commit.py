@@ -13,35 +13,28 @@ import toolbox
 import riscv.constants
 
 def do_commit(service, state):
-    service.tx({'info': 'pending_commit : [{}]'.format(', '.join(map(
-        lambda x: '({}{}, {}, {})'.format(
-            x.get('cmd'),
-            (' @{}'.format(x.get('operands').get('addr')) if x.get('cmd') in riscv.constants.LOADS + riscv.constants.STORES else ''),
-            x.get('%pc'),
-            x.get('iid')
-        ),
-        state.get('pending_commit')
-    )))})
     _retire = []
     _commit = []
     for _insn in state.get('pending_commit'):
         if not any(map(lambda x: x in _insn.keys(), ['next_pc', 'ret_pc', 'result', 'confirmed'])): break
-        if (state.get('flush_until') and state.get('flush_until') != _insn.get('%pc')) or (state.get('recovery_iid') and state.get('recovery_iid') != _insn.get('iid')):
-            service.tx({'info': 'flushing {}'.format(_insn)})
-            service.tx({'result': {
-                'arrival': 1 + state.get('cycle'),
-                'coreid': state.get('coreid'),
-                'flush': {
-                    'cmd': _insn.get('cmd'),
-                    'iid': _insn.get('iid'),
-                    '%pc': _insn.get('%pc'),
-                },
-            }})
-            toolbox.report_stats(service, state, 'flat', 'flushes')
-            _commit.append(_insn)
-            continue
-        state.update({'flush_until': None})
-        state.update({'recovery_iid': None})
+#        if (state.get('flush_until') and state.get('flush_until') != _insn.get('%pc')) or (state.get('recovery_iid') and state.get('recovery_iid') != _insn.get('iid')):
+#        if state.get('recovery_iid') and state.get('recovery_iid') != _insn.get('iid'):
+#        if state.get('flush_until') and state.get('flush_until') != _insn.get('%pc'):
+#            service.tx({'info': 'flushing {}'.format(_insn)})
+#            service.tx({'result': {
+#                'arrival': 1 + state.get('cycle'),
+#                'coreid': state.get('coreid'),
+#                'flush': {
+#                    'cmd': _insn.get('cmd'),
+#                    'iid': _insn.get('iid'),
+#                    '%pc': _insn.get('%pc'),
+#                },
+#            }})
+#            toolbox.report_stats(service, state, 'flat', 'flushes')
+#            _commit.append(_insn)
+#            continue
+#        state.update({'flush_until': None})
+#        state.update({'recovery_iid': None})
         if 'confirmed' in _insn.keys():
             if not _insn.get('confirmed'):
                 service.tx({'info': 'confirming {}'.format(_insn)})
@@ -70,17 +63,17 @@ def do_commit(service, state):
                     'data': _insn.get('next_pc'),
                 },
             }})
-            _pr = _insn.get('prediction')
-            if 'branch' == _pr.get('type') and int.from_bytes(_insn.get('next_pc'), 'little') != _pr.get('targetpc'):
-                service.tx({'result': {
-                    'arrival': 1 + state.get('cycle'),
-                    'coreid': state.get('coreid'),
-                    'mispredict': {
-                        'insn': _insn,
-                    }
-                }})
-                state.update({'recovery_iid': -1}) # place holder value
-            state.update({'flush_until': _insn.get('next_pc')})
+#            state.update({'flush_until': _insn.get('next_pc')})
+#            _pr = _insn.get('prediction')
+#            if 'branch' == _pr.get('type') and int.from_bytes(_insn.get('next_pc'), 'little') != _pr.get('targetpc'):
+#                service.tx({'result': {
+#                    'arrival': 1 + state.get('cycle'),
+#                    'coreid': state.get('coreid'),
+#                    'mispredict': {
+#                        'insn': _insn,
+#                    }
+#                }})
+#                state.update({'recovery_iid': -1}) # place holder value
         if _insn.get('ret_pc'):
             service.tx({'result': {
                 'arrival': 1 + state.get('cycle'),
@@ -133,24 +126,27 @@ def do_commit(service, state):
                 **({'prediction': _insn.get('prediction')} if 'prediction' in _insn.keys() else {}),
             },
         }})
-        if _insn.get('speculative_next_pc'):
-            toolbox.report_stats(service, state, 'flat', 'speculative_next_pc')
-            if _insn.get('speculative_next_pc') == _insn.get('next_pc'):
-                toolbox.report_stats(service, state, 'flat', 'speculative_next_pc_correct')
+#        if _insn.get('speculative_next_pc'):
+#            toolbox.report_stats(service, state, 'flat', 'speculative_next_pc')
+#            if _insn.get('speculative_next_pc') == _insn.get('next_pc'):
+#                toolbox.report_stats(service, state, 'flat', 'speculative_next_pc_correct')
         toolbox.report_stats(service, state, 'flat', 'retires')
         state.update({'ncommits': 1 + state.get('ncommits')})
         _pc = _insn.get('_pc')
         _word = ('{:08x}'.format(_insn.get('word')) if 4 == _insn.get('size') else '    {:04x}'.format(_insn.get('word')))
         logging.info('do_commit(): {:8x}: {} : {:10} ({:12}, {})'.format(_pc, _word, _insn.get('cmd'), state.get('cycle'), _insn.get('function', '')))
+#        if state.get('recovery_iid'): break
     service.tx({'committed': len(_retire)})
-    toolbox.report_stats(service, state, 'histo', 'retired_per_cycle', len(_retire))
-    toolbox.report_stats(service, state, 'histo', 'flushed_per_cycle', len(_commit) - len(_retire))
+    if len(_commit):
+        toolbox.report_stats(service, state, 'histo', 'retired_per_cycle', len(_retire))
+        toolbox.report_stats(service, state, 'histo', 'flushed_per_cycle', len(_commit) - len(_retire))
     for _insn in _commit: state.get('pending_commit').remove(_insn)
+#    if state.get('recovery_iid'): state.get('pending_commit').clear()
 
 def do_tick(service, state, results, events):
-    for _riid in map(lambda y: y.get('recovery_iid'), filter(lambda x: x.get('recovery_iid'), results)):
-        assert -1 == state.get('recovery_iid')
-        state.update({'recovery_iid': _riid.get('iid')})
+#    for _riid in map(lambda y: y.get('recovery_iid'), filter(lambda x: x.get('recovery_iid'), results)):
+#        assert -1 == state.get('recovery_iid')
+#        state.update({'recovery_iid': _riid.get('iid')})
     for _l1dc in map(lambda y: y.get('l1dc'), filter(lambda x: x.get('l1dc'), results)):
         service.tx({'info': '_l1dc : {}'.format(_l1dc)})
         for _insn in filter(lambda a: a.get('cmd') in riscv.constants.LOADS + riscv.constants.STORES, state.get('pending_commit')):
@@ -191,10 +187,22 @@ def do_tick(service, state, results, events):
                         'result': _result,
                     },
                 }
-    for _commit in map(lambda y: y.get('commit'), filter(lambda x: x.get('commit'), events)):
+    for _commit in sorted(map(lambda y: y.get('commit'), filter(lambda x: x.get('commit'), events)), key=lambda x: x.get('insn').get('iid')):
+#        if state.get('recovery_iid') and state.get('recovery_iid') != _commit.get('insn').get('iid'): continue
+#        state.update({'recovery_iid': None})
         state.get('pending_commit').append(_commit.get('insn'))
     state.update({'pending_commit': sorted(state.get('pending_commit'), key=lambda x: x.get('iid'))})
-    do_commit(service, state)
+    if len(state.get('pending_commit')): do_commit(service, state)
+    service.tx({'info': 'pending_commit : [{}]'.format(', '.join(map(
+        lambda x: '({}{}, {}, {})'.format(
+            x.get('cmd'),
+            (' @{}'.format(x.get('operands').get('addr')) if x.get('cmd') in riscv.constants.LOADS + riscv.constants.STORES else ''),
+            x.get('%pc'),
+            x.get('iid')
+        ),
+        state.get('pending_commit')
+    )))})
+#    service.tx({'info': 'recovery_iid : {}'.format(state.get('recovery_iid'))})
 
 if '__main__' == __name__:
     parser = argparse.ArgumentParser(description='Nebula: Commit')
@@ -226,8 +234,8 @@ if '__main__' == __name__:
         'active': True,
         'running': False,
         'ack': True,
-        'recovery_iid': None,
-        'flush_until': None,
+#        'recovery_iid': None,
+#        'flush_until': None,
         'pending_commit': [],
     }
     _service = service.Service(state.get('service'), state.get('coreid'), _launcher.get('host'), _launcher.get('port'))

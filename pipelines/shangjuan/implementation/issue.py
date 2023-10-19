@@ -101,13 +101,29 @@ def do_issue(service, state):
 def do_tick(service, state, results, events):
     logging.debug('do_tick(): results : {}'.format(results))
     for _flush, _retire in map(lambda y: (y.get('flush'), y.get('retire')), filter(lambda x: x.get('flush') or x.get('retire'), results)):
-        if _flush: service.tx({'info': 'flushing : {}'.format(_flush)})
+        if _flush:
+            service.tx({'info': 'flushing : {}'.format(_flush)})
+            state.update({'issued': list(filter(lambda x: x.get('iid') != _flush.get('iid'), state.get('issued')))})
+#            for f in state.get('issued'): service.tx({'info': 'flushing : {}'.format(f)})
+#            if next(filter(lambda x: _flush.get('iid') == x.get('iid'), state.get('issued')), None): state.get('issued').clear()
         if _retire:
             service.tx({'info': 'retiring : {}'.format(_retire)})
-        _commit = (_flush if _flush else _retire)
-        assert _commit.get('iid') == state.get('issued')[0].get('iid')
-        state.get('issued').pop(0)
-    if not next(filter(lambda x: x.get('mispredict'), results), None):
+            assert _retire.get('iid') == state.get('issued')[0].get('iid'), '[@{}] _retire : {} (vs {})'.format(state.get('cycle'), _retire, state.get('issued')[0])
+            state.get('issued').pop(0)
+#        assert _flush or _retire.get('iid') == state.get('issued')[0].get('iid')
+#        _commit = (_flush if _flush else _retire)
+#        assert _commit.get('iid') == state.get('issued')[0].get('iid')
+#        state.get('issued').pop(0)
+    if next(filter(lambda x: x.get('mispredict'), results), None):
+        for _mispr in map(lambda y: y.get('mispredict'), filter(lambda x: x.get('mispredict'), results)):
+            service.tx({'info': '_mispr : {}'.format(_mispr)})
+            _insn = _mispr.get('insn')
+            state.get('decoded').clear()
+            state.get('predictions').clear()
+            state.update({'drop_until': _insn.get('next_pc')})
+            state.update({'recovery_iid': -1}) # place holder value
+            state.update({'issued': list(filter(lambda x: x.get('iid') <= _insn.get('iid'), state.get('issued')))})
+    else:
         for _pr in map(lambda x: x.get('prediction'), filter(lambda y: y.get('prediction'), results)):
             if 'branch' != _pr.get('type'): continue
             service.tx({'info': '_pr : {}'.format(_pr)})
@@ -131,14 +147,40 @@ def do_tick(service, state, results, events):
             state.get('decoded').append(_insn)
             logging.debug('{:8x}: {}'.format(_insn.get('_pc'), _insn))
         do_issue(service, state)
-    else:
-        for _mispr in map(lambda y: y.get('mispredict'), filter(lambda x: x.get('mispredict'), results)):
-            service.tx({'info': '_mispr : {}'.format(_mispr)})
-            _insn = _mispr.get('insn')
-            state.get('decoded').clear()
-            state.get('predictions').clear()
-            state.update({'drop_until': _insn.get('next_pc')})
-            state.update({'recovery_iid': -1}) # place holder value
+#    if not next(filter(lambda x: x.get('mispredict'), results), None):
+#        for _pr in map(lambda x: x.get('prediction'), filter(lambda y: y.get('prediction'), results)):
+#            if 'branch' != _pr.get('type'): continue
+#            service.tx({'info': '_pr : {}'.format(_pr)})
+#            state.get('predictions').update({_pr.get('branchpc'): _pr})
+#        service.tx({'info': 'state.predictions           : {} ({})'.format(state.get('predictions'), len(state.get('predictions').keys()))})
+#        for _iss in map(lambda y: y.get('issue'), filter(lambda x: x.get('issue'), events)):
+#            if state.get('drop_until') and _iss.get('insn').get('%pc') != state.get('drop_until'): continue
+#            state.update({'drop_until': None})
+#            _insn = _iss.get('insn')
+#            if _insn.get('cmd') in riscv.constants.BRANCHES + riscv.constants.JUMPS:
+#                _pr = state.get('predictions').pop(_insn.get('_pc'), None)
+#                _insn.update({
+#                    'prediction': {
+#                        'type': 'branch',
+#                        'branchpc': _insn.get('_pc'),
+#                        'size': _insn.get('size'),
+#                        'targetpc': (_pr.get('targetpc') if _pr else _insn.get('_pc') + _insn.get('size')),
+#                    },
+#                })
+#            _insn.update({'cycle': state.get('cycle')})
+#            state.get('decoded').append(_insn)
+#            logging.debug('{:8x}: {}'.format(_insn.get('_pc'), _insn))
+#        do_issue(service, state)
+#    else:
+#        for _mispr in map(lambda y: y.get('mispredict'), filter(lambda x: x.get('mispredict'), results)):
+#            service.tx({'info': '_mispr : {}'.format(_mispr)})
+#            _insn = _mispr.get('insn')
+#            state.get('decoded').clear()
+#            state.get('predictions').clear()
+#            state.update({'drop_until': _insn.get('next_pc')})
+#            state.update({'recovery_iid': -1}) # place holder value
+#            state.update({'issued': list(filter(lambda x: x.get('iid') <= _insn.get('iid'), state.get('issued')))})
+#            state.get('issued').clear()
     service.tx({'info': 'state.issued           : {} ({})'.format(state.get('issued'), len(state.get('issued')))})
 #    service.tx({'info': 'state.decoded          : {}'.format(state.get('decoded'))})
     service.tx({'info': 'state.decoded          : {} ({})'.format(state.get('decoded')[:20], len(state.get('decoded')))})
