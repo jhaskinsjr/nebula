@@ -240,7 +240,6 @@ def do_load(service, state, insn):
             'insn': {
                 **insn,
                 **{'confirmed': False},
-#                **{'result': None},
             },
         }
     }})

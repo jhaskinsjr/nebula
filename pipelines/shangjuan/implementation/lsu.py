@@ -154,17 +154,7 @@ def do_execute(service, state):
     }.get(_insn.get('cmd'), do_unimplemented)(service, state, _insn)
 
 def do_tick(service, state, results, events):
-    for _flush, _retire, _confirm in map(lambda y: (y.get('flush'), y.get('retire'), y.get('confirm')), filter(lambda x: x.get('flush') or x.get('retire') or x.get('confirm'), results)):
-        if _flush:
-            _ndx = next(filter(lambda x: _flush.get('iid') == state.get('pending_execute')[x].get('iid'), range(len(state.get('pending_execute')))), None)
-            if not isinstance(_ndx, int): continue
-            for f in state.get('pending_execute'):
-                logging.info('_flush : {}'.format(f))
-                service.tx({'info': 'flushing : {}'.format(f)})
-            if len(state.get('pending_execute')): state.get('pending_execute').clear()
-#            logging.info('_flush : {}'.format(_flush))
-#            service.tx({'info': 'flushing : {}'.format(_flush)})
-#            state.get('pending_execute').pop(_ndx)
+    for _retire, _confirm in map(lambda y: (y.get('retire'), y.get('confirm')), filter(lambda x: x.get('retire') or x.get('confirm'), results)):
         if _retire:
             _ndx = next(filter(lambda x: _retire.get('iid') == state.get('pending_execute')[x].get('iid'), range(len(state.get('pending_execute')))), None)
             if not isinstance(_ndx, int): continue
@@ -185,10 +175,6 @@ def do_tick(service, state, results, events):
             service.tx({'info': '_l2 : {}'.format(_l2)})
             state.get('l1dc').poke(_addr, _l2.get('data'))
             state.get('pending_fetch').remove(_addr)
-#    for _mispr in map(lambda y: y.get('mispredict'), filter(lambda x: x.get('mispredict'), results)):
-#        service.tx({'info': '_mispr : {}'.format(_mispr)})
-#        _insn = _mispr.get('insn')
-#        state.update({'pending_execute': list(filter(lambda x: x.get('iid') < _insn.get('iid'), state.get('pending_execute')))})
     for _lsu in map(lambda y: y.get('lsu'), filter(lambda x: x.get('lsu'), events)):
         if 'insn' in _lsu.keys():
             _insn = _lsu.get('insn')
