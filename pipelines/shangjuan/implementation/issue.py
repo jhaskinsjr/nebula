@@ -29,9 +29,8 @@ def do_issue(service, state):
         # yet to flush/retire
         if len(state.get('issued')) and state.get('issued')[-1].get('cmd') in ['ECALL', 'FENCE']: break
         _hazards = sum(map(lambda x: hazard(x, _insn), state.get('issued')), [])
-        service.tx({'info': '_hazards [ante] : {} ({})'.format(_hazards, len(_hazards))})
         _hazards = list(filter(lambda x: x not in state.get('forward').keys(), _hazards)) + [x for x in state.get('forward').keys() if _hazards.count(x) > 1]
-        service.tx({'info': '_hazards [post] : {} ({})'.format(_hazards, len(_hazards))})
+        service.tx({'info': '_hazards : {} ({})'.format(_hazards, len(_hazards))})
         if len(_hazards): break
         if _insn.get('cmd') in ['ECALL', 'FENCE']:
             if len(state.get('issued')): break
@@ -56,7 +55,6 @@ def do_issue(service, state):
                 if 'operands' not in _insn.keys(): _insn.update({'operands': {}})
                 if _insn.get('rs1') in state.get('forward').keys():
                     _insn.get('operands').update({'rs1': state.get('forward').get(_insn.get('rs1'))})
-                    if 23 == _insn.get('rs1'): logging.info('_insn : {}'.format(_insn))
                 else:
                     service.tx({'event': {
                         'arrival': 1 + state.get('cycle'),
@@ -70,7 +68,6 @@ def do_issue(service, state):
                 if 'operands' not in _insn.keys(): _insn.update({'operands': {}})
                 if _insn.get('rs2') in state.get('forward').keys():
                     _insn.get('operands').update({'rs2': state.get('forward').get(_insn.get('rs2'))})
-                    if 23 == _insn.get('rs2'): logging.info('_insn : {}'.format(_insn))
                 else:
                     service.tx({'event': {
                         'arrival': 1 + state.get('cycle'),
@@ -130,7 +127,6 @@ def do_tick(service, state, results, events):
             state.update({'issued': list(filter(lambda x: x.get('iid') <= _insn.get('iid'), state.get('issued')))})
     else:
         for _fwd in map(lambda x: x.get('forward'), filter(lambda y: y.get('forward'), results)):
-#            if _fwd.get('rd') in [23]: continue
             state.get('forward').update({_fwd.get('rd'): _fwd.get('result')})
         state.get('forward').update({0: riscv.constants.integer_to_list_of_bytes(0, 64, 'little')})
         for _pr in map(lambda x: x.get('prediction'), filter(lambda y: y.get('prediction'), results)):
