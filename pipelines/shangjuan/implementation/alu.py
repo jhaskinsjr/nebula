@@ -663,8 +663,20 @@ def do_execute(service, state):
         }.get(_insn.get('cmd'), do_unimplemented)
         _insn_prime, _done = _f(service, state, _insn)
         toolbox.report_stats(service, state, 'histo', 'category', _f.__name__)
-        _pr = _insn_prime.get('prediction')
+        if not _done: break
+        if 'rd' in _insn_prime.keys() and _insn_prime.get('result'):
+            service.tx({'result': {
+                'arrival': 1 + state.get('cycle'),
+                'coreid': state.get('coreid'),
+                'forward': {
+                    'cmd': _insn_prime.get('cmd'),
+                    'iid': _insn_prime.get('iid'),
+                    'rd': _insn_prime.get('rd'),
+                    'result': _insn_prime.get('result'),
+                }
+            }})
         if _insn.get('cmd') in riscv.constants.BRANCHES + riscv.constants.JUMPS:
+            _pr = _insn_prime.get('prediction')
             assert _pr, 'All BRANCH instructions MUST have a prediction field!'
             state.update({'flush_until': _insn_prime.get('next_pc')})
             if int.from_bytes(_insn_prime.get('next_pc'), 'little') != _pr.get('targetpc'):
@@ -678,10 +690,7 @@ def do_execute(service, state):
                 state.update({'recovery_iid': -1}) # place holder value
                 _remove_from_pending_execute = state.get('pending_execute')[:]
                 break
-        if _done:
-            _remove_from_pending_execute.append(_insn)
-        else:
-            break
+        _remove_from_pending_execute.append(_insn)
     for _insn in _remove_from_pending_execute: state.get('pending_execute').remove(_insn)
 
 def do_tick(service, state, results, events):

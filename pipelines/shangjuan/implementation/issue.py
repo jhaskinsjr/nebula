@@ -29,7 +29,9 @@ def do_issue(service, state):
         # yet to flush/retire
         if len(state.get('issued')) and state.get('issued')[-1].get('cmd') in ['ECALL', 'FENCE']: break
         _hazards = sum(map(lambda x: hazard(x, _insn), state.get('issued')), [])
-        service.tx({'info': '_hazards : {}'.format(_hazards)})
+        service.tx({'info': '_hazards [ante] : {} ({})'.format(_hazards, len(_hazards))})
+        _hazards = list(filter(lambda x: x not in state.get('forward').keys(), _hazards)) + [x for x in state.get('forward').keys() if _hazards.count(x) > 1]
+        service.tx({'info': '_hazards [post] : {} ({})'.format(_hazards, len(_hazards))})
         if len(_hazards): break
         if _insn.get('cmd') in ['ECALL', 'FENCE']:
             if len(state.get('issued')): break
@@ -52,24 +54,33 @@ def do_issue(service, state):
         else:
             if 'rs1' in _insn.keys():
                 if 'operands' not in _insn.keys(): _insn.update({'operands': {}})
-                service.tx({'event': {
-                    'arrival': 1 + state.get('cycle'),
-                    'coreid': state.get('coreid'),
-                    'register': {
-                        'cmd': 'get',
-                        'name': _insn.get('rs1'),
-                    },
-                }})
+                if _insn.get('rs1') in state.get('forward').keys():
+                    _insn.get('operands').update({'rs1': state.get('forward').get(_insn.get('rs1'))})
+                    if 23 == _insn.get('rs1'): logging.info('_insn : {}'.format(_insn))
+                else:
+                    service.tx({'event': {
+                        'arrival': 1 + state.get('cycle'),
+                        'coreid': state.get('coreid'),
+                        'register': {
+                            'cmd': 'get',
+                            'name': _insn.get('rs1'),
+                        },
+                    }})
             if 'rs2' in _insn.keys():
                 if 'operands' not in _insn.keys(): _insn.update({'operands': {}})
-                service.tx({'event': {
-                    'arrival': 1 + state.get('cycle'),
-                    'coreid': state.get('coreid'),
-                    'register': {
-                        'cmd': 'get',
-                        'name': _insn.get('rs2'),
-                    },
-                }})
+                if _insn.get('rs2') in state.get('forward').keys():
+                    _insn.get('operands').update({'rs2': state.get('forward').get(_insn.get('rs2'))})
+                    if 23 == _insn.get('rs2'): logging.info('_insn : {}'.format(_insn))
+                else:
+                    service.tx({'event': {
+                        'arrival': 1 + state.get('cycle'),
+                        'coreid': state.get('coreid'),
+                        'register': {
+                            'cmd': 'get',
+                            'name': _insn.get('rs2'),
+                        }, 
+                    }})
+            if 0 != _insn.get('rd'): state.get('forward').pop(_insn.get('rd'), None)
         _remove_from_decoded.append(_insn)
         _insn = {
             **_insn,
@@ -118,6 +129,10 @@ def do_tick(service, state, results, events):
             state.update({'recovery_iid': -1}) # place holder value
             state.update({'issued': list(filter(lambda x: x.get('iid') <= _insn.get('iid'), state.get('issued')))})
     else:
+        for _fwd in map(lambda x: x.get('forward'), filter(lambda y: y.get('forward'), results)):
+#            if _fwd.get('rd') in [23]: continue
+            state.get('forward').update({_fwd.get('rd'): _fwd.get('result')})
+        state.get('forward').update({0: riscv.constants.integer_to_list_of_bytes(0, 64, 'little')})
         for _pr in map(lambda x: x.get('prediction'), filter(lambda y: y.get('prediction'), results)):
             if 'branch' != _pr.get('type'): continue
             service.tx({'info': '_pr : {}'.format(_pr)})
@@ -144,6 +159,8 @@ def do_tick(service, state, results, events):
     service.tx({'info': 'state.issued           : {} ({})'.format(state.get('issued'), len(state.get('issued')))})
     service.tx({'info': 'state.decoded          : {} ({})'.format(state.get('decoded')[:20], len(state.get('decoded')))})
     service.tx({'info': 'state.drop_until       : {}'.format(state.get('drop_until'))})
+    service.tx({'info': 'state.forward          : {} ({})'.format(state.get('forward'), len(state.get('forward')))})
+    state.get('forward').clear()
 
 if '__main__' == __name__:
     parser = argparse.ArgumentParser(description='Nebula: Instruction Issue')
@@ -180,6 +197,7 @@ if '__main__' == __name__:
         'issued': [],
         'drop_until': None,
         'recovery_iid': None,
+        'forward': {},
         'predictions': {},
         'iid': 0,
         'objmap': None,
