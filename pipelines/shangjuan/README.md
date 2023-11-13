@@ -5,7 +5,9 @@ fetcher like Rangpur. It features an L1 instruction cache, L1 data cache,
 a unified L2 cache, and branch prediction. Fetch is
 performed on a per-cache-block basis, and multiple instructions cahe issue
 per cycle, in-order, until a read-after-write hazard occurs, which blocks
-further issue until the writing instruction is retired or flushed.
+further issue until: (1) the writing instruction's result is received
+through data forwarding; (2) the writing instruction retires; or (3) the
+writing instruction is flushed.
 
 Unlike Rangpur, which, for simplicity, imposed the restriction that only
 a single LOAD instruction be in-flight at a time, Shangjuan allows any
@@ -20,7 +22,6 @@ the most significant bit of the counter associated with the branch is 1.
 
 Shangjuan is a work in progress. Here are a few planned future features:
 
-* result forwarding
 * value prediction
 * return address stack
 
