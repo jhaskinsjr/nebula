@@ -11,7 +11,6 @@ import subprocess
 
 import service
 import toolbox
-import components.simplebtb
 import riscv.constants
 import riscv.decode
 
@@ -87,7 +86,6 @@ if '__main__' == __name__:
         'service': 'decode',
         'cycle': 0,
         'coreid': args.coreid,
-        'btb': None,
         'active': True,
         'running': False,
         '%pc': None,
@@ -100,10 +98,7 @@ if '__main__' == __name__:
         'binary': '',
         'config': {
             'buffer_capacity': 16,
-            'btb_nentries': 32,
-            'btb_nbytesperentry': 16,
-            'btb_evictionpolicy': 'lru',
-            'max_bytes_to_decode': 4,
+            'max_bytes_to_decode': 16,
             'toolchain': '',
         },
     }
@@ -121,11 +116,6 @@ if '__main__' == __name__:
                 state.update({'running': True})
                 state.update({'ack': False})
                 _service.tx({'info': 'state.config : {}'.format(state.get('config'))})
-                if state.get('config').get('btb_nentries'): state.update({'btb': components.simplebtb.SimpleBTB(
-                    state.get('config').get('btb_nentries'),
-                    state.get('config').get('btb_nbytesperentry'),
-                    state.get('config').get('btb_evictionpolicy'),
-                )})
                 if not state.get('config').get('toolchain'): continue
                 if not state.get('binary'): continue
                 _toolchain = state.get('config').get('toolchain')

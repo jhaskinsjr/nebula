@@ -7,11 +7,9 @@ import argparse
 import logging
 import time
 import itertools
-import subprocess
 
 import service
 import toolbox
-import components.simplebtb
 import riscv.constants
 import riscv.decode
 
@@ -184,7 +182,6 @@ if '__main__' == __name__:
         'service': 'issue',
         'cycle': 0,
         'coreid': args.coreid,
-        'btb': None,
         'active': True,
         'running': False,
         'ack': True,
@@ -197,14 +194,8 @@ if '__main__' == __name__:
         'predictions': {},
         'iid': 0,
         'objmap': None,
-        'binary': '',
         'config': {
             'buffer_capacity': 16,
-            'btb_nentries': 32,
-            'btb_nbytesperentry': 16,
-            'btb_evictionpolicy': 'lru',
-            'max_instructions_to_decode': 2,
-            'toolchain': '',
         },
     }
     _service = service.Service(state.get('service'), state.get('coreid'), _launcher.get('host'), _launcher.get('port'))
@@ -221,29 +212,6 @@ if '__main__' == __name__:
                 state.update({'running': True})
                 state.update({'ack': False})
                 _service.tx({'info': 'state.config : {}'.format(state.get('config'))})
-                if state.get('config').get('btb_nentries'): state.update({'btb': components.simplebtb.SimpleBTB(
-                    state.get('config').get('btb_nentries'),
-                    state.get('config').get('btb_nbytesperentry'),
-                    state.get('config').get('btb_evictionpolicy'),
-                )})
-                if not state.get('config').get('toolchain'): continue
-                if not state.get('binary'): continue
-                _toolchain = state.get('config').get('toolchain')
-                _binary = state.get('binary')
-                _files = next(iter(list(os.walk(_toolchain))))[-1]
-                _objdump = next(filter(lambda x: 'objdump' in x, _files))
-                _x = subprocess.run('{} -t {}'.format(os.path.join(_toolchain, _objdump), _binary).split(), capture_output=True)
-                if len(_x.stderr): continue
-                _objdump = _x.stdout.decode('ascii').split('\n')
-                _objdump = sorted(filter(lambda x: len(x), _objdump))
-                _objdump = filter(lambda x: re.search('^0', x), _objdump)
-                _objdump = map(lambda x: x.split(), _objdump)
-                state.update({'objmap': {
-                    int(x[0], 16): {
-                        'flags': x[1:-1],
-                        'name': x[-1]
-                    } for x in _objdump
-                }})
             elif 'binary' == k:
                 state.update({'binary': v})
             elif 'config' == k:
