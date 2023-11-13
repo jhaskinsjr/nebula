@@ -22,7 +22,6 @@ the most significant bit of the counter associated with the branch is 1.
 
 Shangjuan is a work in progress. Here are a few planned future features:
 
-* value prediction
 * return address stack
 
 ### What Is A Shangjuan?
