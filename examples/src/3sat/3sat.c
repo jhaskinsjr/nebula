@@ -77,7 +77,7 @@ main(int argc,char ** argv)
 				fprintf(stderr,"%s: Cannot open "
 					       "'%s' for obtaining "
 						"Boolean expression.\n",
-					BIN_FILENAME,argv[4]);
+					BIN_FILENAME,filename);
 				exit(1);
 			} 
 			fscanf(ifp,"%d %d", &n_var, &n_clause);
