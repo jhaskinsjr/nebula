@@ -44,7 +44,8 @@
             "mainmem:capacity": [4294967296],
             "brpred:btac_entries": [1, 64],
             "brpred:predictor_type": ["bimodal", "gshare"],
-            "brpred:predictor_entries": [1, 64]
+            "brpred:predictor_entries": [1, 64],
+            "alu:result_forwarding": [true, false]
         },
         "max_cycles": 1000000,
         "max_instructions": 10000,

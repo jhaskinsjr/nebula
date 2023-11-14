@@ -30,6 +30,7 @@ config fetch:l1ic_nways 1
 config fetch:l1ic_nbytesperblock 16
 config fetch:l1ic_evictionpolicy lru # random
 config decode:max_bytes_to_decode 16
+config alu:result_forwarding True
 config lsu:l1dc_nsets 16
 config lsu:l1dc_nways 2
 config lsu:l1dc_nbytesperblock 16

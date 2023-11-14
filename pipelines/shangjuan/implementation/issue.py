@@ -195,7 +195,6 @@ if '__main__' == __name__:
         'iid': 0,
         'objmap': None,
         'config': {
-            'buffer_capacity': 16,
         },
     }
     _service = service.Service(state.get('service'), state.get('coreid'), _launcher.get('host'), _launcher.get('port'))
@@ -212,8 +211,7 @@ if '__main__' == __name__:
                 state.update({'running': True})
                 state.update({'ack': False})
                 _service.tx({'info': 'state.config : {}'.format(state.get('config'))})
-            elif 'binary' == k:
-                state.update({'binary': v})
+                logging.info('state : {}'.format(state))
             elif 'config' == k:
                 logging.debug('config : {}'.format(v))
                 if state.get('service') != v.get('service'): continue

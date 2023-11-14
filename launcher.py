@@ -142,6 +142,8 @@ def config(connections, service, field, val):
         _val = integer(val)
     except:
         pass
+    if 'FALSE' == val.upper(): _val = False
+    if 'TRUE' == val.upper(): _val = True
     tx(connections, {'config': {
         'service': service,
         'field': field,
@@ -282,9 +284,6 @@ if __name__ == '__main__':
         'undefined': None,
         'cmdline': None,
         'config': {
-            'mainmem_filename': None,
-            'mainmem_capacity': None,
-            'toolchain': '',
         },
     }
     _s = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
