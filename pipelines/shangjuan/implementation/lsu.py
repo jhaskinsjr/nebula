@@ -115,18 +115,33 @@ def do_unimplemented(service, state, insn):
     service.tx({'undefined': insn})
 
 def do_load(service, state, insn):
-    do_l1dc(service, state, insn)
+    if insn.get('peeked'):
+        service.tx({'result': {
+            'arrival': 1 + state.get('cycle'),
+            'coreid': state.get('coreid'),
+            'l1dc': {
+                'addr': insn.get('operands').get('addr'),
+                'size': insn.get('nbytes'),
+                'data': insn.get('peeked'),
+            },
+        }})
+        state.get('executing').pop(0)
+        toolbox.report_stats(service, state, 'flat', 'load_serviced_by_preceding_queued_store')
+    else:
+        do_l1dc(service, state, insn)
 def do_store(service, state, insn):
-    _data = insn.get('operands').get('data')
-    _data = {
-        'SD': _data,
-        'SW': _data[:4],
-        'SH': _data[:2],
-        'SB': _data[:1],
-        'SC.D': _data,
-        'SC.W': _data[:4],
-    }.get(insn.get('cmd'))
-    do_l1dc(service, state, insn, _data)
+    do_l1dc(service, state, insn, insn.get('operands').get('data'))
+#    return
+#    _data = insn.get('operands').get('data')
+#    _data = {
+#        'SD': _data,
+#        'SW': _data[:4],
+#        'SH': _data[:2],
+#        'SB': _data[:1],
+#        'SC.D': _data,
+#        'SC.W': _data[:4],
+#    }.get(insn.get('cmd'))
+#    do_l1dc(service, state, insn, _data)
 
 def do_execute(service, state):
     # NOTE: simpliying to only one in-flight LOAD/STORE at a time
@@ -152,6 +167,10 @@ def do_execute(service, state):
         'SC.W': do_store,
         'SC.D': do_store,
     }.get(_insn.get('cmd'), do_unimplemented)(service, state, _insn)
+def contains_load_data(ld, st):
+    retval  = ld.get('operands').get('addr') >= st.get('operands').get('addr')
+    retval &= ld.get('operands').get('addr') + ld.get('nbytes') <= st.get('operands').get('addr') + len(st.get('operands').get('data'))
+    return retval
 
 def do_tick(service, state, results, events):
     for _retire, _confirm in map(lambda y: (y.get('retire'), y.get('confirm')), filter(lambda x: x.get('retire') or x.get('confirm'), results)):
@@ -164,7 +183,7 @@ def do_tick(service, state, results, events):
         if _confirm:
             _ndx = next(filter(lambda x: _confirm.get('iid') == state.get('pending_execute')[x].get('iid'), range(len(state.get('pending_execute')))), None)
             if not isinstance(_ndx, int): continue
-            logging.info('_confirm : {}'.format(_confirm))
+            logging.debug('_confirm : {}'.format(_confirm))
             service.tx({'info': 'confirming : {}'.format(_confirm)})
             state.get('pending_execute')[_ndx].update({'confirmed': True})
     for _l2 in filter(lambda x: x, map(lambda y: y.get('l2'), results)):
@@ -178,6 +197,33 @@ def do_tick(service, state, results, events):
     for _lsu in map(lambda y: y.get('lsu'), filter(lambda x: x.get('lsu'), events)):
         if 'insn' in _lsu.keys():
             _insn = _lsu.get('insn')
+            if _insn.get('cmd') in riscv.constants.STORES:
+                _data = _insn.get('operands').get('data')
+                _data = {
+                    'SD': _data,
+                    'SW': _data[:4],
+                    'SH': _data[:2],
+                    'SB': _data[:1],
+                    'SC.D': _data,
+                    'SC.W': _data[:4],
+                }.get(_insn.get('cmd'))
+                _insn.get('operands').update({'data': _data})
+            else:
+                _pending_stores = list(filter(lambda y: y.get('cmd') in riscv.constants.STORES, state.get('pending_execute')))
+                _store = next(filter(lambda s: contains_load_data(_insn, s), reversed(_pending_stores)), None)
+                logging.info('{} ?<- _pending_stores : {} ({}){}'.format(
+                    [_insn.get('cmd'), _insn.get('iid'), _insn.get('operands').get('addr')],
+                    list(map(lambda x: [x.get('cmd'), x.get('iid'), x.get('operands').get('addr')], _pending_stores)), len(_pending_stores),
+                    (' -> {}'.format([_store.get('cmd'), _store.get('iid'), _store.get('operands').get('addr')]) if _store else '')
+                ))
+                if _store:
+                    logging.debug('_store : {}'.format(_store))
+                    _ld_addr = _insn.get('operands').get('addr')
+                    _st_addr = _store.get('operands').get('addr')
+                    _offset = _ld_addr - _st_addr
+                    _peeked = _store.get('operands').get('data')[_offset:_offset+_insn.get('nbytes')]
+                    _insn.update({'peeked': _peeked})
+                    logging.debug('_insn : {}'.format(_insn))
             state.get('pending_execute').append(_insn)
             # TODO: should this commit event be done in alu like everything else?
             service.tx({'event': {
