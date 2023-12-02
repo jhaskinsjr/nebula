@@ -16,23 +16,38 @@ def do_commit(service, state):
     _retire = []
     _commit = []
     for _insn in state.get('pending_commit'):
-        if not any(map(lambda x: x in _insn.keys(), ['next_pc', 'ret_pc', 'result', 'confirmed'])): break
-        if 'confirmed' in _insn.keys():
-            if not _insn.get('confirmed'):
-                service.tx({'info': 'confirming {}'.format(_insn)})
-                service.tx({'result': {
-                    'arrival': 1 + state.get('cycle'),
-                    'coreid': state.get('coreid'),
-                    'confirm': {
-                        'cmd': _insn.get('cmd'),
-                        'iid': _insn.get('iid'),
-                        '%pc': _insn.get('%pc'),
-                    },
-                }})
-                _insn.update({'confirmed': True})
-                break
-            else:
-                if 'result' not in _insn.keys(): break
+#        if not any(map(lambda x: x in _insn.keys(), ['next_pc', 'ret_pc', 'result', 'confirmed'])): break
+#        if 'confirmed' in _insn.keys():
+#            if not _insn.get('confirmed'):
+#                service.tx({'info': 'confirming {}'.format(_insn)})
+#                service.tx({'result': {
+#                    'arrival': 1 + state.get('cycle'),
+#                    'coreid': state.get('coreid'),
+#                    'confirm': {
+#                        'cmd': _insn.get('cmd'),
+#                        'iid': _insn.get('iid'),
+#                        '%pc': _insn.get('%pc'),
+#                    },
+#                }})
+#                _insn.update({'confirmed': True})
+#                break
+#            else:
+#                if 'result' not in _insn.keys(): break
+        if 'confirmed' in _insn.keys() and not _insn.get('confirmed'):
+            service.tx({'info': 'confirming {}'.format(_insn)})
+            service.tx({'result': {
+                'arrival': 1 + state.get('cycle'),
+                'coreid': state.get('coreid'),
+                'confirm': {
+                    'cmd': _insn.get('cmd'),
+                    'iid': _insn.get('iid'),
+                    '%pc': _insn.get('%pc'),
+                },
+            }})
+            _insn.update({'confirmed': True})
+            continue
+        if _insn != state.get('pending_commit')[0]: continue
+        if not any(map(lambda x: x in _insn.keys(), ['next_pc', 'ret_pc', 'result'])): break
         _commit.append(_insn)
         _retire.append(_insn)
         service.tx({'info': 'retiring {}'.format(_insn)})
@@ -149,8 +164,9 @@ def do_tick(service, state, results, events):
                         'result': _result,
                     },
                 }
-    for _commit in sorted(map(lambda y: y.get('commit'), filter(lambda x: x.get('commit'), events)), key=lambda x: x.get('insn').get('iid')):
-        state.get('pending_commit').append(_commit.get('insn'))
+    for _commit in map(lambda y: y.get('commit'), filter(lambda x: x.get('commit'), events)):
+        _insn = _commit.get('insn')
+        state.get('pending_commit').append(_insn)
     state.update({'pending_commit': sorted(state.get('pending_commit'), key=lambda x: x.get('iid'))})
     if len(state.get('pending_commit')): do_commit(service, state)
     service.tx({'info': 'pending_commit : [{}]'.format(', '.join(map(
