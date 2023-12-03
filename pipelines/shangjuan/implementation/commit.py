@@ -15,7 +15,7 @@ import riscv.constants
 def do_commit(service, state):
     _retire = []
     _commit = []
-    for _insn in state.get('pending_commit'):
+#    for _insn in state.get('pending_commit'):
 #        if not any(map(lambda x: x in _insn.keys(), ['next_pc', 'ret_pc', 'result', 'confirmed'])): break
 #        if 'confirmed' in _insn.keys():
 #            if not _insn.get('confirmed'):
@@ -33,6 +33,8 @@ def do_commit(service, state):
 #                break
 #            else:
 #                if 'result' not in _insn.keys(): break
+    for x in range(len(state.get('pending_commit'))):
+        _insn = state.get('pending_commit')[x]
         if 'confirmed' in _insn.keys() and not _insn.get('confirmed'):
             service.tx({'info': 'confirming {}'.format(_insn)})
             service.tx({'result': {
@@ -46,7 +48,8 @@ def do_commit(service, state):
             }})
             _insn.update({'confirmed': True})
             continue
-        if _insn != state.get('pending_commit')[0]: continue
+#        if _insn != state.get('pending_commit')[0]: continue
+        if not all(map(lambda x: x.get('retired'), state.get('pending_commit')[:x])): continue
         if not any(map(lambda x: x in _insn.keys(), ['next_pc', 'ret_pc', 'result'])): break
         _commit.append(_insn)
         _retire.append(_insn)
@@ -112,6 +115,7 @@ def do_commit(service, state):
                 **({'prediction': _insn.get('prediction')} if 'prediction' in _insn.keys() else {}),
             },
         }})
+        _insn.update({'retired': True})
         toolbox.report_stats(service, state, 'flat', 'retires')
         state.update({'ncommits': 1 + state.get('ncommits')})
         _pc = _insn.get('_pc')
@@ -126,44 +130,68 @@ def do_commit(service, state):
 def do_tick(service, state, results, events):
     for _l1dc in map(lambda y: y.get('l1dc'), filter(lambda x: x.get('l1dc'), results)):
         service.tx({'info': '_l1dc : {}'.format(_l1dc)})
-        for _insn in filter(lambda a: a.get('cmd') in riscv.constants.LOADS + riscv.constants.STORES, state.get('pending_commit')):
+#        for _insn in filter(lambda a: a.get('cmd') in riscv.constants.LOADS + riscv.constants.STORES, state.get('pending_commit')):
+#            if _insn.get('operands').get('addr') != _l1dc.get('addr'): continue
+#            if 'data' not in _l1dc.keys():
+#                if _insn.get('cmd') in riscv.constants.LOADS: continue
+#                service.tx({'info': '_insn : {}'.format(_insn)})
+#                #STORE
+#                assert 'confirmed' in _insn.keys()
+#                _index = state.get('pending_commit').index(_insn)
+#                state.get('pending_commit')[_index] = {
+#                    **_insn,
+#                    **{
+#                        'result': None,
+#                    },
+#                }
+#            else:
+#                if _insn.get('cmd') in riscv.constants.STORES: continue
+#                service.tx({'info': '_insn : {}'.format(_insn)})
+#                # LOAD
+#                _peeked  = _l1dc.get('data')
+#                _peeked += [-1] * (8 - len(_peeked))
+#                _result = { # HACK: This is 100% little-endian-specific
+#                    'LD': _peeked,
+#                    'LW': _peeked[:4] + [(0xff if ((_peeked[3] >> 7) & 0b1) else 0)] * 4,
+#                    'LH': _peeked[:2] + [(0xff if ((_peeked[1] >> 7) & 0b1) else 0)] * 6,
+#                    'LB': _peeked[:1] + [(0xff if ((_peeked[0] >> 7) & 0b1) else 0)] * 7,
+#                    'LWU': _peeked[:4] + [0] * 4,
+#                    'LHU': _peeked[:2] + [0] * 6,
+#                    'LBU': _peeked[:1] + [0] * 7,
+#                    'LR.D': _peeked,
+#                    'LR.W': _peeked[:4] + [(0xff if ((_peeked[3] >> 7) & 0b1) else 0)] * 4,
+#                }.get(_insn.get('cmd'))
+#                _index = state.get('pending_commit').index(_insn)
+#                state.get('pending_commit')[_index] = {
+#                    **_insn,
+#                    **{
+#                        'result': _result,
+#                    },
+#                }
+        for _insn in filter(lambda a: a.get('cmd') in riscv.constants.LOADS, state.get('pending_commit')):
             if _insn.get('operands').get('addr') != _l1dc.get('addr'): continue
-            if 'data' not in _l1dc.keys():
-                if _insn.get('cmd') in riscv.constants.LOADS: continue
-                service.tx({'info': '_insn : {}'.format(_insn)})
-                #STORE
-                assert 'confirmed' in _insn.keys()
-                _index = state.get('pending_commit').index(_insn)
-                state.get('pending_commit')[_index] = {
-                    **_insn,
-                    **{
-                        'result': None,
-                    },
-                }
-            else:
-                if _insn.get('cmd') in riscv.constants.STORES: continue
-                service.tx({'info': '_insn : {}'.format(_insn)})
-                # LOAD
-                _peeked  = _l1dc.get('data')
-                _peeked += [-1] * (8 - len(_peeked))
-                _result = { # HACK: This is 100% little-endian-specific
-                    'LD': _peeked,
-                    'LW': _peeked[:4] + [(0xff if ((_peeked[3] >> 7) & 0b1) else 0)] * 4,
-                    'LH': _peeked[:2] + [(0xff if ((_peeked[1] >> 7) & 0b1) else 0)] * 6,
-                    'LB': _peeked[:1] + [(0xff if ((_peeked[0] >> 7) & 0b1) else 0)] * 7,
-                    'LWU': _peeked[:4] + [0] * 4,
-                    'LHU': _peeked[:2] + [0] * 6,
-                    'LBU': _peeked[:1] + [0] * 7,
-                    'LR.D': _peeked,
-                    'LR.W': _peeked[:4] + [(0xff if ((_peeked[3] >> 7) & 0b1) else 0)] * 4,
-                }.get(_insn.get('cmd'))
-                _index = state.get('pending_commit').index(_insn)
-                state.get('pending_commit')[_index] = {
-                    **_insn,
-                    **{
-                        'result': _result,
-                    },
-                }
+            assert 'data' in _l1dc.keys()
+            service.tx({'info': '_insn : {}'.format(_insn)})
+            _peeked  = _l1dc.get('data')
+            _peeked += [-1] * (8 - len(_peeked))
+            _result = { # HACK: This is 100% little-endian-specific
+                'LD': _peeked,
+                'LW': _peeked[:4] + [(0xff if ((_peeked[3] >> 7) & 0b1) else 0)] * 4,
+                'LH': _peeked[:2] + [(0xff if ((_peeked[1] >> 7) & 0b1) else 0)] * 6,
+                'LB': _peeked[:1] + [(0xff if ((_peeked[0] >> 7) & 0b1) else 0)] * 7,
+                'LWU': _peeked[:4] + [0] * 4,
+                'LHU': _peeked[:2] + [0] * 6,
+                'LBU': _peeked[:1] + [0] * 7,
+                'LR.D': _peeked,
+                'LR.W': _peeked[:4] + [(0xff if ((_peeked[3] >> 7) & 0b1) else 0)] * 4,
+            }.get(_insn.get('cmd'))
+            _index = state.get('pending_commit').index(_insn)
+            state.get('pending_commit')[_index] = {
+                **_insn,
+                **{
+                    'result': _result,
+                },
+            }
     for _commit in map(lambda y: y.get('commit'), filter(lambda x: x.get('commit'), events)):
         _insn = _commit.get('insn')
         state.get('pending_commit').append(_insn)
