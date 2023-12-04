@@ -69,14 +69,6 @@ def do_l1dc(service, state):
             assert len(_data) == _size
         if _insn.get('operands').get('data'):
             # STORE
-#            service.tx({'result': {
-#                'arrival': 1 + state.get('cycle'),
-#                'coreid': state.get('coreid'),
-#                'l1dc': {
-#                    'addr': _addr,
-#                    'size': _size,
-#                },
-#            }})
             if _ante:
                 assert _post
                 service.tx({'info': '_ante : @{} {}'.format(_addr, _ante)})
@@ -154,31 +146,6 @@ def do_execute(service, state):
     state.get('executing').extend(_confirmed)
     state.update({'pending_execute': list(filter(lambda x: x not in state.get('executing'), state.get('pending_execute')))})
     do_l1dc(service, state)
-#def do_execute_0(service, state):
-#    # NOTE: simpliying to only one in-flight LOAD/STORE at a time
-#    if not len(state.get('executing')) and not len(state.get('pending_execute')): return
-#    if not len(state.get('executing')) and state.get('pending_execute')[0].get('confirmed'): state.get('executing').append(state.get('pending_execute').pop(0))
-#    if not len(state.get('executing')): return
-#    _insn = state.get('executing')[0]
-#    service.tx({'info': '_insn : {}'.format(_insn)})
-#    {
-#        'LD': do_load,
-#        'LW': do_load,
-#        'LH': do_load,
-#        'LB': do_load,
-#        'LWU': do_load,
-#        'LHU': do_load,
-#        'LBU': do_load,
-#        'SD': do_store,
-#        'SW': do_store,
-#        'SH': do_store,
-#        'SB': do_store,
-#        'LR.W': do_load,
-#        'LR.D': do_load,
-#        'SC.W': do_store,
-#        'SC.D': do_store,
-#    }.get(_insn.get('cmd'), do_unimplemented)(service, state, _insn)
-#    do_l1dc(service, state)
 def contains_load_data(ld, st):
     retval  = ld.get('operands').get('addr') >= st.get('operands').get('addr')
     retval &= ld.get('operands').get('addr') + ld.get('nbytes') <= st.get('operands').get('addr') + len(st.get('operands').get('data'))
