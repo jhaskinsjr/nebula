@@ -19,6 +19,8 @@ def hazard(p, c):
     _conflict += ([c.get('rs2')] if ('rs2' in c.keys() and p.get('rd') == c.get('rs2')) else  [])
     return _conflict
 def do_issue(service, state):
+    if not len(state.get('decoded')): return
+    toolbox.report_stats(service, state, 'flat', 'decoded_not_empty')
     _remove_from_decoded = []
     for _insn in state.get('decoded'):
         # ECALL/FENCE must execute alone, i.e., all issued instructions
@@ -80,6 +82,7 @@ def do_issue(service, state):
         _insn = {
             **_insn,
             **{'iid': state.get('iid')},
+            **{'issued': state.get('cycle')},
         }
         state.update({'iid': 1 + state.get('iid')})
         service.tx({'event': {
@@ -113,6 +116,10 @@ def do_tick(service, state, results, events):
         if _retire:
             service.tx({'info': 'retiring : {}'.format(_retire)})
             assert _retire.get('iid') == state.get('issued')[0].get('iid'), '[@{}] _retire : {} (vs {})'.format(state.get('cycle'), _retire, state.get('issued')[0])
+            _key = None
+            if _retire.get('cmd') in riscv.constants.STORES: _key = 'cycles_per_STORE'
+            if _retire.get('cmd') in riscv.constants.LOADS: _key = 'cycles_per_LOAD'
+            if _key: toolbox.report_stats(service, state, 'histo', _key, _retire.get('retired') - _retire.get('issued'))
             state.get('issued').pop(0)
     if next(filter(lambda x: x.get('mispredict'), results), None):
         for _mispr in map(lambda y: y.get('mispredict'), filter(lambda x: x.get('mispredict'), results)):

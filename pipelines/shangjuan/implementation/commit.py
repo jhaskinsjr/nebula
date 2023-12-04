@@ -89,6 +89,8 @@ def do_commit(service, state):
                 '%pc': _insn.get('%pc'),
                 'word': _insn.get('word'),
                 'size': _insn.get('size'),
+                'issued': _insn.get('issued'),
+                'retired': state.get('cycle'),
                 **({'next_pc': _insn.get('next_pc')} if 'next_pc' in _insn.keys() else {}),
                 **({'ret_pc': _insn.get('ret_pc')} if 'ret_pc' in _insn.keys() else {}),
                 **({'taken': _insn.get('taken')} if 'taken' in _insn.keys() else {}),
