@@ -206,12 +206,14 @@ def run(cycle, max_cycles, max_instructions, break_on_undefined, snapshot_freque
     if state.get('undefined'): logging.info('*** Encountered undefined instruction! ***')
     return cycle
 def add_service(services, arguments, s):
-    c, h, coreid = s.split(':')
+    c, h, p, coreid = s.split(':')
     services.append(
         threading.Thread(
             target=subprocess.run,
             args=([
                 'ssh',
+                '-p',
+                '{}'.format(p),
                 h,
                 'python3 {} {} {} {} {}'.format(
                     os.path.join(os.getcwd(), c),

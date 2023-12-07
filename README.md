@@ -45,7 +45,7 @@ example, we will use the Pompia pipeline:
 
     python3 ../../launcher.py \
         --log /tmp/pompia/sum \
-        --service ../../toolbox/stats.py:localhost:-1 implementation/mainmem.py:localhost:-1 \
+        --service ../../toolbox/stats.py:localhost:22:-1 implementation/mainmem.py:localhost:22:-1 \
         --config stats:output_filename:/tmp/pompia/sum/stats.json \
         mainmem:filename:/tmp/pompia/sum/mainmem.raw \
         mainmem:capacity:$(( 2**32 )) \
