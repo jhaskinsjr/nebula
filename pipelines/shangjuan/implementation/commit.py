@@ -34,6 +34,10 @@ def do_commit(service, state):
         if not any(map(lambda x: x in _insn.keys(), ['next_pc', 'ret_pc', 'result'])): break
         _commit.append(_insn)
         _retire.append(_insn)
+        _key = None
+        if _insn.get('cmd') in riscv.constants.STORES: _key = 'cycles_per_STORE'
+        if _insn.get('cmd') in riscv.constants.LOADS: _key = 'cycles_per_LOAD'
+        if _key: toolbox.report_stats(service, state, 'histo', _key, state.get('cycle') - _insn.get('issued'))
         service.tx({'info': 'retiring {}'.format(_insn)})
         if _insn.get('next_pc'):
             service.tx({'result': {
@@ -90,7 +94,7 @@ def do_commit(service, state):
                 'word': _insn.get('word'),
                 'size': _insn.get('size'),
                 'issued': _insn.get('issued'),
-                'retired': state.get('cycle'),
+#                'retired': state.get('cycle'),
                 **({'next_pc': _insn.get('next_pc')} if 'next_pc' in _insn.keys() else {}),
                 **({'ret_pc': _insn.get('ret_pc')} if 'ret_pc' in _insn.keys() else {}),
                 **({'taken': _insn.get('taken')} if 'taken' in _insn.keys() else {}),
