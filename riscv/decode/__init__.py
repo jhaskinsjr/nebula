@@ -1378,17 +1378,20 @@ def uncomprssed_b_type_imm13(word, **kwargs):
 
 
 
-def do_decode(buffer, max_insns=(1<<32)):
-    if len(buffer) and 0 == int.from_bytes(buffer[:2], 'little'):
-        # FIXME: popping these two here feels... inelegant, somehow
-        # I would rather this happen in the decoder logic, but this
-        # works for now
-        buffer.pop(0)
-        buffer.pop(0)
-        return []
+def do_decode(buffer, skip_nulls=True, max_insns=(1<<32)):
+#    if len(buffer) and 0 == int.from_bytes(buffer[:2], 'little'):
+#        # FIXME: popping these two here feels... inelegant, somehow
+#        # I would rather this happen in the decoder logic, but this
+#        # works for now
+#        buffer.pop(0)
+#        buffer.pop(0)
+#        return []
     _retval = []
     x = 0
     while max_insns > len(_retval) and len(buffer[x:4 + x]):
+        if skip_nulls and 0 == int.from_bytes(buffer[x:2 + x], 'little'):
+            x += 2
+            continue
         _word = int.from_bytes(buffer[x:4 + x], 'little')
         if 0x3 == _word & 0x3:
             if 4 > len(buffer[x:4 + x]): break
