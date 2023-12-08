@@ -18,7 +18,7 @@
         "max_cycles": 1000000,
         "max_instructions": 10000,
         "script": "localhost.nebula",
-        "service": ["implementation/mainmem.py:localhost:-1"],
+        "service": ["implementation/mainmem.py:localhost:22:-1"],
         "restore": "../../snapshots/3sat/mainmem.raw.000000000480000.snapshot"
     },
     "pipelines/rangpur": {
@@ -32,7 +32,7 @@
         "max_cycles": 1000000,
         "max_instructions": 10000,
         "script": "localhost.nebula",
-        "service": ["implementation/mainmem.py:localhost:-1"],
+        "service": ["implementation/mainmem.py:localhost:22:-1"],
         "restore": "../../snapshots/3sat/mainmem.raw.000000000480000.snapshot"
     },
     "pipelines/shangjuan": {
@@ -50,7 +50,7 @@
         "max_cycles": 1000000,
         "max_instructions": 10000,
         "script": "localhost.nebula",
-        "service": ["implementation/mainmem.py:localhost:-1"],
+        "service": ["implementation/mainmem.py:localhost:22:-1"],
         "restore": "../../snapshots/3sat/mainmem.raw.000000000480000.snapshot"
     }
 }
