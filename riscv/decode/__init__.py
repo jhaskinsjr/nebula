@@ -1378,7 +1378,7 @@ def uncomprssed_b_type_imm13(word, **kwargs):
 
 
 
-def do_decode(buffer, skip_nulls=True, max_insns=(1<<32)):
+def do_decode(buffer, max_insns=(1<<32), skip_nulls=True):
 #    if len(buffer) and 0 == int.from_bytes(buffer[:2], 'little'):
 #        # FIXME: popping these two here feels... inelegant, somehow
 #        # I would rather this happen in the decoder logic, but this
