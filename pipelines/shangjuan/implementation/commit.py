@@ -98,7 +98,6 @@ def do_commit(service, state):
     service.tx({'committed': len(_retire)})
     if len(_commit):
         toolbox.report_stats(service, state, 'histo', 'retired_per_cycle', len(_retire))
-        toolbox.report_stats(service, state, 'histo', 'flushed_per_cycle', len(_commit) - len(_retire))
     for _insn in _commit: state.get('pending_commit').remove(_insn)
 
 def do_tick(service, state, results, events):
