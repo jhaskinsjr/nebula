@@ -239,7 +239,7 @@ def do_load(service, state, insn):
         'lsu': {
             'insn': {
                 **insn,
-                **{'confirmed': False},
+#                **{'confirmed': False},
             },
         }
     }})
@@ -249,7 +249,7 @@ def do_store(service, state, insn):
     _rs2 = insn.get('operands').get('rs2')
     insn = {
         **insn,
-        **{'confirmed': False},
+#        **{'confirmed': False},
     }
     insn.get('operands').update({'data': _rs2})
     insn.get('operands').update({'addr': insn.get('imm') + int.from_bytes(_rs1, 'little')})
