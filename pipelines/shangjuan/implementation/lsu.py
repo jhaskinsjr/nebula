@@ -103,27 +103,16 @@ def do_l1dc(service, state):
         _insn.update({'done': True})
         if len(state.get('pending_fetch')): state.get('pending_fetch').pop(0)
         toolbox.report_stats(service, state, 'flat', 'l1dc_accesses')
-#    state.update({'executing': list(filter(lambda x: not x.get('done'), state.get('executing')))})
 
 def do_unimplemented(service, state, insn):
     logging.info('Unimplemented: {}'.format(state.get('insn')))
     service.tx({'undefined': insn})
 def do_load(service, state, insn):
     if insn.get('peeked'):
-#        service.tx({'result': {
-#            'arrival': 1 + state.get('cycle'),
-#            'coreid': state.get('coreid'),
-#            'l1dc': {
-#                'addr': insn.get('operands').get('addr'),
-#                'size': insn.get('nbytes'),
-#                'data': insn.get('peeked'),
-#            },
-#        }})
         insn.update({'done': True})
         toolbox.report_stats(service, state, 'flat', 'load_serviced_by_preceding_queued_store')
 def do_store(service, state, insn):
     insn.update({'result': None})
-#    insn.update({'done': True})
 
 def do_execute(service, state):
     for _insn in state.get('pending_execute'):
@@ -179,19 +168,13 @@ def contains_load_data(ld, st):
 
 def do_tick(service, state, results, events):
     state.get('pending_execute').clear()
-    for _retire, _confirm in map(lambda y: (y.get('retire'), y.get('confirm')), filter(lambda x: x.get('retire') or x.get('confirm'), results)):
+    for _retire in map(lambda y: y.get('retire'), filter(lambda x: x.get('retire'), results)):
         if _retire:
             _ndx = next(filter(lambda x: _retire.get('iid') == state.get('pending_execute')[x].get('iid'), range(len(state.get('pending_execute')))), None)
             if not isinstance(_ndx, int): continue
             logging.info('_retire : {}'.format(_retire))
             service.tx({'info': 'retiring : {}'.format(_retire)})
             state.get('pending_execute')[_ndx].update({'retired': True})
-        if _confirm:
-            _ndx = next(filter(lambda x: _confirm.get('iid') == state.get('pending_execute')[x].get('iid'), range(len(state.get('pending_execute')))), None)
-            if not isinstance(_ndx, int): continue
-            logging.debug('_confirm : {}'.format(_confirm))
-            service.tx({'info': 'confirming : {}'.format(_confirm)})
-            state.get('pending_execute')[_ndx].update({'confirmed': True})
     for _l2 in filter(lambda x: x, map(lambda y: y.get('l2'), results)):
         _addr = _l2.get('addr')
         if _addr == state.get('operands').get('l2'):
@@ -232,14 +215,6 @@ def do_tick(service, state, results, events):
                     _insn.update({'peeked': _peeked})
                     logging.debug('_insn : {}'.format(_insn))
             state.get('pending_execute').append(_insn)
-#            # TODO: should this commit event be done in alu like everything else?
-#            service.tx({'event': {
-#                'arrival': 1 + state.get('cycle'),
-#                'coreid': state.get('coreid'),
-#                'commit': {
-#                    'insn': _insn,
-#                }
-#            }})
         elif 'cmd' in _lsu.keys() and 'purge' == _lsu.get('cmd'):
             state.get('l1dc').purge()
     service.tx({'info': 'state.executing       : {} ({})'.format(list(map(lambda x: [x.get('cmd'), x.get('iid'), x.get('operands').get('addr')], state.get('executing'))), len(state.get('executing')))})

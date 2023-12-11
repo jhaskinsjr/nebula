@@ -17,19 +17,6 @@ def do_commit(service, state):
     _commit = []
     for x in range(len(state.get('pending_commit'))):
         _insn = state.get('pending_commit')[x]
-        if 'confirmed' in _insn.keys() and not _insn.get('confirmed'):
-            service.tx({'info': 'confirming {}'.format(_insn)})
-            service.tx({'result': {
-                'arrival': 1 + state.get('cycle'),
-                'coreid': state.get('coreid'),
-                'confirm': {
-                    'cmd': _insn.get('cmd'),
-                    'iid': _insn.get('iid'),
-                    '%pc': _insn.get('%pc'),
-                },
-            }})
-            _insn.update({'confirmed': True})
-            continue
         if not all(map(lambda x: x.get('retired'), state.get('pending_commit')[:x])): continue
         if not any(map(lambda x: x in _insn.keys(), ['next_pc', 'ret_pc', 'result'])): break
         _commit.append(_insn)

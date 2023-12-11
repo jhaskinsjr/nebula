@@ -229,9 +229,6 @@ def do_rtype(service, state, insn):
     return insn, True
 def do_load(service, state, insn):
     _rs1 = insn.get('operands').get('rs1')
-    insn = {
-        **insn,
-    }
     insn.get('operands').update({'addr': insn.get('imm') + int.from_bytes(_rs1, 'little')})
     service.tx({'event': {
         'arrival': 1 + state.get('cycle'),
@@ -239,7 +236,6 @@ def do_load(service, state, insn):
         'lsu': {
             'insn': {
                 **insn,
-#                **{'confirmed': False},
             },
         }
     }})
@@ -247,10 +243,6 @@ def do_load(service, state, insn):
 def do_store(service, state, insn):
     _rs1 = insn.get('operands').get('rs1')
     _rs2 = insn.get('operands').get('rs2')
-    insn = {
-        **insn,
-#        **{'confirmed': False},
-    }
     insn.get('operands').update({'data': _rs2})
     insn.get('operands').update({'addr': insn.get('imm') + int.from_bytes(_rs1, 'little')})
     service.tx({'event': {
