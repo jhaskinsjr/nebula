@@ -1489,6 +1489,7 @@ if __name__ == '__main__':
     assert os.path.exists(args.dir), 'Cannot open dir, {}!'.format(args.dir)
     if not os.path.exists(os.path.join(args.dir, 'src')): os.mkdir(os.path.join(args.dir, 'src'))
     if not os.path.exists(os.path.join(args.dir, 'bin')): os.mkdir(os.path.join(args.dir, 'bin'))
+    assert os.path.exists('pipelines'), 'Cannot find pipelines/ directory; usage: python3 riscv/test.py ...'
     for _ in range(args.loop): [
         _harness.generate(args, n)
         for n in filter(lambda a: a in (map(lambda b: b.lower(), args.insns) if args.insns else _harness.tests.keys()), _harness.tests.keys())
