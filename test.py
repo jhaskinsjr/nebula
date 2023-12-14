@@ -298,11 +298,11 @@ class Harness:
 #        _const_1 &= (2**64) - 1
         _const_0 = list(int.from_bytes(struct.Struct('<I').pack(_const_0 << 12), 'little', signed=True).to_bytes(8, 'little', signed=True))
         _const_1 = list(int.from_bytes(struct.Struct('<i').pack(_const_1), 'little', signed=True).to_bytes(8, 'little', signed=True))
-        print('_const_0        : {:016x}'.format(int.from_bytes(_const_0, 'little')))
-        print('_const_1        : {:016x}'.format(int.from_bytes(_const_1, 'little')))
+#        print('_const_0        : {:016x}'.format(int.from_bytes(_const_0, 'little')))
+#        print('_const_1        : {:016x}'.format(int.from_bytes(_const_1, 'little')))
 #        _correct_answer = _const_0 & _const_1
         _correct_answer = list(map(lambda a, b: a & b, _const_0, _const_1))
-        print('_correct_answer : {:016x}'.format(int.from_bytes(_correct_answer, 'little')))
+#        print('_correct_answer : {:016x}'.format(int.from_bytes(_correct_answer, 'little')))
 #        _correct_answer = list(_correct_answer.to_bytes(8, 'little', signed=True))
         return _correct_answer, _assembly
     def c_addiw(self):
