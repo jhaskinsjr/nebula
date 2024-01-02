@@ -41,12 +41,12 @@ This will create a series of files:
 Any of the pipelines can restore state from a snapshot and resume execution,
 e.g.:
 
-    cd  ${HOME}/src/nebula/pipelines/oroblanco/
+    cd  ${HOME}/src/nebula/pipelines/pompia/
     python3 ../../launcher.py \
-        --log /tmp/oroblanco/sum \
+        --log /tmp/pompia/sum \
         --service ../../toolbox/stats.py:localhost:-1 \
-        --config stats:output_filename:/tmp/oroblanco/sum/stats.json \
-        mainmem:filename:/tmp/oroblanco/sum/mainmem.raw \
+        --config stats:output_filename:/tmp/pompia/sum/stats.json \
+        mainmem:filename:/tmp/pompia/sum/mainmem.raw \
         mainmem:capacity:$(( 2**32 )) \
         --restore /tmp/amanatsu/sum/mainmem.raw.000000000000900.snapshot \
         -- \
@@ -55,13 +55,13 @@ e.g.:
 
 Note: (1) the `--restore` parameter is included; and (2) the command that
 was executed to create the snapshots (`../../examples/bin/sum 2 3 5 7`...) is
-omitted. In this example, the Oroblanco pipeline should return
+omitted. In this example, the Pompia pipeline should return
 
     129
 
-On my laptop, resuming from this snapshot, Oroblanco finishes executing in
+On my laptop, resuming from this snapshot, Pompia finishes executing in
 a little more than 8 minutes, whereas executing the same command line
-end-to-end, Oroblanco requires more than 11 minutes.
+end-to-end requires more than 11 minutes.
 
 ### What Is An Amanatsu?
 

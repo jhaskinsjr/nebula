@@ -15,38 +15,6 @@ l1ic_size.exec:
 
 ```
 {
-    "pipelines/lime": {
-        "config": {
-            "watchdog:result_name": ["retire"],
-            "watchdog:result_cycles": [1000],
-            "fetch:l1ic_nsets": [16, 64],
-            "fetch:l1ic_nways": [2, 4],
-            "fetch:l1ic_nbytesperblock": [16, 32],
-            "fetch:l1ic_evictionpolicy": ["random", "lru"],
-            "l2:l2_nbytesperblock": [64],
-            "mainmem:capacity": [4297967296]
-        },
-        "max_cycles": 100000,
-        "script": "localhost.nebula",
-        "service": ["implementation/mainmem.py:localhost:-1"],
-        "command": "../../examples/bin/sum 2 3 -5 7"
-    },
-    "pipelines/oroblanco": {
-        "config": {
-            "watchdog:result_name": ["retire"],
-            "watchdog:result_cycles": [1000],
-            "fetch:l1ic_nsets": [16, 64],
-            "fetch:l1ic_nways": [2, 4],
-            "fetch:l1ic_nbytesperblock": [16, 32],
-            "fetch:l1ic_evictionpolicy": ["random", "lru"],
-            "l2:l2_nbytesperblock": [64],
-            "mainmem:capacity": [4297967296]
-        },
-        "max_cycles": 100000,
-        "script": "localhost.nebula",
-        "service": ["implementation/mainmem.py:localhost:-1"],
-        "command": "../../examples/bin/sum 2 3 -5 7"
-    },
     "pipelines/pompia": {
         "config": {
             "watchdog:result_name": ["retire"],
@@ -84,8 +52,7 @@ l1ic_size.exec:
 }
 ```
 
-This script spawns runs of four pipelines: Lime, Oroblanco, Pompia,
-and Rangpur, the only
+This script spawns runs of two pipelines: Pompia and Rangpur, the only
 pipelines that have L1 instruction caches. Separate runs will be spawned
 for the cross product of two configurations of the number of sets (16 or
 64), the number of ways (2 or 4), the number of bytes/block (16 or 32),

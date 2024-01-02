@@ -48,7 +48,7 @@ The script is comprised of commands:
     cycle                           print the cycle count to stdout
     register set A B                set register A to value B
     run                             begin execution
-    service A:B:C:D                 stage service A on machine B, connecting via SSH port C as a part of core D
+    service A:B:C:D                 stage service A on machine B, connecting via SSH port C, as a part of core D (where D = -1 measure visible to all cores)
     spawn                           execute all staged services
     state                           print launcher's state (i.e., variables, etc) to stdout
     shutdown                        send shutdown signal to services, exit launcher
