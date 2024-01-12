@@ -9,13 +9,13 @@ Consider the following Pompia `.nebula` file (modified from localhost.nebula)
 that spawns services on several different machines on my network:
 
     # Sample distributed Nebula script
-    service implementation/regfile.py:picard.local:0   # not run on localhost!
-    service implementation/fetch.py:riker.local:0      # not run on localhost!
-    service implementation/decode.py:laforge.local:0   # not run on localhost!
-    service implementation/alu.py:data.local:0         # not run on localhost!
-    service implementation/lsu.py:worf.local:0         # not run on localhost!
-    service implementation/commit.py:troi.local:0      # not run on localhost!
-    service implementation/l2.py:crusher.local:0       # not run on localhost!
+    service implementation/regfile.py:picard.local:22:0   # not run on localhost!
+    service implementation/fetch.py:riker.local:22:0      # not run on localhost!
+    service implementation/decode.py:laforge.local:22:0   # not run on localhost!
+    service implementation/alu.py:data.local:22:0         # not run on localhost!
+    service implementation/lsu.py:worf.local:22:0         # not run on localhost!
+    service implementation/commit.py:troi.local:22:0      # not run on localhost!
+    service implementation/l2.py:crusher.local:22:0       # not run on localhost!
     spawn
     config mainmem:peek_latency_in_cycles 25
     config fetch:l1ic_nsets 16
