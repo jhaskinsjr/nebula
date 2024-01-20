@@ -1,1 +1,6 @@
 *.pyc
+tmp
+objdump
+snapshots
+MongoDB_Data_Analysis.ipynb
+elf.py
