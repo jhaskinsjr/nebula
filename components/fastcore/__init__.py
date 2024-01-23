@@ -193,7 +193,7 @@ class FastCore:
         _operands = {
             'rs1': self.getregister(self.regfile, insn.get('rs1')),
         }
-        _next_pc, _ret_pc = riscv.execute.jalr(insn.get('%pc'), insn.get('imm'), _operands.get('rs1'), insn.get('size'))
+        _next_pc, _ret_pc = riscv.execute.jalr(insn.get('%pc'), _operands.get('rs1'), insn.get('imm'), insn.get('size'))
         self.setregister(self.regfile, '%pc', _next_pc)
         self.setregister(self.regfile, insn.get('rd'), _ret_pc)
         return {

@@ -27,7 +27,7 @@ def jal(pc, imm, sz):
         riscv.constants.integer_to_list_of_bytes(imm + int.from_bytes(pc, 'little'), 64, 'little'),
         riscv.constants.integer_to_list_of_bytes(sz + int.from_bytes(pc, 'little'), 64, 'little'),
     ) # next_pc, ret_pc
-def jalr(pc, imm, rs1, sz):
+def jalr(pc, rs1, imm, sz):
     return (
         riscv.constants.integer_to_list_of_bytes(imm + int.from_bytes(rs1, 'little'), 64, 'little'),
         riscv.constants.integer_to_list_of_bytes(sz + int.from_bytes(pc, 'little'), 64, 'little'),

@@ -94,7 +94,7 @@ def do_jal(service, state, insn):
     return insn, True
 def do_jalr(service, state, insn):
     _rs1 = insn.get('operands').get('rs1')
-    _next_pc, _ret_pc = riscv.execute.jalr(insn.get('%pc'), insn.get('imm'), _rs1, insn.get('size'))
+    _next_pc, _ret_pc = riscv.execute.jalr(insn.get('%pc'), _rs1, insn.get('imm'), insn.get('size'))
     _taken = (int.from_bytes(insn.get('%pc'), 'little') + insn.get('size')) != int.from_bytes(_next_pc, 'little') 
     # _taken rather than using the return value since,
     # in a pathological case, it's possible to jump

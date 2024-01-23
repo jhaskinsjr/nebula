@@ -92,7 +92,7 @@ def do_jalr(service, state, insn):
         }})
     if not isinstance(state.get('operands').get('rs1'), list):
         return
-    _next_pc, _ret_pc = riscv.execute.jalr(state.get('%pc'), insn.get('imm'), state.get('operands').get('rs1'), insn.get('size'))
+    _next_pc, _ret_pc = riscv.execute.jalr(state.get('%pc'), state.get('operands').get('rs1'), insn.get('imm'), insn.get('size'))
     service.tx({'event': {
         'arrival': 1 + state.get('cycle'),
         'coreid': state.get('coreid'),
