@@ -1,0 +1,9 @@
+# Sample Nebula script
+service implementation/basicblockcore.py:localhost:22:0
+service implementation/watchdog.py:localhost:22:0
+spawn
+config mainmem:filename /tmp/mainmem.raw
+config mainmem:capacity 4294967296
+config stats:output_filename /tmp/stats.json
+run
+shutdown

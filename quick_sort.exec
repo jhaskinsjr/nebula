@@ -19,6 +19,14 @@
         "service": ["implementation/mainmem.py:localhost:22:-1"],
         "command": "../../examples/bin/sort 2 -3 5"
     },
+    "pipelines/jabara": {
+        "config": {
+            "mainmem:capacity": [4297967296]
+        },
+        "max_cycles": 500000,
+        "script": "localhost.nebula",
+        "command": "../../examples/bin/sort 2 -3 5"
+    },
     "pipelines/pompia": {
         "config": {
             "watchdog:result_name": ["retire"],

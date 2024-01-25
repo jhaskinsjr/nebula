@@ -19,6 +19,14 @@
         "service": ["implementation/mainmem.py:localhost:22:-1"],
         "command": "../../examples/bin/negate 2"
     },
+    "pipelines/jabara": {
+        "config": {
+            "mainmem:capacity": [4294967296]
+        },
+        "max_cycles": 100000,
+        "script": "localhost.nebula",
+        "command": "../../examples/bin/negate 2"
+    },
     "pipelines/pompia": {
         "config": {
             "watchdog:result_name": ["retire"],

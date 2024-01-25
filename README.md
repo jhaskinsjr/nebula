@@ -1,6 +1,6 @@
 # Nebula: The Cloud-Native Microarchitecture Simulation Framework!
 
-Nebula (formerly: μService-SIMulator (ussim)) is a framework for
+Nebula is a framework for
 developing cycle-accurate microprocessor simulators comprised of multiple,
 independent processes that communicate over a network.
 

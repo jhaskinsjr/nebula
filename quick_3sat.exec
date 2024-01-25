@@ -7,6 +7,14 @@
         "script": "localhost.nebula",
         "restore": "../../snapshots/3sat/mainmem.raw.000000000480000.snapshot"
     },
+    "pipelines/jabara": {
+        "config": {
+            "mainmem:capacity": [4294967296]
+        },
+        "max_cycles": 1000000,
+        "script": "localhost.nebula",
+        "restore": "../../snapshots/3sat/mainmem.raw.000000000480000.snapshot"
+    },
     "pipelines/pompia": {
         "config": {
             "watchdog:result_name": ["retire"],
