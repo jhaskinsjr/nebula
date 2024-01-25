@@ -148,7 +148,7 @@ class FastCore:
                 logging.info('_decoded  : {}'.format(_decoded))
                 break
             _result = self.opcode.get(_insn.get('cmd'), self.do_unimplemented)(_insn, self.service, self.state())
-            logging.info('_result   : {}'.format(_result))
+#            logging.info('_result   : {}'.format(_result))
             self.update({'instructions_committed': 1 + self.get('instructions_committed')})
             if 'shutdown' in _result.keys(): break
         logging.info('registers : {}'.format(self.regfile.registers))
