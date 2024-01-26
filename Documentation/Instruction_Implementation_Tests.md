@@ -9,7 +9,7 @@ test harness, `test.py`.
 An example execution would be elucidative:
 
     mkdir -p /tmp/nebula/test
-    python3 ./test.py \
+    python3 riscv/test.py \
         --loop 5
         --insns addi slli c.addi16sp \
         -- \
@@ -24,7 +24,8 @@ if this parameter is omitted, the tests are performed once.
 The `--insns` parameter gives the instructions whose implementations
 are to be tested; if this parameter is omitted, all of the instruction
 implementations are tested. Finally, the last three parameters tell:
-the network port to use, the location of the RISC-V cross compiler,
+the network port to use, the location of the RISC-V cross compiler
+(see: [Sample Binaries](./Sample_Binaries.md)),
 and the location of the output directory, respectively.
 
 The test harness creates a small assembly language program with
