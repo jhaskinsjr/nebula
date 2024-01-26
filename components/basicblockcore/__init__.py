@@ -169,6 +169,9 @@ class BasicBlockCore:
             self.regfile = compose(*self.basicblockcache.get(_addr))(self.regfile)
             self.update({'instructions_committed': len(self.basicblockcache.get(_addr)) + self.get('instructions_committed')})
             if -1 == int.from_bytes(self.getregister(self.regfile, '%pc'), 'little', signed=True): break
+        logging.info('registers : {}'.format(self.regfile.registers))
+        logging.info('state.instructions_committed    : {}'.format(self.get('instructions_committed')))
+        logging.info('_initial_instructions_committed : {}'.format(_initial_instructions_committed))
         _increment = self.get('instructions_committed') - _initial_instructions_committed
         toolbox.report_stats(self.service, self.state(), 'flat', 'instructions_committed', **{'increment': _increment})
         self.service.tx({'committed': _increment})
