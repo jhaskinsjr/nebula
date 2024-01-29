@@ -88,17 +88,28 @@ class BasicBlockCore:
             'DIVUW': riscv.execute.divuw,
             'REMW': riscv.execute.remw,
             'REMUW': riscv.execute.remuw,
-            'LD': self.do_load,
-            'LW': self.do_load,
-            'LH': self.do_load,
-            'LB': self.do_load,
-            'LWU': self.do_load,
-            'LHU': self.do_load,
-            'LBU': self.do_load,
-            'SD': self.do_store,
-            'SW': self.do_store,
-            'SH': self.do_store,
-            'SB': self.do_store,
+#            'LD': self.do_load,
+#            'LW': self.do_load,
+#            'LH': self.do_load,
+#            'LB': self.do_load,
+#            'LWU': self.do_load,
+#            'LHU': self.do_load,
+#            'LBU': self.do_load,
+            'LD': self.mk_load('LD'),
+            'LW': self.mk_load('LW'),
+            'LH': self.mk_load('LH'),
+            'LB': self.mk_load('LB'),
+            'LWU': self.mk_load('LWU'),
+            'LHU': self.mk_load('LHU'),
+            'LBU': self.mk_load('LBU'),
+#            'SD': self.do_store,
+#            'SW': self.do_store,
+#            'SH': self.do_store,
+#            'SB': self.do_store,
+            'SD': self.mk_store('SD'),
+            'SW': self.mk_store('SW'),
+            'SH': self.mk_store('SH'),
+            'SB': self.mk_store('SB'),
             'NOP': lambda *args: None,
             'SLLI': riscv.execute.slli,
             'SRLI': riscv.execute.srli,
@@ -192,6 +203,8 @@ class BasicBlockCore:
                 (nibble.get('insn').get('size') if nibble.get('insn').get('cmd') in riscv.constants.BRANCHES + riscv.constants.JUMPS else None),
             ]
         )))
+#        logging.info('nibble.insn : {}'.format(nibble.get('insn')))
+#        logging.info('_args       : {}'.format(_args))
         _result = nibble.get('op')(*_args)
         if -1 == int.from_bytes(self.getregister(regs, '%pc'), 'little', signed=True): return regs
         self.setregister(regs, '%pc', riscv.constants.integer_to_list_of_bytes(nibble.get('insn').get('size') + int.from_bytes(self.getregister(regs, '%pc'), 'little'), 64, 'little'))
@@ -216,36 +229,54 @@ class BasicBlockCore:
         logging.info('Unimplemented: {}'.format(state.get('pending_execute')))
         service.tx({'undefined': insn})
         return None
-    def do_load(self, insn, regs, *args, **kwargs):
-        _operands = {
-            'rs1': self.getregister(regs, insn.get('rs1')),
-        }
-        _addr = insn.get('imm') + int.from_bytes(_operands.get('rs1'), 'little')
-        _fetched  = self.mainmem.peek(_addr, insn.get('nbytes'), **{'coreid': self.get('coreid')})
-        _fetched += [-1] * (8 - len(_fetched))
-        return { # HACK: This is 100% little-endian-specific
-            'LD': _fetched,
-            'LW': _fetched[:4] + [(0xff if ((_fetched[3] >> 7) & 0b1) else 0)] * 4,
-            'LH': _fetched[:2] + [(0xff if ((_fetched[1] >> 7) & 0b1) else 0)] * 6,
-            'LB': _fetched[:1] + [(0xff if ((_fetched[0] >> 7) & 0b1) else 0)] * 7,
-            'LWU': _fetched[:4] + [0] * 4,
-            'LHU': _fetched[:2] + [0] * 6,
-            'LBU': _fetched[:1] + [0] * 7,
-        }.get(insn.get('cmd'))
-    def do_store(self, insn, regs, *args, **kwargs):
-        _operands = {
-            'rs1': self.getregister(regs, insn.get('rs1')),
-            'rs2': self.getregister(regs, insn.get('rs2')),
-        }
-        _data = _operands.get('rs2')
-        _data = {
-            'SD': _data,
-            'SW': _data[:4],
-            'SH': _data[:2],
-            'SB': _data[:1],
-        }.get(insn.get('cmd'))
-        _addr = insn.get('imm') + int.from_bytes(_operands.get('rs1'), 'little')
-        self.mainmem.poke(_addr, insn.get('nbytes'), _data, **{'coreid': self.get('coreid')})
+    def mk_load(self, cmd):
+        fetch = lambda n, r: self.mainmem.peek(n.get('imm') + int.from_bytes(self.getregister(r, n.get('rs1')), 'little'), n.get('nbytes'), **{'coreid': self.get('coreid')})
+        return {
+            'LD': lambda n, r, *a, **k: fetch(n, r),
+            'LW': lambda n, r, *a, **k: fetch(n, r) + [(0xff if ((fetch(n, r)[3] >> 7) & 0b1) else 0)] * 4,
+            'LH': lambda n, r, *a, **k: fetch(n, r) + [(0xff if ((fetch(n, r)[1] >> 7) & 0b1) else 0)] * 6,
+            'LB': lambda n, r, *a, **k: fetch(n, r) + [(0xff if ((fetch(n, r)[0] >> 7) & 0b1) else 0)] * 7,
+            'LWU': lambda n, r, *a, **k: fetch(n, r) + [0] * 4,
+            'LHU': lambda n, r, *a, **k: fetch(n, r) + [0] * 6,
+            'LBU': lambda n, r, *a, **k: fetch(n, r) + [0] * 7,
+        }.get(cmd)
+#    def do_load(self, insn, regs, *args, **kwargs):
+#        _operands = {
+#            'rs1': self.getregister(regs, insn.get('rs1')),
+#        }
+#        _addr = insn.get('imm') + int.from_bytes(_operands.get('rs1'), 'little')
+#        _fetched  = self.mainmem.peek(_addr, insn.get('nbytes'), **{'coreid': self.get('coreid')})
+#        _fetched += [-1] * (8 - len(_fetched))
+#        return { # HACK: This is 100% little-endian-specific
+#            'LD': _fetched,
+#            'LW': _fetched[:4] + [(0xff if ((_fetched[3] >> 7) & 0b1) else 0)] * 4,
+#            'LH': _fetched[:2] + [(0xff if ((_fetched[1] >> 7) & 0b1) else 0)] * 6,
+#            'LB': _fetched[:1] + [(0xff if ((_fetched[0] >> 7) & 0b1) else 0)] * 7,
+#            'LWU': _fetched[:4] + [0] * 4,
+#            'LHU': _fetched[:2] + [0] * 6,
+#            'LBU': _fetched[:1] + [0] * 7,
+#        }.get(insn.get('cmd'))
+    def mk_store(self, cmd):
+        return {
+            'SD': lambda n, r, *a, **k: self.mainmem.poke(n.get('imm') + int.from_bytes(self.getregister(r, n.get('rs1')), 'little'), n.get('nbytes'), self.getregister(r, n.get('rs2')), **{'coreid': self.get('coreid')}),
+            'SW': lambda n, r, *a, **k: self.mainmem.poke(n.get('imm') + int.from_bytes(self.getregister(r, n.get('rs1')), 'little'), n.get('nbytes'), self.getregister(r, n.get('rs2'))[:4], **{'coreid': self.get('coreid')}),
+            'SH': lambda n, r, *a, **k: self.mainmem.poke(n.get('imm') + int.from_bytes(self.getregister(r, n.get('rs1')), 'little'), n.get('nbytes'), self.getregister(r, n.get('rs2'))[:2], **{'coreid': self.get('coreid')}),
+            'SB': lambda n, r, *a, **k: self.mainmem.poke(n.get('imm') + int.from_bytes(self.getregister(r, n.get('rs1')), 'little'), n.get('nbytes'), self.getregister(r, n.get('rs2'))[:1], **{'coreid': self.get('coreid')}),
+        }.get(cmd)
+#    def do_store(self, insn, regs, *args, **kwargs):
+#        _operands = {
+#            'rs1': self.getregister(regs, insn.get('rs1')),
+#            'rs2': self.getregister(regs, insn.get('rs2')),
+#        }
+#        _data = _operands.get('rs2')
+#        _data = {
+#            'SD': _data,
+#            'SW': _data[:4],
+#            'SH': _data[:2],
+#            'SB': _data[:1],
+#        }.get(insn.get('cmd'))
+#        _addr = insn.get('imm') + int.from_bytes(_operands.get('rs1'), 'little')
+#        self.mainmem.poke(_addr, insn.get('nbytes'), _data, **{'coreid': self.get('coreid')})
     def do_ecall(self, insn, regs, *args, **kwargs):
         _operands = {
             'syscall_num': self.getregister(regs, 17),
