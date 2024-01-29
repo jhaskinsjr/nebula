@@ -390,7 +390,7 @@ if '__main__' == __name__:
                 _mainmem.update({'cycle': v.get('cycle')})
                 state.update({'cycle': v.get('cycle')})
                 _do_snapshot = 0 < len(state.get('snapshots'))
-                _instruction_count = (10**5 if not len(state.get('snapshots')) else state.get('snapshots').pop(0) - state.get('instructions_committed'))
+                _instruction_count = (10**7 if not len(state.get('snapshots')) else state.get('snapshots').pop(0) - state.get('instructions_committed'))
                 if not state.get('shutdown'):
                     state.execute(_instruction_count)
                     if _do_snapshot: _snapshot_filename = _mainmem.snapshot({
