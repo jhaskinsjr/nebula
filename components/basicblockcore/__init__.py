@@ -219,23 +219,29 @@ class BasicBlockCore:
         service.tx({'undefined': insn})
         return None
     def mk_load(self, cmd):
-        fetch = lambda n, r: self.mainmem.peek(n.get('imm') + int.from_bytes(self.getregister(r, n.get('rs1')), 'little'), n.get('nbytes'), **{'coreid': self.get('coreid')})
-        return {
-            'LD': lambda n, r, *a, **k: fetch(n, r),
-            'LW': lambda n, r, *a, **k: fetch(n, r) + [(0xff if ((fetch(n, r)[3] >> 7) & 0b1) else 0)] * 4,
-            'LH': lambda n, r, *a, **k: fetch(n, r) + [(0xff if ((fetch(n, r)[1] >> 7) & 0b1) else 0)] * 6,
-            'LB': lambda n, r, *a, **k: fetch(n, r) + [(0xff if ((fetch(n, r)[0] >> 7) & 0b1) else 0)] * 7,
-            'LWU': lambda n, r, *a, **k: fetch(n, r) + [0] * 4,
-            'LHU': lambda n, r, *a, **k: fetch(n, r) + [0] * 6,
-            'LBU': lambda n, r, *a, **k: fetch(n, r) + [0] * 7,
-        }.get(cmd)
+        def fetcher(cmd, n, r, *a, **k):
+            _addr = n.get('imm') + int.from_bytes(self.getregister(r, n.get('rs1')), 'little')
+            _fetched = self.mainmem.peek(_addr, n.get('nbytes'), **{'coreid': self.get('coreid')})
+            return _fetched + [(0xff if cmd in ['LW', 'LH', 'LB'] and ((_fetched[{'LW': 3, 'LH': 1, 'LB': 0}.get(cmd, False)] >> 7) & 0b1) else 0)] * {'LD': 0, 'LW': 4, 'LH': 6, 'LB': 7, 'LWU': 4, 'LHU': 6, 'LBU': 7}.get(cmd)
+        return functools.partial(fetcher, cmd)
+#        fetch = lambda n, r: self.mainmem.peek(n.get('imm') + int.from_bytes(self.getregister(r, n.get('rs1')), 'little'), n.get('nbytes'), **{'coreid': self.get('coreid')})
+#        return {
+#            'LD': lambda n, r, *a, **k: fetch(n, r),
+#            'LW': lambda n, r, *a, **k: fetch(n, r) + [(0xff if ((fetch(n, r)[3] >> 7) & 0b1) else 0)] * 4,
+#            'LH': lambda n, r, *a, **k: fetch(n, r) + [(0xff if ((fetch(n, r)[1] >> 7) & 0b1) else 0)] * 6,
+#            'LB': lambda n, r, *a, **k: fetch(n, r) + [(0xff if ((fetch(n, r)[0] >> 7) & 0b1) else 0)] * 7,
+#            'LWU': lambda n, r, *a, **k: fetch(n, r) + [0] * 4,
+#            'LHU': lambda n, r, *a, **k: fetch(n, r) + [0] * 6,
+#            'LBU': lambda n, r, *a, **k: fetch(n, r) + [0] * 7,
+#        }.get(cmd)
     def mk_store(self, cmd):
-        return {
-            'SD': lambda n, r, *a, **k: self.mainmem.poke(n.get('imm') + int.from_bytes(self.getregister(r, n.get('rs1')), 'little'), n.get('nbytes'), self.getregister(r, n.get('rs2')), **{'coreid': self.get('coreid')}),
-            'SW': lambda n, r, *a, **k: self.mainmem.poke(n.get('imm') + int.from_bytes(self.getregister(r, n.get('rs1')), 'little'), n.get('nbytes'), self.getregister(r, n.get('rs2'))[:4], **{'coreid': self.get('coreid')}),
-            'SH': lambda n, r, *a, **k: self.mainmem.poke(n.get('imm') + int.from_bytes(self.getregister(r, n.get('rs1')), 'little'), n.get('nbytes'), self.getregister(r, n.get('rs2'))[:2], **{'coreid': self.get('coreid')}),
-            'SB': lambda n, r, *a, **k: self.mainmem.poke(n.get('imm') + int.from_bytes(self.getregister(r, n.get('rs1')), 'little'), n.get('nbytes'), self.getregister(r, n.get('rs2'))[:1], **{'coreid': self.get('coreid')}),
-        }.get(cmd)
+        return lambda n, r, *a, **k: self.mainmem.poke(n.get('imm') + int.from_bytes(self.getregister(r, n.get('rs1')), 'little'), n.get('nbytes'), self.getregister(r, n.get('rs2'))[:{'SD': 8, 'SW': 4, 'SH': 2, 'SB': 1}.get(cmd)], **{'coreid': self.get('coreid')})
+#        return {
+#            'SD': lambda n, r, *a, **k: self.mainmem.poke(n.get('imm') + int.from_bytes(self.getregister(r, n.get('rs1')), 'little'), n.get('nbytes'), self.getregister(r, n.get('rs2')), **{'coreid': self.get('coreid')}),
+#            'SW': lambda n, r, *a, **k: self.mainmem.poke(n.get('imm') + int.from_bytes(self.getregister(r, n.get('rs1')), 'little'), n.get('nbytes'), self.getregister(r, n.get('rs2'))[:4], **{'coreid': self.get('coreid')}),
+#            'SH': lambda n, r, *a, **k: self.mainmem.poke(n.get('imm') + int.from_bytes(self.getregister(r, n.get('rs1')), 'little'), n.get('nbytes'), self.getregister(r, n.get('rs2'))[:2], **{'coreid': self.get('coreid')}),
+#            'SB': lambda n, r, *a, **k: self.mainmem.poke(n.get('imm') + int.from_bytes(self.getregister(r, n.get('rs1')), 'little'), n.get('nbytes'), self.getregister(r, n.get('rs2'))[:1], **{'coreid': self.get('coreid')}),
+#        }.get(cmd)
     def do_ecall(self, insn, regs, *args, **kwargs):
         _operands = {
             'syscall_num': self.getregister(regs, 17),
