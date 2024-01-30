@@ -7,6 +7,9 @@ fetch-decode-execute loop for each instruction, Jabara creates a cache of
 basic blocks so that the fetch- and decode steps are only performed once
 for each instruction;
 see: [pipelines/jabara/implemnetation/basicblockcore.py](implementation/basicblockcore.py).
+On my laptop, a Lenovo ThinkBook with an Core i7-8565U and 32 GB of RAM,
+running Ubuntu 22.04, Jabara executes at a rate of approximately
+24,000 instructions/second.
 
 Because of its speed, Jabara is ideally suited for capturing snapshots
 that can be resumed by Jabara, or any of the other pipeline models.

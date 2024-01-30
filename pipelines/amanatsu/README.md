@@ -5,7 +5,10 @@ merely fetches and executes instructions as rapidly as possible, updating
 the register file and main memory as it does. Instead of spawning separate
 processes for the register file and main memory, each is instantiated as
 an object directly inside the main execution module
-(see: [pipelines/amanatsu/implemnetation/fastcore.py)](implementation/fastcore.py).
+(see: [pipelines/amanatsu/implemnetation/fastcore.py](implementation/fastcore.py)).
+On my laptop, a Lenovo ThinkBook with an Core i7-8565U and 32 GB of RAM,
+running Ubuntu 22.04, Amanatsu executes at a rate of approximately
+9,000 instructions/second.
 
 Because of its speed, Amanatsu is ideally suited for capturing snapshots
 that can be resumed by Amanatsu, or any of the other pipeline models.
