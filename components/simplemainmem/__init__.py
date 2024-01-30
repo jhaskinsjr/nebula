@@ -177,11 +177,8 @@ class SimpleMainMemory:
         # of N little-endian-formatted bytes -> list(X.to_bytes(N, 'little'))
         logging.debug('do_poke({:08x}, ..., {}) -> {:08x}'.format(addr, kwargs, addr))
         _addr = (self.mmu.translate(addr, kwargs.get('coreid')) if not kwargs.get('physical') else addr)
-#        _fd = self.get('fd')
         try:
             self.mm[_addr:_addr+len(data)] = bytes(data) 
-#            os.lseek(_fd, _addr, os.SEEK_SET)
-#            os.write(_fd, bytes(data))
         except:
             pass # FIXME: Something other than ignoring the issue should happen here!
     def poke(self, addr, size, data, **kwargs):
@@ -208,11 +205,8 @@ class SimpleMainMemory:
         assert isinstance(kwargs.get('coreid'), int)
         _addr = (self.mmu.translate(addr, kwargs.get('coreid')) if not kwargs.get('physical') else addr)
         logging.debug('do_peek({}, {}, {}) -> {:08x}'.format(addr, size, kwargs, _addr))
-#        _fd = self.get('fd')
         try:
             return list(self.mm[_addr:_addr + size])
-#            os.lseek(_fd, _addr, os.SEEK_SET)
-#            return list(os.read(_fd, size))
         except:
             return []
     def peek(self, addr, size, **kwargs):
