@@ -2,6 +2,7 @@
 
 import os
 import sys
+import mmap
 import argparse
 import itertools
 import logging
@@ -36,6 +37,7 @@ class SimpleMainMemory:
         self.running = False
         self.ack = True
         self.fd = None
+        self.mm = None
         self.snapshots = None
         self.config = {
             'filename': None,
@@ -45,6 +47,7 @@ class SimpleMainMemory:
     def boot(self):
         self.fd = os.open(self.get('config').get('filename'), os.O_RDWR|os.O_CREAT)
         os.ftruncate(self.get('fd'), self.get('config').get('capacity'))
+        self.mm = mmap.mmap(self.fd, self.get('config').get('capacity'))
     def loadbin(self, coreid, start_symbol, sp, pc, binary, *args):
         logging.info('loadbin(): binary : {} ({})'.format(binary, type(binary)))
         logging.info('loadbin(): args   : {} ({})'.format(args, type(args)))
@@ -174,10 +177,11 @@ class SimpleMainMemory:
         # of N little-endian-formatted bytes -> list(X.to_bytes(N, 'little'))
         logging.debug('do_poke({:08x}, ..., {}) -> {:08x}'.format(addr, kwargs, addr))
         _addr = (self.mmu.translate(addr, kwargs.get('coreid')) if not kwargs.get('physical') else addr)
-        _fd = self.get('fd')
+#        _fd = self.get('fd')
         try:
-            os.lseek(_fd, _addr, os.SEEK_SET)
-            os.write(_fd, bytes(data))
+            self.mm[_addr:_addr+len(data)] = bytes(data) 
+#            os.lseek(_fd, _addr, os.SEEK_SET)
+#            os.write(_fd, bytes(data))
         except:
             pass # FIXME: Something other than ignoring the issue should happen here!
     def poke(self, addr, size, data, **kwargs):
@@ -204,10 +208,11 @@ class SimpleMainMemory:
         assert isinstance(kwargs.get('coreid'), int)
         _addr = (self.mmu.translate(addr, kwargs.get('coreid')) if not kwargs.get('physical') else addr)
         logging.debug('do_peek({}, {}, {}) -> {:08x}'.format(addr, size, kwargs, _addr))
-        _fd = self.get('fd')
+#        _fd = self.get('fd')
         try:
-            os.lseek(_fd, _addr, os.SEEK_SET)
-            return list(os.read(_fd, size))
+            return list(self.mm[_addr:_addr + size])
+#            os.lseek(_fd, _addr, os.SEEK_SET)
+#            return list(os.read(_fd, size))
         except:
             return []
     def peek(self, addr, size, **kwargs):
@@ -301,4 +306,5 @@ if '__main__' == __name__:
                 state.restore(v.get('snapshot_filename'))
                 state.service.tx({'ack': {'cycle': state.get('cycle')}})
         if state.get('ack') and state.get('running'): state.service.tx({'ack': {'cycle': state.get('cycle')}})
+    state.get('mm').close()
     os.close(state.get('fd'))
