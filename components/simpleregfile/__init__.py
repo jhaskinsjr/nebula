@@ -60,7 +60,8 @@ class SimpleRegisterFile:
                 logging.fatal('_cmd : {}'.format(_cmd))
                 assert False
     def setregister(self, registers, reg, val):
-        return {x: y for x, y in tuple(registers.items()) + ((reg, val), (0, riscv.constants.integer_to_list_of_bytes(0, 64, 'little')))}
+        registers.update({reg: (val if 0 != reg else riscv.constants.integer_to_list_of_bytes(0, 64, 'little'))})
+        return registers
     def getregister(self, registers, reg):
         return registers.get(reg, None)
 
