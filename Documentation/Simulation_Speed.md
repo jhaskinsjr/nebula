@@ -12,8 +12,8 @@ simulation snapshots for subsequent execution by the cycle-accurate pipeline
 models.
 
 The Pompia sample pipeline, which *does* perform cycle-accurate simulation,
-executes at a rate of about 40 simulated cycles per real-world second at a
-steady state system load of less than 10%. While 40 cycles/second is not
+executes at a rate of about 45 simulated cycles per real-world second at a
+steady state system load of less than 10%. While 45 cycles/second is not
 blazingly fast (see: [Software Architecture](./Software_Architecture.md)), I
 view the flexibilty enabeld by Nebula's software architecture as a
 more-than-worthwhile tradeoff. Also, consider that with the CPU utilization
@@ -23,10 +23,29 @@ microarchitecture research requires large state-space searches, with many
 executions of the same benchmarks under different parameters (e.g., cache
 capacity, cache replacement algorithm, branch predictor).
 
-Using the `executor.py` tool, I
-was able to execute a large state space exploration on my laptop
-comprised of approximately 6,200 simulations that ran for roughly 6,500
-cycles apiece in just under 3 hours with `--max_cpu_utilization` set to 90
-(so that I could continue to use my laptop for other tasks); that is a very
-respectable aggregate simulation rate of roughly 3,700 cycles/second on a
+Using the `executor.py` tool
+(see: [Large-Scale Simulations](./Large-Scale_Studies.md)), I executed a
+large state space exploration on my laptop comprised of 72 simulations
+(with different configurations of the
+[Pompia](../pipelines/pompia/README.md),
+[Rangpur](../pipelines/rangpur/README.md), and
+[Shangjuan](../pipelines/shangjuan/README.md) pipeline models) that ran for
+10,000s of cycles apiece in about 38 minutes with CPU utilization from
+Nebula processes capped at 90% (so that I could continue to use my laptop
+for other work). The result was a very respectable aggregate simulation
+rate of roughly 465 simulated cycles per real-world second on a
 consumer-grade laptop!
+
+## Effect of SMT
+
+Disabling SMT
+(see: https://serverfault.com/questions/235825/disable-hyperthreading-from-within-linux-no-access-to-bios)
+made no significant difference in Nebula performance.
+
+## Effect of `tmpfs`
+
+I found on my laptop that using a `tmpfs`
+(see: https://www.kernel.org/doc/html/latest/filesystems/tmpfs.html)
+RAM-based file system for storing simulation artifacts (e.g.,
+`stats.json`, `mainmem.raw`) yielded a slight performance boost. Since my
+laptop has 32 GB of RAM, I created an 8 GB `tmpfs` file system.
