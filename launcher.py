@@ -34,7 +34,7 @@ def handler(conn, addr):
         try:
             msg = conn.recv(service.Service.MESSAGE_SIZE, socket.MSG_WAITALL)
             if not len(msg.strip()):
-                time.sleep(0.01)
+                time.sleep(0.001)
                 continue
             msg = json.loads(msg.decode('ascii'))
             logging.debug('{}: {}'.format(threading.current_thread().name, msg))
@@ -163,7 +163,7 @@ def restore(state, snapshot_filename):
 def waitforack(state):
     _ack = False
     while not _ack:
-        time.sleep(0.01)
+        time.sleep(0.001)
         logging.debug('state.ack : {} ({})'.format(state.get('ack'), len(state.get('ack'))))
         assert len(state.get('ack')) <= len(state.get('connections')), 'Something ACK\'d more than once!!!'
         _ack = len(state.get('ack')) == len(state.get('connections'))
