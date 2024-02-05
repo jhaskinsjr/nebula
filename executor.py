@@ -155,7 +155,7 @@ def do_exec_script(exec_script, sha, branch, now, **kwargs):
             _config = map(lambda x: ((x[0], False) if 'False' == x[1] else x), _config)
             _config = dict(_config)
             f.close()
-            while psutil.cpu_percent(2) > args.max_cpu_utilization: pass
+            while psutil.cpu_percent(interval=5) > args.max_cpu_utilization: pass
             _processes.append({
                 'process': launch(_cmdline, _runpath, _p, _script, timeout=args.timeout),
                 'cmdline': _cmdline,
