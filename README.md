@@ -125,6 +125,19 @@ about these topics and much more are covered in the links below.
 1. [Future Features](Documentation/Future_Features.md)
 
 
+# Latest Version
+
+The most recent tagged release is `v1.1.0` (as of 20240205), which builds
+upon `v1.0.0` by adding:
+
+* *new* [Jabara](pipelines/jabara/README.md) functional execution model
+* faster [Amanatsu](pipelines/amanatsu/README.md) functional execution model
+* faster `SimpleRegisterFile` (see: [components/simpleregfile/__init__.py](components/simpleregfile/__init__.py))
+* faster `SimpleMainMemory` (see: [components/simplemainmem/__init__.py](components/simplemainmem/__init__.py))
+* faster LOAD/STORE instruction execution in [Shangjuan](pipelines/shangjuan/README.md) cycle-accurate model
+* documentation updates and clarifications
+* miscellaneous bug fixes
+
 # Contact
 
 I am available to consult on the Nebula framework's use, development and
