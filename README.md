@@ -153,7 +153,7 @@ Git tag `v0.0.9` (20231214):
 # Contact
 
 I am available to consult on the Nebula framework's use, development and
-deploymnt, and microprocessor simulation generally.
+deployment, and microprocessor simulation generally.
 
 Email: john.haskins.jr@gmail.com |
 LinkedIn: https://www.linkedin.com/in/john-haskins-jr-925235a1/
