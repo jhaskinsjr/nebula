@@ -300,5 +300,6 @@ if '__main__' == __name__:
                 state.restore(v.get('snapshot_filename'))
                 state.service.tx({'ack': {'cycle': state.get('cycle')}})
         if state.get('ack') and state.get('running'): state.service.tx({'ack': {'cycle': state.get('cycle')}})
+    state.get('mm').flush()
     state.get('mm').close()
     os.close(state.get('fd'))
