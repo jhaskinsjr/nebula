@@ -141,7 +141,7 @@ Git tag `v1.0.0` (20240102):
 
 * removed deprecated pipeline examples Clementine, Lime, Oroblanco
 
-Git tag `v0.0.9` (20231214):
+Git tag `v0.9.0` (20231214):
 
 * updated [riscv/test.py](riscv/test.py)
 * adds SSH port specifier for services
