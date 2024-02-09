@@ -125,10 +125,9 @@ about these topics and much more are covered in the links below.
 1. [Future Features](Documentation/Future_Features.md)
 
 
-# Latest Version
+# Recent Revision History
 
-The most recent tagged release is `v1.1.0` (as of 20240205), which builds
-upon `v1.0.0` by adding:
+Git tag `v1.1.0` (20240205):
 
 * *new* [Jabara](pipelines/jabara/README.md) functional execution model
 * faster [Amanatsu](pipelines/amanatsu/README.md) functional execution model
@@ -136,7 +135,20 @@ upon `v1.0.0` by adding:
 * faster `SimpleMainMemory` (see: [components/simplemainmem/__init__.py](components/simplemainmem/__init__.py))
 * faster LOAD/STORE instruction execution in [Shangjuan](pipelines/shangjuan/README.md) cycle-accurate model
 * documentation updates and clarifications
-* miscellaneous bug fixes
+* updated Jupyter Notebook example
+
+Git tag `v1.0.0` (20240102):
+
+* removed deprecated pipeline examples Clementine, Lime, Oroblanco
+
+Git tag `v0.0.9` (20231214):
+
+* updated [riscv/test.py](riscv/test.py)
+* adds SSH port specifier for services
+* makes watchdog service default in all sample pipelines
+* adds `cycles_per_STORE`, `cycles_per_LOAD` counters
+* adds [examples/src/ldst/ldst.c](examples/src/ldst/ldst.c)
+* adds `alu:result_forwarding` option for [Shangjuan](pipelines/shangjuan/README.md) sample pipeline
 
 # Contact
 
