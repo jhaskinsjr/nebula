@@ -335,6 +335,7 @@ if __name__ == '__main__':
                                 'args': ((_binary,) + _args),
                             }
                         })
+                        register(state.get('connections'), _coreid, 'set', 1, hex(0))
                         register(state.get('connections'), _coreid, 'set', 2, hex(_sp))
                         register(state.get('connections'), _coreid, 'set', 4, '0xffff0000') # FIXME: is this necessary???
                         register(state.get('connections'), _coreid, 'set', 10, hex(1 + len(_args)))
