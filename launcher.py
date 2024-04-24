@@ -16,7 +16,6 @@ import service
 import riscv.constants
 
 def tx(conns, msg):
-    global state
     for c in conns: service.tx(c, msg)
 def handler(conn, addr):
     global state
