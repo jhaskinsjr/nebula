@@ -16,13 +16,16 @@ import service
 import riscv.constants
 
 def tx(conns, msg):
-    _message = {
-        str: lambda : json.dumps({'text': msg}),
-        dict: lambda : json.dumps(msg),
-    }.get(type(msg), lambda : json.dumps({'error': 'Undeliverable object'}))().encode('ascii')
-    assert service.Service.MESSAGE_SIZE >= len(_message), 'Message too big! ({} bytes) -> {}'.format(len(_message), _message)
-    _message += (' ' * (service.Service.MESSAGE_SIZE - len(_message))).encode('ascii')
-    for c in conns: c.send(_message)
+    global state
+#    _message = {
+#        str: lambda : json.dumps({'text': msg}),
+#        dict: lambda : json.dumps(msg),
+#    }.get(type(msg), lambda : json.dumps({'error': 'Undeliverable object'}))().encode('ascii')
+#    assert service.Service.MESSAGE_SIZE >= len(_message), 'Message too big! ({} bytes) -> {}'.format(len(_message), _message)
+#    _message += (' ' * (service.Service.MESSAGE_SIZE - len(_message))).encode('ascii')
+#    for c in conns: c.send(_message)
+#    for c in conns: state.get('service').tx(msg, socket=c)
+    for c in conns: service.tx(c, msg)
 def handler(conn, addr):
     global state
     state.get('lock').acquire()
@@ -32,11 +35,12 @@ def handler(conn, addr):
     tx([conn], {'ack': 'launcher'})
     while True: # FIXME: Break on {'shutdown': ...}, and send {'text': 'bye'} to conn
         try:
-            msg = conn.recv(service.Service.MESSAGE_SIZE, socket.MSG_WAITALL)
-            if not len(msg.strip()):
-                time.sleep(0.001)
-                continue
-            msg = json.loads(msg.decode('ascii'))
+#            msg = conn.recv(service.Service.MESSAGE_SIZE, socket.MSG_WAITALL)
+#            if not len(msg.strip()):
+#                time.sleep(0.001)
+#                continue
+#            msg = json.loads(msg.decode('ascii'))
+            msg = service.rx(conn)
             logging.debug('{}: {}'.format(threading.current_thread().name, msg))
             k, v = (next(iter(msg.items())) if isinstance(msg, dict) else (None, None))
             if {k: v} == {'text': 'bye'}:
@@ -113,8 +117,9 @@ def handler(conn, addr):
             tx(filter(lambda c: c != conn, state.get('connections')), {'text': 'bye'})
             state.get('lock').release()
 def acceptor():
+    global state
     while True:
-        _conn, _addr = _s.accept()
+        _conn, _addr = state.get('socket').accept()
         th = threading.Thread(target=handler, args=(_conn, _addr))
         th.start()
 def integer(val):
@@ -281,6 +286,8 @@ if __name__ == '__main__':
         'info': [],
         'running': False,
         'cycle': 0,
+        'socket': None,
+#        'service': None,
         'instructions_committed': 0,
         'shutdown': {},
         'undefined': None,
@@ -288,10 +295,15 @@ if __name__ == '__main__':
         'config': {
         },
     }
-    _s = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
-    _s.setsockopt(socket.SOL_SOCKET, socket.SO_REUSEADDR, 1)
-    _s.bind(('0.0.0.0', args.port))
-    _s.listen(5)
+    state.update({'socket': socket.socket(socket.AF_INET, socket.SOCK_STREAM)})
+    state.get('socket').setsockopt(socket.SOL_SOCKET, socket.SO_REUSEADDR, 1)
+    state.get('socket').bind(('0.0.0.0', args.port))
+    state.get('socket').listen(5)
+#    state.update({'service': service.Service('launcher', -1, **{
+#        'setsockopt': (socket.SOL_SOCKET, socket.SO_REUSEADDR, 1),
+#        'bind': ('0.0.0.0', args.port),
+#        'listen': 5,
+#    })})
     threading.Thread(target=acceptor, daemon=True).start()
     _services = []
     with open(args.script) as fp:
