@@ -16,23 +16,10 @@ class Service:
             'coreid': self.coreid,
             'blocking': self.s.getblocking(),
         })
-#        self.tx({'blocking': self.s.getblocking()})
     def __del__(self):
         self.s.close()
-    def rx(self):
-#        return json.loads(self.socket.recv(self.MESSAGE_SIZE, socket.MSG_WAITALL).decode('ascii'))
-        return rx(self.s)
-    def tx(self, msg):
-#        # HACK: This pads all messages to be exactly self.MESSAGE_SIZE bytes.
-#        # HACK: It's dumb, but I want to focus on something else right now.
-#        _message = {
-#            str: lambda : json.dumps({'text': msg}),
-#            dict: lambda : json.dumps(msg),
-#        }.get(type(msg), lambda : json.dumps({'error': 'Undeliverable object'}))().encode('ascii')
-#        assert self.MESSAGE_SIZE >= len(_message), 'Message ({} B) too big!'.format(len(_message))
-#        _message += (' ' * (self.MESSAGE_SIZE - len(_message))).encode('ascii')
-#        kwargs.get('socket', self.socket).send(_message)
-        tx(self.s, msg)
+    def rx(self): return rx(self.s)
+    def tx(self, msg): tx(self.s, msg)
 def tx(s, msg):
     # HACK: This pads all messages to be exactly self.MESSAGE_SIZE bytes.
     # HACK: It's dumb, but I want to focus on something else right now.

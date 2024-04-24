@@ -17,14 +17,6 @@ import riscv.constants
 
 def tx(conns, msg):
     global state
-#    _message = {
-#        str: lambda : json.dumps({'text': msg}),
-#        dict: lambda : json.dumps(msg),
-#    }.get(type(msg), lambda : json.dumps({'error': 'Undeliverable object'}))().encode('ascii')
-#    assert service.Service.MESSAGE_SIZE >= len(_message), 'Message too big! ({} bytes) -> {}'.format(len(_message), _message)
-#    _message += (' ' * (service.Service.MESSAGE_SIZE - len(_message))).encode('ascii')
-#    for c in conns: c.send(_message)
-#    for c in conns: state.get('service').tx(msg, socket=c)
     for c in conns: service.tx(c, msg)
 def handler(conn, addr):
     global state
@@ -35,11 +27,6 @@ def handler(conn, addr):
     tx([conn], {'ack': 'launcher'})
     while True: # FIXME: Break on {'shutdown': ...}, and send {'text': 'bye'} to conn
         try:
-#            msg = conn.recv(service.Service.MESSAGE_SIZE, socket.MSG_WAITALL)
-#            if not len(msg.strip()):
-#                time.sleep(0.001)
-#                continue
-#            msg = json.loads(msg.decode('ascii'))
             msg = service.rx(conn)
             logging.debug('{}: {}'.format(threading.current_thread().name, msg))
             k, v = (next(iter(msg.items())) if isinstance(msg, dict) else (None, None))
@@ -287,7 +274,6 @@ if __name__ == '__main__':
         'running': False,
         'cycle': 0,
         'socket': None,
-#        'service': None,
         'instructions_committed': 0,
         'shutdown': {},
         'undefined': None,
@@ -299,11 +285,6 @@ if __name__ == '__main__':
     state.get('socket').setsockopt(socket.SOL_SOCKET, socket.SO_REUSEADDR, 1)
     state.get('socket').bind(('0.0.0.0', args.port))
     state.get('socket').listen(5)
-#    state.update({'service': service.Service('launcher', -1, **{
-#        'setsockopt': (socket.SOL_SOCKET, socket.SO_REUSEADDR, 1),
-#        'bind': ('0.0.0.0', args.port),
-#        'listen': 5,
-#    })})
     threading.Thread(target=acceptor, daemon=True).start()
     _services = []
     with open(args.script) as fp:
