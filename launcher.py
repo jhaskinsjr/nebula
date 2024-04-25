@@ -16,7 +16,8 @@ import service
 import riscv.constants
 
 def tx(conns, msg):
-    for c in conns: service.tx(c, msg)
+    _msg = service.format(msg)
+    for c in conns: service.tx(c, _msg, already_formatted=True)
 def handler(conn, addr):
     global state
     state.get('lock').acquire()
