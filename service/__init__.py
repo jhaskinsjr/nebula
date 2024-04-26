@@ -19,7 +19,6 @@ class Service:
     MESSAGE_SIZE = 2**14
     def __init__(self, name, coreid, host=None, port=None, **kwargs):
         sys.set_int_max_str_digits(10**5)
-#        self.name = '[{:04}] {}'.format(coreid, name)
         self.name = name
         self.coreid = coreid
         self.s = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
@@ -34,13 +33,6 @@ class Service:
 def format(msg):
     # HACK: This pads all messages to be exactly self.MESSAGE_SIZE bytes.
     # HACK: It's dumb, but I want to focus on something else right now.
-#    _message = {
-#        str: lambda : json.dumps({'text': msg}),
-#        dict: lambda : json.dumps(msg),
-#    }.get(type(msg), lambda : json.dumps({'error': 'Undeliverable object'}))().encode('ascii')
-#    assert Service.MESSAGE_SIZE >= len(_message), 'Message ({} B) too big!'.format(len(_message))
-#    _message += (' ' * (Service.MESSAGE_SIZE - len(_message))).encode('ascii')
-#    return _message
     _message = {
         str: lambda : json.dumps({'text': msg}),
         dict: lambda : json.dumps(msg),
@@ -52,7 +44,6 @@ def format(msg):
     _formatted += (' ' * (Service.MESSAGE_SIZE - len(_formatted))).encode('ascii')
     return _formatted
 def unformat(data):
-#    return json.loads(data.decode('ascii'))
     return json.loads(zlib.decompress(
         json.loads(data.decode('ascii')).get('cdata').to_bytes(Service.MESSAGE_SIZE, 'little')
     ).decode('ascii'))

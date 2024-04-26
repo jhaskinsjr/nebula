@@ -227,7 +227,6 @@ def add_service(services, arguments, s):
 def spawn(services, args):
     if args.services:
         for s in args.services: add_service(services, args, s)
-#    [th.start() for th in services]
     for th in services:
         th.start()
         time.sleep(0.1)
