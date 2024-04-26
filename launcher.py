@@ -1,6 +1,7 @@
 # Copyright (C) 2021, 2022, 2023, 2024 John Haskins Jr.
 
 import os
+import sys
 import time
 import socket
 import json
@@ -24,6 +25,7 @@ def handler(conn, addr):
     state.get('connections').append(conn)
     state.get('lock').release()
     logging.debug('handler(): {}:{}'.format(*addr))
+    _local = threading.local()
     tx([conn], {'ack': 'launcher'})
     while True: # FIXME: Break on {'shutdown': ...}, and send {'text': 'bye'} to conn
         try:
@@ -51,9 +53,13 @@ def handler(conn, addr):
                 state.get('lock').release()
             elif 'name' == k:
                 threading.current_thread().name = v
+            elif 'coreid' == k:
+                _local.coreid = v
             elif 'info' == k:
+                _name = threading.current_thread().name
+                _coreid = _local.coreid
                 state.get('lock').acquire()
-                state.get('info').append('{}.handler(): info : {}'.format(threading.current_thread().name, v))
+                state.get('info').append('[{:04}] {}.handler(): info : {}'.format(_coreid, _name, v))
                 state.get('lock').release()
             elif 'ack' == k:
                 state.get('lock').acquire()
@@ -224,7 +230,7 @@ def spawn(services, args):
 #    [th.start() for th in services]
     for th in services:
         th.start()
-        time.sleep(1)
+        time.sleep(0.1)
     while len(services) > len(state.get('connections')): time.sleep(1)
 def get_startsymbol(binary, start_symbol):
     with open(binary, 'rb') as fp:
@@ -237,6 +243,7 @@ def get_startsymbol(binary, start_symbol):
         return _start.entry.st_value
 
 if __name__ == '__main__':
+    sys.set_int_max_str_digits(10**5)
     parser = argparse.ArgumentParser(description='Nebula')
     parser.add_argument('--debug', '-D', dest='debug', action='store_true', help='output debug messages')
     parser.add_argument('--break_on_undefined', '-B', dest='break_on_undefined', action='store_true', help='cease execution on undefined instruction')
