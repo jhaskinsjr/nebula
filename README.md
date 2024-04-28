@@ -127,6 +127,11 @@ about these topics and much more are covered in the links below.
 
 # Recent Revision History
 
+Git tag `v1.2.0` (20240428):
+* easier multicore specification (see: [Multicore Simulation](Documentation/Multicore_Simulation.md))
+* `zlib`-compressed messages
+* more modular messaging: `service.rx()`, `service.tx()`, `service.Service.rx()`, etc.
+
 Git tag `v1.1.0` (20240205):
 
 * *new* [Jabara](pipelines/jabara/README.md) functional execution model
