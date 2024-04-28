@@ -1,10 +1,8 @@
 # Copyright (C) 2021, 2022, 2023, 2024 John Haskins Jr.
 
 import os
-#import sys
 import time
 import socket
-#import json
 import argparse
 import threading
 import subprocess
@@ -245,7 +243,6 @@ def get_startsymbol(binary, start_symbol):
         return _start.entry.st_value
 
 if __name__ == '__main__':
-#    sys.set_int_max_str_digits(10**5)
     parser = argparse.ArgumentParser(description='Nebula')
     parser.add_argument('--debug', '-D', dest='debug', action='store_true', help='output debug messages')
     parser.add_argument('--break_on_undefined', '-B', dest='break_on_undefined', action='store_true', help='cease execution on undefined instruction')

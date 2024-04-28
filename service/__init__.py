@@ -4,24 +4,10 @@ import socket
 import json
 import time
 import zlib
-#import sys
-
-#_payload = json.dumps(...)
-#zlib.decompress(int(json.loads(json.dumps({
-#    'cdata': int.from_bytes(
-#        zlib.compress(_payload.encode('ascii')),
-#        'little',
-#        signed=False,
-#    )
-#})).get('cdata')).to_bytes(2**14, 'little')).decode('ascii')
 
 class Service:
     MESSAGE_SIZE = 2**16
-#    COMPRESSION_LEVEL = zlib.Z_BEST_COMPRESSION
-#    COMPRESSION_LEVEL = zlib.Z_BEST_SPEED
-#    COMPRESSION_LEVEL = zlib.Z_NO_COMPRESSION
     def __init__(self, name, coreid, host=None, port=None, **kwargs):
-#        sys.set_int_max_str_digits(10**5)
         self.name = name
         self.coreid = coreid
         self.s = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
@@ -33,23 +19,6 @@ class Service:
         self.s.close()
     def rx(self): return rx(self.s)
     def tx(self, msg): tx(self.s, format(msg), already_formatted=True)
-#def format(msg):
-#    # HACK: This pads all messages to be exactly self.MESSAGE_SIZE bytes.
-#    # HACK: It's dumb, but I want to focus on something else right now.
-#    _message = {
-#        str: lambda : json.dumps({'text': msg}),
-#        dict: lambda : json.dumps(msg),
-#    }.get(type(msg), lambda : json.dumps({'error': 'Undeliverable object'}))()
-#    _formatted = json.dumps({
-#        'cdata': int.from_bytes(zlib.compress(_message.encode('ascii'), level=Service.COMPRESSION_LEVEL), 'little', signed=False)
-#    }).encode('ascii')
-#    assert Service.MESSAGE_SIZE >= len(_formatted), 'Message ({} B) too big!'.format(len(_formatted))
-#    _formatted += (' ' * (Service.MESSAGE_SIZE - len(_formatted))).encode('ascii')
-#    return _formatted
-#def unformat(data):
-#    return json.loads(zlib.decompress(
-#        json.loads(data.decode('ascii')).get('cdata').to_bytes(Service.MESSAGE_SIZE, 'little')
-#    ).decode('ascii'))
 def format(msg):
     # HACK: This pads all messages to be exactly self.MESSAGE_SIZE bytes.
     # HACK: It's dumb, but I want to focus on something else right now.
