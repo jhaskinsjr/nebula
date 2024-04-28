@@ -12,8 +12,8 @@ simulation snapshots for subsequent execution by the cycle-accurate pipeline
 models.
 
 The Pompia sample pipeline, which *does* perform cycle-accurate simulation,
-executes at a rate of about 45 simulated cycles per real-world second at a
-steady state system load of less than 10%. While 45 cycles/second is not
+executes at a rate of about 260 simulated cycles per real-world second at a
+steady state system load of less than 30%. While 260 cycles/second is not
 blazingly fast (see: [Software Architecture](./Software_Architecture.md)), I
 view the flexibilty enabeld by Nebula's software architecture as a
 more-than-worthwhile tradeoff. Also, consider that with the CPU utilization
@@ -30,10 +30,10 @@ large state space exploration on my laptop comprised of 72 simulations
 [Pompia](../pipelines/pompia/README.md),
 [Rangpur](../pipelines/rangpur/README.md), and
 [Shangjuan](../pipelines/shangjuan/README.md) pipeline models) that ran for
-10,000s of cycles apiece in about 38 minutes with CPU utilization from
+10,000s of cycles apiece in about 40 minutes with CPU utilization from
 Nebula processes capped at 90% (so that I could continue to use my laptop
 for other work). The result was a very respectable aggregate simulation
-rate of roughly 465 simulated cycles per real-world second on a
+rate of over 500 simulated cycles per real-world second on a
 consumer-grade laptop!
 
 ## Effect of SMT
