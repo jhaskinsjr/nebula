@@ -204,26 +204,29 @@ def run(cycle, max_cycles, max_instructions, break_on_undefined, snapshot_freque
     if state.get('undefined'): logging.info('*** Encountered undefined instruction! ***')
     return cycle
 def add_service(services, arguments, s):
-    c, h, p, coreid = s.split(':')
-    services.append(
-        threading.Thread(
-            target=subprocess.run,
-            args=([
-                'ssh',
-                '-p',
-                '{}'.format(p),
-                h,
-                'python3 {} {} {} {} {}'.format(
-                    os.path.join(os.getcwd(), c),
-                    ('-D' if arguments.debug else ''),
-                    '{}:{}'.format(socket.gethostbyaddr(socket.gethostname())[0], arguments.port),
-                    ('--log {}'.format(arguments.log) if arguments.log else ''),
-                    ('--coreid {}'.format(coreid) if -1 != int(coreid) else ''),
-                )
-            ],),
-            daemon=True,
+    c, h, p, coreid_init, coreid_fini = s.split(':')
+    _init = int(coreid_init)
+    _fini = (-1 if -1 == _init else int(coreid_fini))
+    for coreid in range(_init, 1 + _fini):
+        services.append(
+            threading.Thread(
+                target=subprocess.run,
+                args=([
+                    'ssh',
+                    '-p',
+                    '{}'.format(p),
+                    h,
+                    'python3 {} {} {} {} {}'.format(
+                        os.path.join(os.getcwd(), c),
+                        ('-D' if arguments.debug else ''),
+                        '{}:{}'.format(socket.gethostbyaddr(socket.gethostname())[0], arguments.port),
+                        ('--log {}'.format(arguments.log) if arguments.log else ''),
+                        ('--coreid {}'.format(coreid) if -1 != int(coreid) else ''),
+                    )
+                ],),
+                daemon=True,
+            )
         )
-    )
 def spawn(services, args):
     if args.services:
         for s in args.services: add_service(services, args, s)

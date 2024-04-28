@@ -6,21 +6,21 @@ multiple machines. Consider the following distributed.nebula file:
 
     # Sample multicore Nebula script
     # core 0
-    service implementation/regfile.py:picard.local:22:0   # not run on localhost!
-    service implementation/fetch.py:picard.local:22:0     # not run on localhost!
-    service implementation/decode.py:picard.local:22:0    # not run on localhost!
-    service implementation/alu.py:picard.local:22:0       # not run on localhost!
-    service implementation/lsu.py:picard.local:22:0       # not run on localhost!
-    service implementation/commit.py:picard.local:22:0    # not run on localhost!
-    service implementation/l2.py:picard.local:22:0        # not run on localhost!
+    service implementation/regfile.py:picard.local:22:0:0   # not run on localhost!
+    service implementation/fetch.py:picard.local:22:0:0     # not run on localhost!
+    service implementation/decode.py:picard.local:22:0:0    # not run on localhost!
+    service implementation/alu.py:picard.local:22:0:0       # not run on localhost!
+    service implementation/lsu.py:picard.local:22:0:0       # not run on localhost!
+    service implementation/commit.py:picard.local:22:0:0    # not run on localhost!
+    service implementation/l2.py:picard.local:22:0:0        # not run on localhost!
     # core 1
-    service implementation/regfile.py:riker.local:22:1    # not run on localhost!
-    service implementation/fetch.py:riker.local:22:1      # not run on localhost!
-    service implementation/decode.py:riker.local:22:1     # not run on localhost!
-    service implementation/alu.py:riker.local:22:1        # not run on localhost!
-    service implementation/lsu.py:riker.local:22:1        # not run on localhost!
-    service implementation/commit.py:riker.local:22:1     # not run on localhost!
-    service implementation/l2.py:riker.local:22:1         # not run on localhost!
+    service implementation/regfile.py:riker.local:22:1:1    # not run on localhost!
+    service implementation/fetch.py:riker.local:22:1:!      # not run on localhost!
+    service implementation/decode.py:riker.local:22:1:!     # not run on localhost!
+    service implementation/alu.py:riker.local:22:1:1        # not run on localhost!
+    service implementation/lsu.py:riker.local:22:1:!        # not run on localhost!
+    service implementation/commit.py:riker.local:22:1:!     # not run on localhost!
+    service implementation/l2.py:riker.local:22:1:1         # not run on localhost!
     spawn
     config mainmem:peek_latency_in_cycles 25
     config fetch:l1ic_nsets 16
@@ -48,7 +48,7 @@ parameters, e.g.:
 
     python3 ../../launcher.py \
         --log /tmp/pompia/sum \
-        --service ../../toolbox/stats.py:localhost:22:-1 implementation/mainmem.py:localhost:22:-1 \
+        --service ../../toolbox/stats.py:localhost:22:-1:-1 implementation/mainmem.py:localhost:22:-1:-1 \
         --config stats:output_filename:/tmp/pompia/sum/stats.json \
         mainmem:filename:/tmp/pompia/sum/mainmem.raw \
         mainmem:capacity:$(( 2**32 )) \

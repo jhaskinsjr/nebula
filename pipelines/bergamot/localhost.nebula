@@ -1,16 +1,16 @@
 # Sample Nebula script
-# core 0
-service implementation/simplecore.py:localhost:22:0
-service implementation/regfile.py:localhost:22:0
-service implementation/decode.py:localhost:22:0
-service implementation/execute.py:localhost:22:0
-service implementation/watchdog.py:localhost:22:0
-## core 1
-#service implementation/simplecore.py:localhost:22:1
-#service implementation/regfile.py:localhost:22:1
-#service implementation/decode.py:localhost:22:1
-#service implementation/execute.py:localhost:22:1
-#service implementation/watchdog.py:localhost:22:1
+# single-core
+service implementation/simplecore.py:localhost:22:0:0
+service implementation/regfile.py:localhost:22:0:0
+service implementation/decode.py:localhost:22:0:0
+service implementation/execute.py:localhost:22:0:0
+service implementation/watchdog.py:localhost:22:0:0
+## quad-core
+#service implementation/simplecore.py:localhost:22:0:3
+#service implementation/regfile.py:localhost:22:0:3
+#service implementation/decode.py:localhost:22:0:3
+#service implementation/execute.py:localhost:22:0:3
+#service implementation/watchdog.py:localhost:22:0:3
 spawn
 config mainmem:peek_latency_in_cycles 25
 config mainmem:filename /tmp/mainmem.raw

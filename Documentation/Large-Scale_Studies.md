@@ -28,7 +28,7 @@ l1ic_size.exec:
         },
         "max_cycles": 100000,
         "script": "localhost.nebula",
-        "service": ["implementation/mainmem.py:localhost:-1"],
+        "service": ["implementation/mainmem.py:localhost:-1:-1"],
         "command": "../../examples/bin/sum 2 3 -5 7"
     },
     "pipelines/rangpur": {
@@ -46,7 +46,7 @@ l1ic_size.exec:
         },
         "max_cycles": 100000,
         "script": "localhost.nebula",
-        "service": ["implementation/mainmem.py:localhost:-1"],
+        "service": ["implementation/mainmem.py:localhost:-1:-1"],
         "command": "../../examples/bin/sum 2 3 -5 7"
     }
 }

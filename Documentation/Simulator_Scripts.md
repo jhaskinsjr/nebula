@@ -1,28 +1,26 @@
 # Simulator Scripts
 
 The simulator executes according to instructions in an execute script.
-Consider the script pipelines/pompia/localhost.nebula (wherein core 0
-is active and core 1, as all its `service` lines are commented out,
-is inactive):
+Consider the script pipelines/pompia/localhost.nebula:
 
     # Sample Nebula script
     # NOTE: Nebula's multicore support can execute across multiple machines!
-    # core 0
-    service implementation/regfile.py:localhost:22:0
-    service implementation/fetch.py:localhost:22:0
-    service implementation/decode.py:localhost:22:0
-    service implementation/alu.py:localhost:22:0
-    service implementation/lsu.py:localhost:22:0
-    service implementation/commit.py:localhost:22:0
-    service implementation/l2.py:localhost:22:0
-    ## core 1
-    #service implementation/regfile.py:localhost:22:1
-    #service implementation/fetch.py:localhost:22:1
-    #service implementation/decode.py:localhost:22:1
-    #service implementation/alu.py:localhost:22:1
-    #service implementation/lsu.py:localhost:22:1
-    #service implementation/commit.py:localhost:22:1
-    #service implementation/l2.py:localhost:22:1
+    # single-core
+    service implementation/regfile.py:localhost:22:0:0
+    service implementation/fetch.py:localhost:22:0:0
+    service implementation/decode.py:localhost:22:0:0
+    service implementation/alu.py:localhost:22:0:0
+    service implementation/lsu.py:localhost:22:0:0
+    service implementation/commit.py:localhost:22:0:0
+    service implementation/l2.py:localhost:22:0:0
+    ## quad-core
+    #service implementation/regfile.py:localhost:22:0:3
+    #service implementation/fetch.py:localhost:22:0:3
+    #service implementation/decode.py:localhost:22:0:3
+    #service implementation/alu.py:localhost:22:0:3
+    #service implementation/lsu.py:localhost:22:0:3
+    #service implementation/commit.py:localhost:22:0:3
+    #service implementation/l2.py:localhost:22:0:3
     spawn
     config mainmem:peek_latency_in_cycles 25
     config fetch:l1ic_nsets 16
@@ -48,7 +46,7 @@ The script is comprised of commands:
     cycle                           print the cycle count to stdout
     register set A B                set register A to value B
     run                             begin execution
-    service A:B:C:D                 stage service A on machine B, connecting via SSH port C, as a part of core D (where D = -1 measure visible to all cores)
+    service A:B:C:D:E               stage service A on machine B, connecting via SSH port C, as a part of cores D through E (where D:E = -1:-1 means visible to all cores)
     spawn                           execute all staged services
     state                           print launcher's state (i.e., variables, etc) to stdout
     shutdown                        send shutdown signal to services, exit launcher

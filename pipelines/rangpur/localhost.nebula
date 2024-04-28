@@ -1,26 +1,26 @@
 # Sample Nebula script
-# core 0
-service implementation/regfile.py:localhost:22:0
-service implementation/brpred.py:localhost:22:0
-service implementation/fetch.py:localhost:22:0
-service implementation/decode.py:localhost:22:0
-service implementation/issue.py:localhost:22:0
-service implementation/alu.py:localhost:22:0
-service implementation/lsu.py:localhost:22:0
-service implementation/commit.py:localhost:22:0
-service implementation/l2.py:localhost:22:0
-service implementation/watchdog.py:localhost:22:0
-## core 1
-#service implementation/regfile.py:localhost:22:1
-#service implementation/brpred.py:localhost:22:1
-#service implementation/fetch.py:localhost:22:1
-#service implementation/decode.py:localhost:22:1
-#service implementation/issue.py:localhost:22:1
-#service implementation/alu.py:localhost:22:1
-#service implementation/lsu.py:localhost:22:1
-#service implementation/commit.py:localhost:22:1
-#service implementation/l2.py:localhost:22:1
-#service implementation/watchdog.py:localhost:22:1
+# single-core
+service implementation/regfile.py:localhost:22:0:0
+service implementation/brpred.py:localhost:22:0:0
+service implementation/fetch.py:localhost:22:0:0
+service implementation/decode.py:localhost:22:0:0
+service implementation/issue.py:localhost:22:0:0
+service implementation/alu.py:localhost:22:0:0
+service implementation/lsu.py:localhost:22:0:0
+service implementation/commit.py:localhost:22:0:0
+service implementation/l2.py:localhost:22:0:0
+service implementation/watchdog.py:localhost:22:0:0
+## quad-core
+#service implementation/regfile.py:localhost:22:0:3
+#service implementation/brpred.py:localhost:22:0:3
+#service implementation/fetch.py:localhost:22:0:3
+#service implementation/decode.py:localhost:22:0:3
+#service implementation/issue.py:localhost:22:0:3
+#service implementation/alu.py:localhost:22:0:3
+#service implementation/lsu.py:localhost:22:0:3
+#service implementation/commit.py:localhost:22:0:3
+#service implementation/l2.py:localhost:22:0:3
+#service implementation/watchdog.py:localhost:22:0:3
 spawn
 config fetch:l1ic_nsets 16
 config fetch:l1ic_nways 2

@@ -20,7 +20,7 @@ of execution:
     mkdir -p /tmp/amanatsu/sum
     python3 ../../launcher.py \
         --log /tmp/amanatsu/sum \
-        --service ../../toolbox/stats.py:localhost:-1 \
+        --service ../../toolbox/stats.py:localhost:-1:-1 \
         --config stats:output_filename:/tmp/amanatsu/sum/stats.json \
         mainmem:filename:/tmp/amanatsu/sum/mainmem.raw \
         mainmem:capacity:$(( 2**32 )) \
@@ -47,7 +47,7 @@ exactly the specified snapshot locations; consider:
     mkdir -p /tmp/jabara/sum
     python3 ../../launcher.py \
         --log /tmp/jabara/sum \
-        --service ../../toolbox/stats.py:localhost:22:-1 \
+        --service ../../toolbox/stats.py:localhost:22:-1:-1 \
         --config stats:output_filename:/tmp/jabara/sum/stats.json \
         mainmem:filename:/tmp/jabara/sum/mainmem.raw \
         mainmem:capacity:$(( 2**32 )) \
@@ -77,7 +77,7 @@ e.g.:
     cd  ${HOME}/src/nebula/pipelines/pompia/
     python3 ../../launcher.py \
         --log /tmp/pompia/sum \
-        --service ../../toolbox/stats.py:localhost:-1 \
+        --service ../../toolbox/stats.py:localhost:-1:-1 \
         --config stats:output_filename:/tmp/pompia/sum/stats.json \
         mainmem:filename:/tmp/pompia/sum/mainmem.raw \
         mainmem:capacity:$(( 2**32 )) \
@@ -91,7 +91,7 @@ and
     cd  ${HOME}/src/nebula/pipelines/shangjuan/
     python3 ../../launcher.py \
         --log /tmp/shangjuan/sum \
-        --service ../../toolbox/stats.py:localhost:22:-1 \
+        --service ../../toolbox/stats.py:localhost:22:-1:-1 \
         --config stats:output_filename:/tmp/shangjuan/sum/stats.json \
         mainmem:filename:/tmp/shangjuan/sum/mainmem.raw \
         mainmem:capacity:$(( 2**32 )) \
