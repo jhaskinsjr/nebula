@@ -131,6 +131,7 @@ Git tag `v1.2.0` (20240428):
 * easier multicore specification (see: [Multicore Simulation](Documentation/Multicore_Simulation.md))
 * `zlib`-compressed messages
 * more modular messaging: `service.rx()`, `service.tx()`, `service.Service.rx()`, etc.
+* significant cycle-accurate simulation performance increase
 
 Git tag `v1.1.0` (20240205):
 
