@@ -8,6 +8,7 @@ import threading
 import subprocess
 import logging
 import time
+import json
 
 import elftools.elf.elffile
 
@@ -16,7 +17,9 @@ import riscv.constants
 
 def tx(conns, msg):
     _msg = service.format(msg)
-    for c in conns: service.tx(c, _msg, already_formatted=True)
+    for c in conns:
+        service.tx(c, _msg, already_formatted=True)
+        state.get('service.tx').update({'launcher.py': 1 + state.get('service.tx').get('launcher.py', 0)}) # NOTE: 1 at a time b/c conns might be an iterator
 def handler(conn, addr):
     global state
     state.get('lock').acquire()
@@ -24,10 +27,15 @@ def handler(conn, addr):
     state.get('lock').release()
     logging.debug('handler(): {}:{}'.format(*addr))
     _local = threading.local()
+    _local.name = None
     tx([conn], {'ack': 'launcher'})
     while True: # FIXME: Break on {'shutdown': ...}, and send {'text': 'bye'} to conn
         try:
             msg = service.rx(conn)
+            if _local.name:
+                state.get('lock').acquire()
+                state.get('service.rx').update({_local.name: 1 + state.get('service.rx').get(_local.name, 0)})
+                state.get('lock').release()
             logging.debug('{}: {}'.format(threading.current_thread().name, msg))
             k, v = (next(iter(msg.items())) if isinstance(msg, dict) else (None, None))
             if {k: v} == {'text': 'bye'}:
@@ -53,6 +61,7 @@ def handler(conn, addr):
                 threading.current_thread().name = v
             elif 'coreid' == k:
                 _local.coreid = v
+                _local.name = '[{:04}] {}'.format(_local.coreid, threading.current_thread().name) # NOTE: assumes {'name': ...} arrives before {'coreid': ...}
             elif 'info' == k:
                 _name = threading.current_thread().name
                 _coreid = _local.coreid
@@ -282,6 +291,8 @@ if __name__ == '__main__':
         'socket': None,
         'instructions_committed': 0,
         'shutdown': {},
+        'service.tx': {},
+        'service.rx': {},
         'undefined': None,
         'cmdline': None,
         'config': {
@@ -374,3 +385,4 @@ if __name__ == '__main__':
                 }.get(cmd, lambda : logging.fatal('Unknown command!'))(*params)
     tx(state.get('connections'), 'bye')
     [th.join() for th in _services]
+    logging.info('state : {}'.format(json.dumps({k:v for k, v in state.items() if k not in ['lock', 'socket', 'connections']}, indent=4)))
