@@ -102,5 +102,5 @@ if '__main__' == __name__:
         if state.get('ack') and state.get('running'): _service.tx({'ack': {'cycle': state.get('cycle')}})
     _output_filename = state.get('config').get('output_filename')
     fp = (sys.stdout if not _output_filename else open(_output_filename, 'w'))
-    json.dump(state.get('stats'), fp)
+    json.dump(state.get('stats'), fp, indent=4)
     logging.info('state.stats : {}'.format(state.get('stats')))
