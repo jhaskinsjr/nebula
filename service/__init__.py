@@ -14,7 +14,6 @@ class Service:
         self.s.connect((host, port))
         self.tx({'name': self.name})
         self.tx({'coreid': self.coreid})
-        self.tx({'blocking': self.s.getblocking()})
     def __del__(self):
         self.s.close()
     def rx(self): return rx(self.s)

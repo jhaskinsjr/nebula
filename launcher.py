@@ -91,24 +91,10 @@ def handler(conn, addr):
                 _res_evt.get('events').append(_evt)
                 state.get('futures').update({_arr: _res_evt})
                 state.get('lock').release()
-            elif 'register' == k:
-                logging.debug('{}.handler(): register : {}'.format(threading.current_thread().name, v))
-                state.get('lock').acquire()
-                tx(filter(lambda c: c != conn, state.get('connections')), msg)
-                state.get('lock').release()
             else:
                 state.get('lock').acquire()
-                _running = state.get('running')
+                state.get('unknown_message_key').append((threading.current_thread().name, msg))
                 state.get('lock').release()
-                logging.debug('{}.handler(): _running : {} ({})'.format(threading.current_thread().name, _running, msg))
-                if _running:
-                    state.get('lock').acquire()
-#                    state.get('events').append(msg)
-                    state.get('lock').release()
-                else:
-                    state.get('lock').acquire()
-                    tx(filter(lambda c: c != conn, state.get('connections')), msg)
-                    state.get('lock').release()
         except Exception as ex:
             logging.fatal('{}.handler(): Oopsie! {} (msg : {} ({}:{}), conn : {})'.format(threading.current_thread().name, ex, str(msg), type(msg), len(msg), conn))
             logging.fatal('{}.handler(): Initiating shutdown...'.format(threading.current_thread().name))
@@ -294,6 +280,7 @@ if __name__ == '__main__':
         'service.tx': {},
         'service.rx': {},
         'undefined': None,
+        'unknown_message_key': [],
         'cmdline': None,
         'config': {
         },
@@ -331,7 +318,7 @@ if __name__ == '__main__':
                     _sp = integer(args.loadbin[0])
                     _pc = integer(args.loadbin[1])
                     _start_symbol = args.loadbin[2]
-                    for _coreid, _cmdline in enumerate(' '.join(args.cmdline).split(',')):
+                    for _coreid, _cmdline in enumerate(filter(lambda x: 0 < len(x.strip()), ' '.join(args.cmdline).split(','))):
                         _cmdline = _cmdline.split()
                         _binary = os.path.join(os.getcwd(), _cmdline[0])
                         _args = tuple(_cmdline[1:])
