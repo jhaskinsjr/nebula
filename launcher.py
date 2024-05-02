@@ -28,6 +28,11 @@ def handler(conn, addr):
     logging.debug('handler(): {}:{}'.format(*addr))
     _local = threading.local()
     _local.name = None
+    _local.instructions_committed = 0
+    _local.buffer = {
+        'info': [],
+        'futures': {},
+    }
     tx([conn], {'ack': 'launcher'})
     while True: # FIXME: Break on {'shutdown': ...}, and send {'text': 'bye'} to conn
         try:
@@ -54,43 +59,46 @@ def handler(conn, addr):
                 state.update({'undefined': v})
                 state.get('lock').release()
             elif 'committed' == k:
-                state.get('lock').acquire()
-                state.update({'instructions_committed': v + state.get('instructions_committed')})
-                state.get('lock').release()
+                _local.instructions_committed += v
             elif 'name' == k:
                 threading.current_thread().name = v
             elif 'coreid' == k:
                 _local.coreid = v
                 _local.name = '[{:04}] {}'.format(_local.coreid, threading.current_thread().name) # NOTE: assumes {'name': ...} arrives before {'coreid': ...}
-            elif 'info' == k:
-                _name = threading.current_thread().name
-                _coreid = _local.coreid
-                state.get('lock').acquire()
-                state.get('info').append('[{:04}] {}.handler(): info : {}'.format(_coreid, _name, v))
-                state.get('lock').release()
             elif 'ack' == k:
                 state.get('lock').acquire()
                 state.get('ack').append((threading.current_thread().name, msg))
                 logging.debug('{}.handler(): ack: {} ({})'.format(threading.current_thread().name, state.get('ack'), len(state.get('ack'))))
+                state.get('info').extend(_local.buffer.get('info'))
+                _local.buffer.get('info').clear()
+                state.get('futures').update({
+                    c: {
+                        'results': state.get('futures').get(c, {'results': [], 'events': []}).get('results') + _local.buffer.get('futures').get(c).get('results'),
+                        'events': state.get('futures').get(c, {'results': [], 'events': []}).get('events') + _local.buffer.get('futures').get(c).get('events'),
+                    } for c in _local.buffer.get('futures').keys()
+                })
+                _local.buffer.get('futures').clear()
+                state.update({'instructions_committed': _local.instructions_committed + state.get('instructions_committed')})
+                _local.instructions_committed = 0
                 state.get('lock').release()
+            elif 'info' == k:
+                _name = threading.current_thread().name
+                _coreid = _local.coreid
+                _local.buffer.get('info').append('[{:04}] {}.handler(): info : {}'.format(_coreid, _name, v))
             elif 'result' == k:
                 _arr = v.pop('arrival')
                 assert _arr > state.get('cycle'), '{}.handler(): Attempting to schedule result arrival in the past ({} vs. {})!'.format(threading.current_thread().name, _arr, state.get('cycle'))
                 _res = v
-                state.get('lock').acquire()
-                _res_evt = state.get('futures').get(_arr, {'results': [], 'events': []})
+                _res_evt = _local.buffer.get('futures').get(_arr, {'results': [], 'events': []})
                 _res_evt.get('results').append(_res)
-                state.get('futures').update({_arr: _res_evt})
-                state.get('lock').release()
+                _local.buffer.get('futures').update({_arr: _res_evt})
             elif 'event' == k:
                 _arr = v.pop('arrival')
                 assert _arr > state.get('cycle'), '{}.handler(): Attempting to schedule event arrival in the past ({} vs. {})!'.format(threading.current_thread().name, _arr, state.get('cycle'))
                 _evt = v
-                state.get('lock').acquire()
-                _res_evt = state.get('futures').get(_arr, {'results': [], 'events': []})
+                _res_evt = _local.buffer.get('futures').get(_arr, {'results': [], 'events': []})
                 _res_evt.get('events').append(_evt)
-                state.get('futures').update({_arr: _res_evt})
-                state.get('lock').release()
+                _local.buffer.get('futures').update({_arr: _res_evt})
             else:
                 state.get('lock').acquire()
                 state.get('unknown_message_key').append((threading.current_thread().name, msg))
