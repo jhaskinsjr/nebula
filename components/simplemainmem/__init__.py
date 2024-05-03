@@ -165,6 +165,9 @@ class SimpleMainMemory:
                     }
                 }})
                 toolbox.report_stats(self.service, self.state(), 'histo', 'peek.size', _size)
+            elif 'purge' == _cmd:
+                self.mmu.purge(_coreid)
+                toolbox.report_stats(self.service, self.state(), 'histo', 'purges', _coreid)
             else:
                 logging.fatal('ev : {}'.format(ev))
                 assert False
@@ -303,3 +306,4 @@ if '__main__' == __name__:
     state.get('mm').flush()
     state.get('mm').close()
     os.close(state.get('fd'))
+    logging.info('state.mmu.translations : {}'.format(json.dumps(state.get('mmu').get('translations'), indent=4)))

@@ -180,6 +180,13 @@ class BasicBlockCore:
             self.service.tx({'shutdown': {
                 'coreid': state.get('coreid'),
             }})
+            self.service.tx({'event': {
+                'arrival': 1 + state.get('cycle'),
+                'coreid': state.get('coreid'),
+                'mem': {
+                    'cmd': 'purge',
+                }
+            }})
             self.update({'shutdown': True})
     def do_instruction(self, nibble, regs):
         _args = ((nibble.get('insn'), regs) if nibble.get('insn').get('cmd') in riscv.constants.LOADS + riscv.constants.STORES + ['ECALL', 'CSRRS', 'CSSRSI'] else tuple(filter(

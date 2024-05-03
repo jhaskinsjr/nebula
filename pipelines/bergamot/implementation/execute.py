@@ -570,6 +570,13 @@ def do_ecall(service, state, insn):
         service.tx({'shutdown': {
             'coreid': state.get('coreid'),
         }})
+        service.tx({'event': {
+            'arrival': 1 + state.get('cycle'),
+            'coreid': state.get('coreid'),
+            'mem': {
+                'cmd': 'purge',
+            }
+        }})
     if not _done: return
     if 'output' in _side_effect.keys():
         service.tx({'event': {

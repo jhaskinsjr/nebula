@@ -22,6 +22,8 @@ class SimpleMMU:
         _k = (coreid << self.pageoffsetbits) | (addr >> self.pageoffsetbits)
         self.translations.update({_k: self.translations.get(_k, self.BASE + (len(self.translations.keys()) << self.pageoffsetbits))})
         return self.translations.get(_k) | (addr & self.pageoffsetmask)
+    def purge(self, coreid):
+        self.translations = {k:v for k, v in self.translations.items() if coreid != (k >> self.pageoffsetbits)}
     def get(self, attribute, alternative=None):
         return (self.__dict__[attribute] if attribute in dir(self) else alternative)
     def update(self, d):
