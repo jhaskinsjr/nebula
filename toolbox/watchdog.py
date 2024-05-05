@@ -10,6 +10,7 @@ import service
 import json
 
 def do_tick(service, state, results, events):
+    if state.get('violation'): return
     _event_name = state.get('config').get('event_name')
     _result_name = state.get('config').get('result_name')
     if _event_name and next(filter(lambda x: x.get(_event_name), events), None): state.get('last').update({_event_name: state.get('cycle')})
@@ -20,12 +21,14 @@ def do_tick(service, state, results, events):
     if _watchdog_violation:
         service.tx({'info': 'Watchdog violation! state.config : {}'.format(state.get('config'))})
         logging.info('Watchdog violation!')
+        logging.info('\tstate.coreid               : {}'.format(state.get('coreid')))
         logging.info('\tstate.cycle                : {}'.format(state.get('cycle')))
         logging.info('\tstate.config.event_name    : {}'.format(_event_name))
         logging.info('\tstate.config.event_cycles  : {}'.format(state.get('config').get('event_cycles')))
         logging.info('\tstate.config.result_name   : {}'.format(_result_name))
         logging.info('\tstate.config.result_cycles : {}'.format(state.get('config').get('result_cycles')))
         logging.info('\tstate.last                 : {}'.format(state.get('last')))
+        state.update({'violation': True})
         service.tx({'shutdown': {
             'coreid': state.get('coreid'),
         }})
@@ -53,6 +56,7 @@ if '__main__' == __name__:
         'coreid': args.coreid,
         'active': True,
         'running': False,
+        'violation': False,
         'last': {},
         'ack': True,
         'config': {
@@ -86,8 +90,8 @@ if '__main__' == __name__:
                 state.get('config').update({_field: _val})
             elif 'tick' == k:
                 state.update({'cycle': v.get('cycle')})
-                _results = v.get('results')
-                _events = v.get('events')
+                _results = tuple(filter(lambda x: state.get('coreid') == x.get('coreid'), v.get('results')))
+                _events = tuple(filter(lambda x: state.get('coreid') == x.get('coreid'), v.get('events')))
                 do_tick(_service, state, _results, _events)
             elif 'restore' == k:
                 assert not state.get('running'), 'Attempted restore while running!'
