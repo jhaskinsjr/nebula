@@ -1,6 +1,7 @@
 # Copyright (C) 2021, 2022, 2023, 2024 John Haskins Jr.
 
 import os
+import sys
 import logging
 
 # The syscall numbers were learned from
@@ -121,7 +122,8 @@ class System:
         logging.info('do_close(): a0     : {}'.format(a0))
         try:
             _fd = int.from_bytes(a0, 'little')
-            os.close(_fd)
+            # NOTE: don't actually close the host process's stdin, stdout, or stderr
+            if _fd not in map(lambda x: x.fileno(), [sys.stdin, sys.stdout, sys.stderr]): os.close(_fd)
             _retval = 0
         except:
             _retval = -1
