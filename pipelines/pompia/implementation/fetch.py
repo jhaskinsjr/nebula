@@ -156,9 +156,6 @@ if '__main__' == __name__:
                 if '%pc' != v.get('name'): continue
                 state.update({'%pc': v.get('data')})
                 logging.info('state : {}'.format(state))
-#                state.get('fetch_buffer').append({
-#                    'addr': int.from_bytes(state.get('%pc'), 'little'),
-#                })
                 state.update({'fetch_buffer': [{
                     'addr': int.from_bytes(state.get('%pc'), 'little'),
                 }]})
