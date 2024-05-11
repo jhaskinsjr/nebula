@@ -101,6 +101,8 @@ if '__main__' == __name__:
                 state.update({'running': True})
                 state.update({'ack': False})
                 logging.info('state.registers : {}'.format(state.get('registers')))
+            elif {'text': 'pause'} == {k: v}:
+                state.update({'running': False})
             elif 'tick' == k:
                 state.update({'cycle': v.get('cycle')})
                 _results = tuple(filter(lambda x: state.get('coreid') == x.get('coreid'), v.get('results')))

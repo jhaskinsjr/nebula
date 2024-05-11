@@ -122,6 +122,8 @@ if '__main__' == __name__:
             elif {'text': 'run'} == {k: v}:
                 state.update({'running': True})
                 state.update({'ack': False})
+                state.update({'pending_fetch': []})
+                state.update({'%jp': None})
                 _service.tx({'info': 'state.config : {}'.format(state.get('config'))})
                 state.update({'l1ic': components.simplecache.SimpleCache(
                     state.get('config').get('l1ic_nsets'),
@@ -129,6 +131,8 @@ if '__main__' == __name__:
                     state.get('config').get('l1ic_nbytesperblock'),
                     state.get('config').get('l1ic_evictionpolicy'),
                 )})
+            elif {'text': 'pause'} == {k: v}:
+                state.update({'running': False})
             elif 'config' == k:
                 logging.debug('config : {}'.format(v))
                 if state.get('service') != v.get('service'): continue
@@ -152,7 +156,10 @@ if '__main__' == __name__:
                 if '%pc' != v.get('name'): continue
                 state.update({'%pc': v.get('data')})
                 logging.info('state : {}'.format(state))
-                state.get('fetch_buffer').append({
+#                state.get('fetch_buffer').append({
+#                    'addr': int.from_bytes(state.get('%pc'), 'little'),
+#                })
+                state.update({'fetch_buffer': [{
                     'addr': int.from_bytes(state.get('%pc'), 'little'),
-                })
+                }]})
         if state.get('ack') and state.get('running'): _service.tx({'ack': {'cycle': state.get('cycle')}})

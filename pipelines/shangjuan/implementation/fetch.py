@@ -132,6 +132,10 @@ if '__main__' == __name__:
             elif {'text': 'run'} == {k: v}:
                 state.update({'running': True})
                 state.update({'ack': False})
+                state.update({'pending_fetch': []})
+                state.update({'active': True})
+                state.update({'fetch_buffer': []})
+                state.update({'%jp': None})
                 _service.tx({'info': 'state.config : {}'.format(state.get('config'))})
                 state.update({'l1ic': components.simplecache.SimpleCache(
                     state.get('config').get('l1ic_nsets'),
@@ -139,6 +143,8 @@ if '__main__' == __name__:
                     state.get('config').get('l1ic_nbytesperblock'),
                     state.get('config').get('l1ic_evictionpolicy'),
                 )})
+            elif {'text': 'pause'} == {k: v}:
+                state.update({'running': False})
             elif 'config' == k:
                 logging.debug('config : {}'.format(v))
                 if state.get('service') != v.get('service'): continue

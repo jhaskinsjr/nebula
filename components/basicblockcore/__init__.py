@@ -320,6 +320,8 @@ if '__main__' == __name__:
             elif {'text': 'run'} == {k: v}:
                 state.update({'running': True})
                 state.update({'ack': False})
+                state.update({'shutdown': None})
+                state.update({'basicblockcache': {}})
                 _service.tx({'info': 'state.config : {}'.format(state.get('config'))})
                 if state.get('config').get('toolchain'):
                     _toolchain = state.get('config').get('toolchain')
@@ -339,7 +341,9 @@ if '__main__' == __name__:
                             } for x in _objdump
                         }})
                 logging.info('_mainmem.config : {}'.format(_mainmem.get('config')))
-                _mainmem.boot()
+                if not _mainmem.get('booted'): _mainmem.boot()
+            elif {'text': 'pause'} == {k: v}:
+                state.update({'running': False})
             elif 'binary' == k:
                 state.update({'binary': v})
             elif 'config' == k:

@@ -35,6 +35,7 @@ class SimpleMainMemory:
         self.cycle = 0
         self.active = True
         self.running = False
+        self.booted = False
         self.ack = True
         self.fd = None
         self.mm = None
@@ -261,10 +262,14 @@ if '__main__' == __name__:
                 state.update({'active': False})
                 state.update({'running': False})
             elif {'text': 'run'} == {k: v}:
-                state.boot()
+                if not state.get('booted'):
+                    state.boot()
+                    state.update({'booted': True})
                 state.update({'running': True})
                 state.update({'ack': False})
                 state.service.tx({'info': 'state.config : {}'.format(state.get('config'))})
+            elif {'text': 'pause'} == {k: v}:
+                state.update({'running': False})
             elif 'config' == k:
                 logging.debug('config : {}'.format(v))
                 if state.get('name') != v.get('service'): continue
@@ -302,7 +307,7 @@ if '__main__' == __name__:
                 state.update({'cycle': v.get('cycle')})
                 state.restore(v.get('snapshot_filename'))
                 state.service.tx({'ack': {'cycle': state.get('cycle')}})
-        if state.get('ack') and state.get('running'): state.service.tx({'ack': {'cycle': state.get('cycle')}})
+        if state.get('ack') and state.get('running'): state.service.tx({'ack': {'cycle': state.get('cycle'), 'msg': msg}})
     state.get('mm').flush()
     state.get('mm').close()
     os.close(state.get('fd'))

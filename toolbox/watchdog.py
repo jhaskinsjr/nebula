@@ -80,7 +80,11 @@ if '__main__' == __name__:
             elif {'text': 'run'} == {k: v}:
                 state.update({'running': True})
                 state.update({'ack': False})
+                state.update({'violation': False})
+                state.update({'last': {}})
                 _service.tx({'info': 'state.config : {}'.format(state.get('config'))})
+            elif {'text': 'pause'} == {k: v}:
+                state.update({'running': False})
             elif 'config' == k:
                 logging.info('config : {}'.format(v))
                 if state.get('service') != v.get('service'): continue
@@ -92,7 +96,7 @@ if '__main__' == __name__:
                 state.update({'cycle': v.get('cycle')})
                 _results = tuple(filter(lambda x: state.get('coreid') == x.get('coreid'), v.get('results')))
                 _events = tuple(filter(lambda x: state.get('coreid') == x.get('coreid'), v.get('events')))
-                do_tick(_service, state, _results, _events)
+                if state.get('running'): do_tick(_service, state, _results, _events)
             elif 'restore' == k:
                 assert not state.get('running'), 'Attempted restore while running!'
                 state.update({'cycle': v.get('cycle')})

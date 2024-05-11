@@ -195,6 +195,7 @@ if '__main__' == __name__:
         'decoded': [],
         'remove_from_decoded': [],
         'issued': [],
+        'pending_fetch': None,
         'iid': 0,
         'objmap': None,
         'binary': '',
@@ -220,6 +221,12 @@ if '__main__' == __name__:
             elif {'text': 'run'} == {k: v}:
                 state.update({'running': True})
                 state.update({'ack': False})
+                state.update({'%jp': None}) # address of the first byte beyond the end of state.buffer
+                state.update({'buffer': []})
+                state.update({'decoded': []})
+                state.update({'remove_from_decoded': []})
+                state.update({'issued': []})
+                state.update({'pending_fetch': None})
                 _service.tx({'info': 'state.config : {}'.format(state.get('config'))})
                 if state.get('config').get('btb_nentries'): state.update({'btb': components.simplebtb.SimpleBTB(
                     state.get('config').get('btb_nentries'),
@@ -244,6 +251,8 @@ if '__main__' == __name__:
                         'name': x[-1]
                     } for x in _objdump
                 }})
+            elif {'text': 'pause'} == {k: v}:
+                state.update({'running': False})
             elif 'binary' == k:
                 state.update({'binary': v})
             elif 'config' == k:

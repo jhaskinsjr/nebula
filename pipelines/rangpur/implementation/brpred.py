@@ -141,7 +141,14 @@ if '__main__' == __name__:
             elif {'text': 'run'} == {k: v}:
                 state.update({'running': True})
                 state.update({'ack': False})
+                state.update({'pending_fetch': None})
+                state.update({'active': True})
+                state.update({'btac': {}})
+                state.update({'drop_until': None})
+                state.update({'%jp': None})
                 _service.tx({'info': 'state.config : {}'.format(state.get('config'))})
+            elif {'text': 'pause'} == {k: v}:
+                state.update({'running': False})
             elif 'config' == k:
                 logging.debug('config : {}'.format(v))
                 if state.get('service') != v.get('service'): continue
@@ -164,11 +171,11 @@ if '__main__' == __name__:
                 if 'set' != v.get('cmd'): continue
                 if '%pc' != v.get('name'): continue
                 state.update({'%pc': v.get('data')})
-                logging.info('state : {}'.format(state))
                 state.get('fetch_address').append({
                     'fetch': {
                         'cmd': 'get',
                         'addr': int.from_bytes(state.get('%pc'), 'little'),
                     }
                 })
+                logging.info('state : {}'.format(state))
         if state.get('ack') and state.get('running'): _service.tx({'ack': {'cycle': state.get('cycle')}})

@@ -226,6 +226,10 @@ if '__main__' == __name__:
             elif {'text': 'run'} == {k: v}:
                 state.update({'running': True})
                 state.update({'ack': False})
+                state.update({'flush_until': None})
+                state.update({'pending_commit': []})
+            elif {'text': 'pause'} == {k: v}:
+                state.update({'running': False})
             elif 'tick' == k:
                 state.update({'cycle': v.get('cycle')})
                 _results = tuple(filter(lambda x: state.get('coreid') == x.get('coreid'), v.get('results')))

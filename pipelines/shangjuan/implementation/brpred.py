@@ -206,6 +206,11 @@ if '__main__' == __name__:
             elif {'text': 'run'} == {k: v}:
                 state.update({'running': True})
                 state.update({'ack': False})
+                state.update({'pending_fetch': None})
+                state.update({'active': True})
+                state.update({'btac': {}})
+                state.update({'drop_until': None})
+                state.update({'%jp': None})
                 _service.tx({'info': 'state.config : {}'.format(state.get('config'))})
                 if state.get('config').get('btac_entries'): state.update({'btac': BranchTargetAddressCache(state.get('config').get('btac_entries'))})
                 if state.get('config').get('predictor_type') and state.get('config').get('predictor_entries'): state.update({'predictor': CounterTablePredictor(
@@ -213,6 +218,8 @@ if '__main__' == __name__:
                     state.get('config').get('predictor_entries'),
                 )})
                 logging.info('state : {}'.format(state))
+            elif {'text': 'pause'} == {k: v}:
+                state.update({'running': False})
             elif 'config' == k:
                 logging.debug('config : {}'.format(v))
                 if state.get('service') != v.get('service'): continue

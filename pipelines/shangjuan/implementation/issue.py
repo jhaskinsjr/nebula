@@ -213,8 +213,16 @@ if '__main__' == __name__:
             elif {'text': 'run'} == {k: v}:
                 state.update({'running': True})
                 state.update({'ack': False})
+                state.update({'buffer': []})
+                state.update({'decoded': []})
+                state.update({'issued': []})
+                state.update({'drop_until': None})
+                state.update({'recovery_iid': None})
+                state.update({'predictions': {}})
                 _service.tx({'info': 'state.config : {}'.format(state.get('config'))})
                 logging.info('state : {}'.format(state))
+            elif {'text': 'pause'} == {k: v}:
+                state.update({'running': False})
             elif 'config' == k:
                 logging.debug('config : {}'.format(v))
                 if state.get('service') != v.get('service'): continue

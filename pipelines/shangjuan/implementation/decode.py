@@ -115,6 +115,8 @@ if '__main__' == __name__:
             elif {'text': 'run'} == {k: v}:
                 state.update({'running': True})
                 state.update({'ack': False})
+                state.update({'drop_until': None})
+                state.update({'buffer': []})
                 _service.tx({'info': 'state.config : {}'.format(state.get('config'))})
                 if not state.get('config').get('toolchain'): continue
                 if not state.get('binary'): continue
@@ -134,6 +136,8 @@ if '__main__' == __name__:
                         'name': x[-1]
                     } for x in _objdump
                 }})
+            elif {'text': 'pause'} == {k: v}:
+                state.update({'running': False})
             elif 'binary' == k:
                 state.update({'binary': v})
             elif 'config' == k:

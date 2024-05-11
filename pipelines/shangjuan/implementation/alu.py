@@ -786,8 +786,15 @@ if '__main__' == __name__:
             elif {'text': 'run'} == {k: v}:
                 state.update({'running': True})
                 state.update({'ack': False})
+                state.update({'pending_execute': []})
+                state.update({'syscall_kwargs': {}})
+                state.update({'operands': {
+                    **{x: riscv.constants.integer_to_list_of_bytes(0, 64, 'little') for x in range(32)},
+                }})
                 _service.tx({'info': 'state.config : {}'.format(state.get('config'))})
                 logging.info('state : {}'.format(state))
+            elif {'text': 'pause'} == {k: v}:
+                state.update({'running': False})
             elif 'config' == k:
                 logging.debug('config : {}'.format(v))
                 if state.get('service') != v.get('service'): continue

@@ -49,7 +49,7 @@ def handler(conn, addr):
             elif 'shutdown' == k:
                 state.get('lock').acquire()
                 state.get('shutdown').update({v.get('coreid'): True})
-                if all(state.get('shutdown').values()): state.update({'running': False})
+#                if all(state.get('shutdown').values()): state.update({'running': False})
                 state.get('lock').release()
             elif 'undefined' == k:
                 state.get('lock').acquire()
@@ -164,7 +164,7 @@ def waitforack(state):
     while not _ack:
         time.sleep(0.001)
         logging.debug('state.ack : {} ({})'.format(state.get('ack'), len(state.get('ack'))))
-        assert len(state.get('ack')) <= len(sum(state.get('connections').values(), [])), 'Something ACK\'d more than once!!!'
+        assert len(state.get('ack')) <= len(sum(state.get('connections').values(), [])), 'Something ACK\'d more than once!!! state.ack : ({}) {}'.format(len(state.get('ack')), state.get('ack'))
         _ack = len(state.get('ack')) == len(sum(state.get('connections').values(), []))
 def run(cycle, max_cycles, max_instructions, break_on_undefined, snapshot_frequency):
     global state
@@ -175,16 +175,91 @@ def run(cycle, max_cycles, max_instructions, break_on_undefined, snapshot_freque
     #       'events': [],
     #   }
     # }
+    _cmdline = (list(filter(lambda x: len(x), ' '.join(args.cmdline).strip().split(','))) if args.cmdline else [])
+    if args.restore: restore(state, args.restore)
+    if args.snapshots:
+        tx(map(lambda x: x.get('conn'), sum(state.get('connections').values(), [])), {
+            'snapshots': {
+                'checkpoints': args.snapshots,
+                'cmdline': state.get('cmdline'),
+            }
+        })
     state.get('lock').acquire()
-    tx(map(lambda x: x.get('conn'), sum(state.get('connections').values(), [])), 'run')
+    for c in (args.config if args.config else []): config(map(lambda x: x.get('conn'), state.get('connections').get(-1)), *c.split(':'))
+    tx(map(lambda x: x.get('conn'), state.get('connections').get(-1)), 'run')
     state.get('lock').release()
     while (cycle < max_cycles if max_cycles else True) and \
           (state.get('instructions_committed') < max_instructions if max_instructions else True) and \
           (state.get('running')) and \
           (None == state.get('undefined') if break_on_undefined else True):
-        state.get('lock').acquire()
-        logging.debug('state.instructions_committed : {}'.format(state.get('instructions_committed')))
         logging.info('run(): @{:8}'.format(cycle))
+        state.get('lock').acquire()
+        if any(state.get('shutdown').values()) and len(_cmdline):
+            _coreid = next(filter(lambda x: state.get('shutdown').get(x), state.get('shutdown').keys()))
+            # NOTE: drain results and events from any prior binary executed on this core
+            state.update({'futures': {
+                c: {
+                    'results': list(filter(lambda x: _coreid != x.get('coreid'), state.get('futures').get(c).get('results'))),
+                    'events': list(filter(lambda x: _coreid != x.get('coreid'), state.get('futures').get(c).get('events'))),
+                }
+                for c in state.get('futures').keys()
+            }})
+            _conn = list(map(lambda x: x.get('conn'), state.get('connections').get(_coreid)))
+            tx(_conn, 'pause')
+#            print('state.shutdown : {}'.format(state.get('shutdown')))
+#            print('cycle   : {}'.format(cycle))
+#            print('_coreid : {}'.format(_coreid))
+#            print('_conn   : ({}) ...'.format(len(_conn)))
+            for c in (args.config if args.config else []): config(_conn, *c.split(':'))
+            _cmd = _cmdline.pop(0).strip().split(' ')
+            _binary = os.path.join(os.getcwd(), _cmd[0])
+            _args = tuple(_cmd[1:])
+#            print('_cmd    : {}'.format(_cmd))
+#            print('_binary : {}'.format(_binary))
+#            print('_args   : {}'.format(_args))
+            tx(_conn, {'binary': os.path.join(os.getcwd(), _binary)})
+            _sp = integer(args.loadbin[0])
+            _pc = integer(args.loadbin[1])
+            _start_symbol = args.loadbin[2]
+            tx(map(lambda x: x.get('conn'), state.get('connections').get(-1, [])), 'pause')
+            tx(_conn + list(map(lambda x: x.get('conn'), state.get('connections').get(-1, []))), {
+                'loadbin': {
+                    'coreid': _coreid,
+                    'start_symbol': _start_symbol,
+                    'sp': _sp,
+                    'pc': _pc,
+                    'binary': _binary,
+                    'args': ((_binary,) + _args),
+                }
+            })
+            tx(map(lambda x: x.get('conn'), state.get('connections').get(-1, [])), 'run')
+            register(_conn, _coreid, 'set', 1, hex(0))
+            register(_conn, _coreid, 'set', 2, hex(_sp))
+            register(_conn, _coreid, 'set', 4, '0xffff0000') # FIXME: is this necessary???
+            register(_conn, _coreid, 'set', 10, hex(1 + len(_args)))
+            register(_conn, _coreid, 'set', 11, hex(8 + _sp))
+            register(_conn, _coreid, 'set', '%pc', hex(_pc + get_startsymbol(_binary, _start_symbol)))
+            logging.info('implied loadbin')
+            logging.info('\tstate.shutdown : {}'.format(state.get('shutdown')))
+            logging.info('\t_coreid        : {}'.format(_coreid))
+            logging.info('\t_cmd           : {}'.format(_cmd))
+            logging.info('\t_binary        : {}'.format(_binary))
+            logging.info('\t_args          : {}'.format(_args))
+            state.get('shutdown').update({_coreid: False})
+            _futures = state.get('futures').pop(1 + cycle, {'results': [], 'events': []})
+            _futures.get('events').extend([{'coreid': _coreid, 'init': True}])
+            state.get('futures').update({1 + cycle: _futures})
+#            logging.info('state.ack : ({}) {}'.format(len(state.get('ack')), state.get('ack')))
+            tx(_conn, 'run')
+        state.update({'futures': {
+            c: state.get('futures').get(c)
+            for c in filter(
+                lambda x: len(state.get('futures').get(x).get('results')) or len(state.get('futures').get(x).get('events')),
+                state.get('futures').keys()
+            )
+        }})
+        if all(state.get('shutdown').values()): state.update({'running': False})
+        logging.debug('state.instructions_committed : {}'.format(state.get('instructions_committed')))
         logging.info('\tinfo :\n\t\t{}'.format('\n\t\t'.join(state.get('info'))))
         state.get('info').clear()
         logging.info('\tfutures :\n\t\t{}'.format(
@@ -195,20 +270,24 @@ def run(cycle, max_cycles, max_instructions, break_on_undefined, snapshot_freque
         ))
         cycle = (min(state.get('futures').keys()) if len(state.get('futures').keys()) else 1 + cycle)
         _futures = state.get('futures').pop(cycle, {'results': [], 'events': []})
-        _no_tx_cores = []
+        _futures.update({'results': list(filter(lambda x: not state.get('shutdown').get(x.get('coreid')), _futures.get('results')))})
+        _futures.update({'events': list(filter(lambda x: not state.get('shutdown').get(x.get('coreid')), _futures.get('events')))})
+#        logging.info('state.ack : ({}) {}'.format(len(state.get('ack')), state.get('ack')))
+        state.update({'ack': sum(map(lambda x: [{'coreid': x}] * len(state.get('connections').get(x)), state.get('connections').keys()), [])})
+#        logging.info('state.ack : ({}) {}'.format(len(state.get('ack')), state.get('ack')))
         for c in state.get('connections').keys():
             _res_evt = {
                 'results': (_futures.get('results') if -1 == c else list(filter(lambda x: x.get('coreid') == c, _futures.get('results')))),
                 'events': (_futures.get('events') if -1 == c else list(filter(lambda x: x.get('coreid') == c, _futures.get('events')))),
             }
-            if 0 == len(sum(_res_evt.values(), [])):
-                _no_tx_cores.append(c)
-                if len(state.get('ack')): continue
+            if 0 == len(sum(_res_evt.values(), [])): continue
             tx(map(lambda x: x.get('conn'), state.get('connections').get(c)), {'tick': {
                 **{'cycle': cycle},
                 **_res_evt,
             }})
-        state.update({'ack': list(filter(lambda x: x.get('coreid') in _no_tx_cores, state.get('ack')))})
+            state.update({'ack': list(filter(lambda x: x.get('coreid') != c, state.get('ack')))})
+ #       logging.info('state.ack : ({}) {}'.format(len(state.get('ack')), state.get('ack')))
+ #       logging.info('')
         state.get('lock').release()
         waitforack(state)
     if state.get('undefined'): logging.info('*** Encountered undefined instruction! ***')
@@ -237,6 +316,7 @@ def add_service(services, arguments, s):
                 daemon=True,
             )
         )
+        if -1 < coreid: state.get('shutdown').update({coreid: True})
 def spawn(services, args):
     if args.services:
         for s in args.services: add_service(services, args, s)
@@ -324,60 +404,61 @@ if __name__ == '__main__':
                         'events': [],
                     }
                 })
+            elif 'spawn' == cmd:
+                spawn(_services, args)
             elif 'run' == cmd:
                 assert not (len(args.cmdline) and args.restore), 'Both command line and --restore given!'
-                if len(args.cmdline): tx(map(lambda x: x.get('conn'), sum(state.get('connections').values(), [])), {
-                    'binary': os.path.join(os.getcwd(), args.cmdline[0]),
-                })
-                for c in (args.config if args.config else []): config(map(lambda x: x.get('conn'), sum(state.get('connections').values(), [])), *c.split(':'))
-                if len(args.cmdline):
-                    state.update({'cmdline': ' '.join(args.cmdline)})
-                    _sp = integer(args.loadbin[0])
-                    _pc = integer(args.loadbin[1])
-                    _start_symbol = args.loadbin[2]
-                    for _coreid, _cmdline in enumerate(filter(lambda x: 0 < len(x.strip()), ' '.join(args.cmdline).split(','))):
-                        _cmdline = _cmdline.split()
-                        _binary = os.path.join(os.getcwd(), _cmdline[0])
-                        _args = tuple(_cmdline[1:])
-                        tx(map(lambda x: x.get('conn'), sum(state.get('connections').values(), [])), {
-                            'loadbin': {
-                                'coreid': _coreid,
-                                'start_symbol': _start_symbol,
-                                'sp': _sp,
-                                'pc': _pc,
-                                'binary': _binary,
-                                'args': ((_binary,) + _args),
-                            }
-                        })
-                        register(map(lambda x: x.get('conn'), sum(state.get('connections').values(), [])), _coreid, 'set', 1, hex(0))
-                        register(map(lambda x: x.get('conn'), sum(state.get('connections').values(), [])), _coreid, 'set', 2, hex(_sp))
-                        register(map(lambda x: x.get('conn'), sum(state.get('connections').values(), [])), _coreid, 'set', 4, '0xffff0000') # FIXME: is this necessary???
-                        register(map(lambda x: x.get('conn'), sum(state.get('connections').values(), [])), _coreid, 'set', 10, hex(1 + len(_args)))
-                        register(map(lambda x: x.get('conn'), sum(state.get('connections').values(), [])), _coreid, 'set', 11, hex(8 + _sp))
-                        register(map(lambda x: x.get('conn'), sum(state.get('connections').values(), [])), _coreid, 'set', '%pc', hex(_pc + get_startsymbol(_binary, _start_symbol)))
-                        logging.info('implied loadbin')
-                        logging.info('\t_coreid  : {}'.format(_coreid))
-                        logging.info('\t_cmdline : {}'.format(_cmdline))
-                        logging.info('\t_binary  : {}'.format(_binary))
-                        logging.info('\t_args    : {}'.format(_args))
-                        state.get('shutdown').update({len(state.get('shutdown').keys()): False})
-                elif args.restore:
-                    restore(state, args.restore)
-                    state.get('shutdown').update({len(state.get('shutdown').keys()): False})
-                else:
-                    assert False, 'Neither command line nor --restore!'
-                if args.snapshots:
-                    tx(map(lambda x: x.get('conn'), sum(state.get('connections').values(), [])), {
-                        'snapshots': {
-                            'checkpoints': args.snapshots,
-                            'cmdline': state.get('cmdline'),
-                        }
-                    })
+#                assert (0 == len(args.cmdline)) and (None == args.restore), 'Neither command line nor --restore!'
+#                if len(args.cmdline): tx(map(lambda x: x.get('conn'), sum(state.get('connections').values(), [])), {
+#                    'binary': os.path.join(os.getcwd(), args.cmdline[0]),
+#                })
+#                for c in (args.config if args.config else []): config(map(lambda x: x.get('conn'), sum(state.get('connections').values(), [])), *c.split(':'))
+#                if len(args.cmdline):
+#                    state.update({'cmdline': ' '.join(args.cmdline)})
+#                    _sp = integer(args.loadbin[0])
+#                    _pc = integer(args.loadbin[1])
+#                    _start_symbol = args.loadbin[2]
+#                    for _coreid, _cmdline in enumerate(filter(lambda x: 0 < len(x.strip()), ' '.join(args.cmdline).split(','))):
+#                        _cmdline = _cmdline.split()
+#                        _binary = os.path.join(os.getcwd(), _cmdline[0])
+#                        _args = tuple(_cmdline[1:])
+#                        tx(map(lambda x: x.get('conn'), sum(state.get('connections').values(), [])), {
+#                            'loadbin': {
+#                                'coreid': _coreid,
+#                                'start_symbol': _start_symbol,
+#                                'sp': _sp,
+#                                'pc': _pc,
+#                                'binary': _binary,
+#                                'args': ((_binary,) + _args),
+#                            }
+#                        })
+#                        register(map(lambda x: x.get('conn'), sum(state.get('connections').values(), [])), _coreid, 'set', 1, hex(0))
+#                        register(map(lambda x: x.get('conn'), sum(state.get('connections').values(), [])), _coreid, 'set', 2, hex(_sp))
+#                        register(map(lambda x: x.get('conn'), sum(state.get('connections').values(), [])), _coreid, 'set', 4, '0xffff0000') # FIXME: is this necessary???
+#                        register(map(lambda x: x.get('conn'), sum(state.get('connections').values(), [])), _coreid, 'set', 10, hex(1 + len(_args)))
+#                        register(map(lambda x: x.get('conn'), sum(state.get('connections').values(), [])), _coreid, 'set', 11, hex(8 + _sp))
+#                        register(map(lambda x: x.get('conn'), sum(state.get('connections').values(), [])), _coreid, 'set', '%pc', hex(_pc + get_startsymbol(_binary, _start_symbol)))
+#                        logging.info('implied loadbin')
+#                        logging.info('\t_coreid  : {}'.format(_coreid))
+#                        logging.info('\t_cmdline : {}'.format(_cmdline))
+#                        logging.info('\t_binary  : {}'.format(_binary))
+#                        logging.info('\t_args    : {}'.format(_args))
+##                        state.get('shutdown').update({len(state.get('shutdown').keys()): False})
+#                elif args.restore:
+#                    restore(state, args.restore)
+##                    state.get('shutdown').update({len(state.get('shutdown').keys()): False})
+#                else:
+#                    assert False, 'Neither command line nor --restore!'
+#                if args.snapshots:
+#                    tx(map(lambda x: x.get('conn'), sum(state.get('connections').values(), [])), {
+#                        'snapshots': {
+#                            'checkpoints': args.snapshots,
+#                            'cmdline': state.get('cmdline'),
+#                        }
+#                    })
                 state.update({'running': True})
                 state.update({'cycle': run(state.get('cycle'), args.max_cycles, args.max_instructions, args.break_on_undefined, args.snapshots)})
                 state.update({'running': False})
-            elif 'spawn' == cmd:
-                spawn(_services, args)
             else:
                 {
                     'service': lambda x: add_service(_services, args, x),

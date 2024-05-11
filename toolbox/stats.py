@@ -83,6 +83,8 @@ if '__main__' == __name__:
                 state.update({'running': True})
                 state.update({'ack': False})
                 _service.tx({'info': 'state.config : {}'.format(state.get('config'))})
+            elif {'text': 'pause'} == {k: v}:
+                state.update({'running': False})
             elif 'config' == k:
                 logging.info('config : {}'.format(v))
                 if state.get('service') != v.get('service'): continue
@@ -99,7 +101,7 @@ if '__main__' == __name__:
                 assert not state.get('running'), 'Attempted restore while running!'
                 state.update({'cycle': v.get('cycle')})
                 _service.tx({'ack': {'cycle': state.get('cycle')}})
-        if state.get('ack') and state.get('running'): _service.tx({'ack': {'cycle': state.get('cycle')}})
+        if state.get('ack') and state.get('running'): _service.tx({'ack': {'cycle': state.get('cycle'), 'msg': msg}})
     _output_filename = state.get('config').get('output_filename')
     fp = (sys.stdout if not _output_filename else open(_output_filename, 'w'))
     json.dump(state.get('stats'), fp, indent=4)
