@@ -98,6 +98,12 @@ def handler(conn, addr):
                 _res_evt = _local.buffer.get('futures').get(_arr, {'results': [], 'events': []})
                 _res_evt.get('events').append(_evt)
                 _local.buffer.get('futures').update({_arr: _res_evt})
+            elif 'register' == k:
+                _coreid = v.get('coreid')
+                _cmd = v.get('cmd')
+                _name = v.get('name')
+                _data = v.get('data')
+                register(filter(lambda y: conn != y, map(lambda x: x.get('conn'), sum(state.get('connections').values(), []))), _coreid, _cmd, _name, int.from_bytes(_data, 'little'))
             else:
                 state.get('lock').acquire()
                 state.get('unknown_message_key').append((threading.current_thread().name, msg))
@@ -175,7 +181,18 @@ def run(cycle, max_cycles, max_instructions, break_on_undefined, snapshot_freque
     #   }
     # }
     _cmdline = (list(filter(lambda x: len(x), ' '.join(args.cmdline).strip().split(','))) if args.cmdline else [])
-    if args.restore: restore(state, args.restore)
+    if args.restore:
+        _coreid = 0 # snapshot restore for now assumes a single core
+        state.get('shutdown').update({_coreid: False})
+        for c in (args.config if args.config else []): config(map(
+            lambda x: x.get('conn'),
+            sum(state.get('connections').values(), [])
+        ), *c.split(':'))
+        cycle = restore(state, args.restore)
+        _futures = state.get('futures').pop(1 + cycle, {'results': [], 'events': []})
+        _futures.get('events').extend([{'coreid': _coreid, 'init': True}])
+        state.get('futures').update({1 + cycle: _futures})
+        tx(map(lambda x: x.get('conn'), state.get('connections').get(_coreid)), 'run')
     if args.snapshots:
         tx(map(lambda x: x.get('conn'), sum(state.get('connections').values(), [])), {
             'snapshots': {
