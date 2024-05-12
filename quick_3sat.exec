@@ -5,7 +5,18 @@
         },
         "max_cycles": 1000000,
         "script": "localhost.nebula",
-        "restore": "../../snapshots/3sat/mainmem.raw.000000000480000.snapshot"
+        "restore": "../../snapshots/3sat/expr0/mainmem.raw.000000000480000.snapshot"
+    },
+    "pipelines/bergamot": {
+        "config": {
+            "watchdog:event_name": ["commit"],
+            "watchdog:event_cycles": [1000],
+            "mainmem:peek_latency_in_cycles": [1, 25],
+            "mainmem:capacity": [4294967296]
+        },
+        "max_cycles": 100000000,
+        "script": "localhost.nebula",
+        "restore": "../../snapshots/3sat/expr0/mainmem.raw.000000000480000.snapshot"
     },
     "pipelines/jabara": {
         "config": {
@@ -13,7 +24,7 @@
         },
         "max_cycles": 1000000,
         "script": "localhost.nebula",
-        "restore": "../../snapshots/3sat/mainmem.raw.000000000480000.snapshot"
+        "restore": "../../snapshots/3sat/expr0/mainmem.raw.000000000480000.snapshot"
     },
     "pipelines/pompia": {
         "config": {
@@ -27,7 +38,7 @@
         "max_instructions": 10000,
         "script": "localhost.nebula",
         "service": ["implementation/mainmem.py:localhost:22:-1:-1"],
-        "restore": "../../snapshots/3sat/mainmem.raw.000000000480000.snapshot"
+        "restore": "../../snapshots/3sat/expr0/mainmem.raw.000000000480000.snapshot"
     },
     "pipelines/rangpur": {
         "config": {
@@ -41,7 +52,7 @@
         "max_instructions": 10000,
         "script": "localhost.nebula",
         "service": ["implementation/mainmem.py:localhost:22:-1:-1"],
-        "restore": "../../snapshots/3sat/mainmem.raw.000000000480000.snapshot"
+        "restore": "../../snapshots/3sat/expr0/mainmem.raw.000000000480000.snapshot"
     },
     "pipelines/shangjuan": {
         "config": {
@@ -59,6 +70,6 @@
         "max_instructions": 10000,
         "script": "localhost.nebula",
         "service": ["implementation/mainmem.py:localhost:22:-1:-1"],
-        "restore": "../../snapshots/3sat/mainmem.raw.000000000480000.snapshot"
+        "restore": "../../snapshots/3sat/expr0/mainmem.raw.000000000480000.snapshot"
     }
 }
