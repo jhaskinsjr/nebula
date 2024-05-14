@@ -14,32 +14,29 @@ import riscv.constants
 
 
 def do_tick(service, state, results, events):
-    for pc in map(lambda w: w.get('data'), filter(lambda x: x and '%pc' == x.get('name'), map(lambda y: y.get('register'), results))):
-        if 0 == int.from_bytes(pc, 'little'):
+    for reg in map(lambda y: y.get('register'), filter(lambda x: x.get('register'), results)):
+        if '%pc' != reg.get('name'): continue
+        state.update({'%pc': reg.get('data')})
+        service.tx({'info': 'state.%pc : {}'.format(state.get('%pc'))})
+        if 0 == int.from_bytes(state.get('%pc'), 'little'):
             service.tx({'info': 'Jump to @0x00000000... graceful shutdown'})
             service.tx({'shutdown': {
                 'coreid': state.get('coreid'),
             }})
-        if not state.get('%jp'): state.update({'%jp': pc})
         service.tx({'event': {
             'arrival': 1 + state.get('cycle'),
             'coreid': state.get('coreid'),
             'mem': {
                 'cmd': 'peek',
-                'addr': int.from_bytes(state.get('%jp'), 'little'),
+                'addr': int.from_bytes(state.get('%pc'), 'little'),
                 'size': 4,
             },
         }})
-        state.update({'pending_fetch': int.from_bytes(state.get('%jp'), 'little')})
-        state.update({'%jp': riscv.constants.integer_to_list_of_bytes(4 + int.from_bytes(state.get('%jp'), 'little'), 64, 'little')})
-        state.update({'%pc': pc})
+        state.update({'pending_fetch': int.from_bytes(state.get('%pc'), 'little')})
         state.update({'pending_pc': False})
         toolbox.report_stats(service, state, 'flat', 'fetches')
-    for mem in filter(lambda x: x, map(lambda y: y.get('mem'), results)):
-#        service.tx({'info': 'mem.addr      : {}'.format(mem.get('addr'))})
-#        service.tx({'info': 'pending_fetch : {}'.format(state.get('pending_fetch'))})
-        if mem.get('addr') != state.get('pending_fetch'):
-            continue
+    for mem in map(lambda y: y.get('mem'), filter(lambda x: x.get('mem'), results)):
+        if mem.get('addr') != state.get('pending_fetch'): continue
         state.update({'pending_fetch': None})
         state.update({'pending_decode': True})
         service.tx({'event': {
@@ -47,62 +44,48 @@ def do_tick(service, state, results, events):
             'coreid': state.get('coreid'),
             'decode': {
                 'bytes': mem.get('data'),
+                '%pc': state.get('%pc'),
             },
         }})
-    for insns in filter(lambda x: x, map(lambda y: y.get('insns'), results)):
+    for insn in map(lambda y: y.get('insn'), filter(lambda x: x.get('insn'), results)):
         state.update({'pending_decode': False})
-        _pending = [{
-            **x,
-            **{
-                '%pc': state.get('%pc'),
-                '_pc': int.from_bytes(state.get('%pc'), 'little'),
-            },
-            **({'function': next(filter(lambda x: int.from_bytes(state.get('%pc'), 'little') >= x[0], sorted(state.get('objmap').items(), reverse=True)))[-1].get('name', '')} if state.get('objmap') else {}),
-        } for x in insns.get('data')]
-        state.update({'pending_execute': _pending})
+        _insn = {
+            **insn,
+            **{'iid': state.get('iid')},
+            **({'function': next(filter(lambda x: int.from_bytes(insn.get('%pc'), 'little') >= x[0], sorted(state.get('objmap').items(), reverse=True)))[-1].get('name', '')} if state.get('objmap') else {}),
+        }
+        state.update({'pending_execute': _insn})
         service.tx({'event': {
             'arrival': 1 + state.get('cycle'),
             'coreid': state.get('coreid'),
             'execute': {
-                'insns': _pending,
+                'insn': _insn,
             }
         }})
-    for completed in filter(lambda x: x, map(lambda y: y.get('complete'), events)):
-        _completed = {'insns': [{x: y for x, y in filter(lambda z: 'taken' not in z, a.items())} for a in completed.get('insns')]}
-        _pending = {'insns': [{x: y for x, y in filter(lambda z: 'taken' not in z, a.items())} for a in state.get('pending_execute')]}
-#        service.tx({'info': 'completed  : {}'.format(completed)})
-#        service.tx({'info': '_completed : {}'.format(_completed)})
-#        service.tx({'info': 'state.get(pending_execute) : {}'.format(state.get('pending_execute'))})
-#        service.tx({'info': '_pending   : {}'.format(_pending)})
-        assert _completed.get('insns') == _pending.get('insns'), '{} != {}'.format(completed.get('insns'), state.get('pending_execute'))
-        _insns = completed.get('insns')
-        _jumps = any(map(lambda a: a.get('cmd') in riscv.constants.JUMPS, _insns))
-        _taken_branches = any(map(lambda a: a.get('cmd') in riscv.constants.BRANCHES and a.get('taken'), _insns))
-#        service.tx({'info': '%jp : {}'.format(state.get('%jp'))})
-#        service.tx({'info': '%pc : {}'.format(state.get('%pc'))})
-        if not _jumps and not _taken_branches:
-            _pc = sum(map(lambda x: x.get('size'), completed.get('insns'))) + int.from_bytes(state.get('%pc'), 'little')
-            _pc = riscv.constants.integer_to_list_of_bytes(_pc, 64, 'little')
+        state.update({'iid': 1 + state.get('iid')})
+    for complete in map(lambda y: y.get('complete'), filter(lambda x: x.get('complete'), events)):
+        _insn = complete.get('insn')
+        assert _insn.get('iid') == state.get('pending_execute').get('iid'), '_insn : {} != state.pending_execute : {}'.format(_insn, state.get('pending_execute'))
+        _jump = _insn.get('cmd') in riscv.constants.JUMPS
+        _taken = _insn.get('taken')
+        if not _jump and not _taken:
+            _pc = int.from_bytes(_insn.get('%pc'), 'little')
+            state.update({'%pc': riscv.constants.integer_to_list_of_bytes(_pc + _insn.get('size'), 64, 'little')})
             service.tx({'event': {
                 'arrival': 1 + state.get('cycle'),
                 'coreid': state.get('coreid'),
                 'register': {
                     'cmd': 'set',
                     'name': '%pc',
-                    'data': _pc,
+                    'data': state.get('%pc'),
                 }
             }})
             state.update({'%pc': _pc})
-        else:
-            state.update({'%jp': None})
-#        service.tx({'info': '%jp : {}'.format(state.get('%jp'))})
-#        service.tx({'info': '%pc : {}'.format(state.get('%pc'))})
         state.update({'pending_execute': None})
-    _n_committed = len(list(filter(lambda x: x, map(lambda y: y.get('commit'), events))))
-    if _n_committed: service.tx({'committed': _n_committed})
-    for committed in filter(lambda x: x, map(lambda y: y.get('commit'), events)):
-        service.tx({'info': 'retiring : {}'.format(committed)})
-#        _n_committed += 1
+    for commit in map(lambda y: y.get('commit'), filter(lambda x: x.get('commit'), events)):
+        _insn = commit.get('insn')
+        service.tx({'committed': 1})
+        logging.info('retiring : {}'.format(_insn))
     if not state.get('pending_pc') and not state.get('pending_fetch') and not state.get('pending_decode') and not state.get('pending_execute'):
         service.tx({'event': {
             'arrival': 1 + state.get('cycle'),
@@ -113,6 +96,10 @@ def do_tick(service, state, results, events):
             },
         }})
         state.update({'pending_pc': True})
+    service.tx({'info': 'state.pending_pc      : {}'.format(state.get('pending_pc'))})
+    service.tx({'info': 'state.pending_fetch   : {}'.format(state.get('pending_fetch'))})
+    service.tx({'info': 'state.pending_decode  : {}'.format(state.get('pending_decode'))})
+    service.tx({'info': 'state.pending_execute : {}'.format(state.get('pending_execute'))})
 
 if '__main__' == __name__:
     parser = argparse.ArgumentParser(description='Nebula: Simple Core')
@@ -146,7 +133,7 @@ if '__main__' == __name__:
         'pending_fetch': None,
         'pending_decode': False,
         'pending_execute': None,
-        '%jp': None, # This is the fetch pointer. Why %jp? Who knows?
+        'iid': 0,
         '%pc': None,
         'ack': True,
         'objmap': None,
@@ -172,7 +159,6 @@ if '__main__' == __name__:
                 state.update({'pending_fetch': None})
                 state.update({'pending_decode': False})
                 state.update({'pending_execute': None})
-                state.update({'%jp': None})
                 state.update({'%pc': None})
                 if not state.get('config').get('toolchain'): continue
                 _toolchain = state.get('config').get('toolchain')

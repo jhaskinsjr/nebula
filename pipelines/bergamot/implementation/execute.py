@@ -5,8 +5,6 @@ import sys
 import argparse
 import logging
 import time
-import functools
-import struct
 
 import service
 import toolbox
@@ -14,11 +12,11 @@ import riscv.execute
 import riscv.syscall.linux
 
 def do_unimplemented(service, state, insn):
-    logging.info('Unimplemented: {}'.format(state.get('pending_execute')))
+    logging.info('Unimplemented: {}'.format(insn))
     service.tx({'undefined': insn})
-    do_complete(service, state, state.get('pending_execute'))
-    do_confirm(service, state, state.get('pending_execute'))
-    do_commit(service, state, state.get('pending_execute'))
+    do_complete(service, state, insn)
+    do_confirm(service, state, insn)
+    do_commit(service, state, insn)
     state.update({'operands': {}})
     state.update({'pending_execute': None})
 
@@ -33,13 +31,13 @@ def do_lui(service, state, insn):
             'data': _result,
         }
     }})
-    do_complete(service, state, state.get('pending_execute'))
-    do_confirm(service, state, state.get('pending_execute'))
-    do_commit(service, state, state.get('pending_execute'))
+    do_complete(service, state, insn)
+    do_confirm(service, state, insn)
+    do_commit(service, state, insn)
     state.update({'operands': {}})
     state.update({'pending_execute': None})
 def do_auipc(service, state, insn):
-    _result = riscv.execute.auipc(state.get('%pc'), insn.get('imm'))
+    _result = riscv.execute.auipc(insn.get('%pc'), insn.get('imm'))
     service.tx({'event': {
         'arrival': 1 + state.get('cycle'),
         'coreid': state.get('coreid'),
@@ -49,13 +47,13 @@ def do_auipc(service, state, insn):
             'data': _result,
         }
     }})
-    do_complete(service, state, state.get('pending_execute'))
-    do_confirm(service, state, state.get('pending_execute'))
-    do_commit(service, state, state.get('pending_execute'))
+    do_complete(service, state, insn)
+    do_confirm(service, state, insn)
+    do_commit(service, state, insn)
     state.update({'operands': {}})
     state.update({'pending_execute': None})
 def do_jal(service, state, insn):
-    _next_pc, _ret_pc = riscv.execute.jal(state.get('%pc'), insn.get('imm'), insn.get('size'))
+    _next_pc, _ret_pc = riscv.execute.jal(insn.get('%pc'), insn.get('imm'), insn.get('size'))
     service.tx({'event': {
         'arrival': 1 + state.get('cycle'),
         'coreid': state.get('coreid'),
@@ -74,9 +72,9 @@ def do_jal(service, state, insn):
             'data': _ret_pc,
         }
     }})
-    do_complete(service, state, state.get('pending_execute'))
-    do_confirm(service, state, state.get('pending_execute'))
-    do_commit(service, state, state.get('pending_execute'))
+    do_complete(service, state, insn)
+    do_confirm(service, state, insn)
+    do_commit(service, state, insn)
     state.update({'operands': {}})
     state.update({'pending_execute': None})
 def do_jalr(service, state, insn):
@@ -92,7 +90,7 @@ def do_jalr(service, state, insn):
         }})
     if not isinstance(state.get('operands').get('rs1'), list):
         return
-    _next_pc, _ret_pc = riscv.execute.jalr(state.get('%pc'), state.get('operands').get('rs1'), insn.get('imm'), insn.get('size'))
+    _next_pc, _ret_pc = riscv.execute.jalr(insn.get('%pc'), state.get('operands').get('rs1'), insn.get('imm'), insn.get('size'))
     service.tx({'event': {
         'arrival': 1 + state.get('cycle'),
         'coreid': state.get('coreid'),
@@ -111,9 +109,9 @@ def do_jalr(service, state, insn):
             'data': _ret_pc,
         }
     }})
-    do_complete(service, state, state.get('pending_execute'))
-    do_confirm(service, state, state.get('pending_execute'))
-    do_commit(service, state, state.get('pending_execute'))
+    do_complete(service, state, insn)
+    do_confirm(service, state, insn)
+    do_commit(service, state, insn)
     state.update({'operands': {}})
     state.update({'pending_execute': None})
 def do_branch(service, state, insn):
@@ -148,7 +146,7 @@ def do_branch(service, state, insn):
         'BGE': riscv.execute.bge,
         'BLTU': riscv.execute.bltu,
         'BGEU': riscv.execute.bgeu,
-    }.get(insn.get('cmd'))(state.get('%pc'), state.get('operands').get('rs1'), state.get('operands').get('rs2'), insn.get('imm'), insn.get('size'))
+    }.get(insn.get('cmd'))(insn.get('%pc'), state.get('operands').get('rs1'), state.get('operands').get('rs2'), insn.get('imm'), insn.get('size'))
     insn.update({'taken': _taken})
     service.tx({'event': {
         'arrival': 1 + state.get('cycle'),
@@ -159,9 +157,9 @@ def do_branch(service, state, insn):
             'data': _next_pc,
         }
     }})
-    do_complete(service, state, state.get('pending_execute'))
-    do_confirm(service, state, state.get('pending_execute'))
-    do_commit(service, state, state.get('pending_execute'))
+    do_complete(service, state, insn)
+    do_confirm(service, state, insn)
+    do_commit(service, state, insn)
     state.update({'operands': {}})
     state.update({'pending_execute': None})
 def do_itype(service, state, insn):
@@ -178,14 +176,14 @@ def do_itype(service, state, insn):
     if not isinstance(state.get('operands').get('rs1'), list):
         return
     _result = {
-        'ADDI': riscv.execute.addi(state.get('operands').get('rs1'), insn.get('imm')),
-        'SLTI': riscv.execute.slti(state.get('operands').get('rs1'), insn.get('imm')),
-        'SLTIU': riscv.execute.sltiu(state.get('operands').get('rs1'), insn.get('imm')),
-        'ADDIW': riscv.execute.addiw(state.get('operands').get('rs1'), insn.get('imm')),
-        'XORI': riscv.execute.xori(state.get('operands').get('rs1'), insn.get('imm')),
-        'ORI': riscv.execute.ori(state.get('operands').get('rs1'), insn.get('imm')),
-        'ANDI': riscv.execute.andi(state.get('operands').get('rs1'), insn.get('imm')),
-    }.get(insn.get('cmd'))
+        'ADDI': riscv.execute.addi,
+        'SLTI': riscv.execute.slti,
+        'SLTIU': riscv.execute.sltiu,
+        'ADDIW': riscv.execute.addiw,
+        'XORI': riscv.execute.xori,
+        'ORI': riscv.execute.ori,
+        'ANDI': riscv.execute.andi,
+    }.get(insn.get('cmd'))(state.get('operands').get('rs1'), insn.get('imm'))
     service.tx({'event': {
         'arrival': 1 + state.get('cycle'),
         'coreid': state.get('coreid'),
@@ -195,9 +193,9 @@ def do_itype(service, state, insn):
             'data': _result,
         }
     }})
-    do_complete(service, state, state.get('pending_execute'))
-    do_confirm(service, state, state.get('pending_execute'))
-    do_commit(service, state, state.get('pending_execute'))
+    do_complete(service, state, insn)
+    do_confirm(service, state, insn)
+    do_commit(service, state, insn)
     state.update({'operands': {}})
     state.update({'pending_execute': None})
 def do_rtype(service, state, insn):
@@ -264,9 +262,9 @@ def do_rtype(service, state, insn):
             'data': _result,
         }
     }})
-    do_complete(service, state, state.get('pending_execute'))
-    do_confirm(service, state, state.get('pending_execute'))
-    do_commit(service, state, state.get('pending_execute'))
+    do_complete(service, state, insn)
+    do_confirm(service, state, insn)
+    do_commit(service, state, insn)
     state.update({'operands': {}})
     state.update({'pending_execute': None})
 def do_load(service, state, insn):
@@ -316,9 +314,9 @@ def do_load(service, state, insn):
             'data': _data,
         }
     }})
-    do_complete(service, state, state.get('pending_execute'))
-    do_confirm(service, state, state.get('pending_execute'))
-    do_commit(service, state, state.get('pending_execute'))
+    do_complete(service, state, insn)
+    do_confirm(service, state, insn)
+    do_commit(service, state, insn)
     state.update({'operands': {}})
     state.update({'pending_execute': None})
 def do_store(service, state, insn):
@@ -370,15 +368,15 @@ def do_store(service, state, insn):
             'data': _data
         }
     }})
-    do_complete(service, state, state.get('pending_execute'))
-    do_confirm(service, state, state.get('pending_execute'))
-    do_commit(service, state, state.get('pending_execute'))
+    do_complete(service, state, insn)
+    do_confirm(service, state, insn)
+    do_commit(service, state, insn)
     state.update({'operands': {}})
     state.update({'pending_execute': None})
 def do_nop(service, state, insn):
-    do_complete(service, state, state.get('pending_execute'))
-    do_confirm(service, state, state.get('pending_execute'))
-    do_commit(service, state, state.get('pending_execute'))
+    do_complete(service, state, insn)
+    do_confirm(service, state, insn)
+    do_commit(service, state, insn)
     state.update({'operands': {}})
     state.update({'pending_execute': None})
 def do_shift(service, state, insn):
@@ -397,13 +395,13 @@ def do_shift(service, state, insn):
     _rs1 = state.get('operands').get('rs1')
     _shamt = insn.get('shamt')
     _result = {
-        'SLLI': riscv.execute.slli(_rs1, _shamt),
-        'SRLI': riscv.execute.srli(_rs1, _shamt),
-        'SRAI': riscv.execute.srai(_rs1, _shamt),
-        'SLLIW': riscv.execute.slliw(_rs1, _shamt),
-        'SRLIW': riscv.execute.srliw(_rs1, _shamt),
-        'SRAIW': riscv.execute.sraiw(_rs1, _shamt),
-    }.get(insn.get('cmd'))
+        'SLLI': riscv.execute.slli,
+        'SRLI': riscv.execute.srli,
+        'SRAI': riscv.execute.srai,
+        'SLLIW': riscv.execute.slliw,
+        'SRLIW': riscv.execute.srliw,
+        'SRAIW': riscv.execute.sraiw,
+    }.get(insn.get('cmd'))(_rs1, _shamt)
     service.tx({'event': {
         'arrival': 1 + state.get('cycle'),
         'coreid': state.get('coreid'),
@@ -413,9 +411,9 @@ def do_shift(service, state, insn):
             'data': _result,
         }
     }})
-    do_complete(service, state, state.get('pending_execute'))
-    do_confirm(service, state, state.get('pending_execute'))
-    do_commit(service, state, state.get('pending_execute'))
+    do_complete(service, state, insn)
+    do_confirm(service, state, insn)
+    do_commit(service, state, insn)
     state.update({'operands': {}})
     state.update({'pending_execute': None})
 def do_ecall(service, state, insn):
@@ -585,153 +583,146 @@ def do_ecall(service, state, insn):
             **_side_effect.get('output'),
         }})
     state.update({'syscall_kwargs': {}})
-    do_complete(service, state, state.get('pending_execute'))
-    do_confirm(service, state, state.get('pending_execute'))
-    do_commit(service, state, state.get('pending_execute'))
+    do_complete(service, state, insn)
+    do_confirm(service, state, insn)
+    do_commit(service, state, insn)
     state.update({'operands': {}})
     state.update({'pending_execute': None})
 def do_fence(service, state, insn):
     # HACK: in a complex pipeline, this needs to be more than a NOP
-    do_complete(service, state, state.get('pending_execute'))
-    do_confirm(service, state, state.get('pending_execute'))
-    do_commit(service, state, state.get('pending_execute'))
+    do_complete(service, state, insn)
+    do_confirm(service, state, insn)
+    do_commit(service, state, insn)
     state.update({'operands': {}})
     state.update({'pending_execute': None})
 
 def do_execute(service, state):
-    for insn in state.get('pending_execute'):
-#        if 0x3 == insn.get('word') & 0x3:
-#            logging.info('do_execute(): @{:8} {:08x} : {}'.format(state.get('cycle'), insn.get('word'), insn.get('cmd')))
-#        else:
-#            logging.info('do_execute(): @{:8}     {:04x} : {}'.format(state.get('cycle'), insn.get('word'), insn.get('cmd')))
-        _pc = int.from_bytes(insn.get('%pc'), 'little')
-        _word = ('{:08x}'.format(insn.get('word')) if 4 == insn.get('size') else '    {:04x}'.format(insn.get('word')))
-        logging.info('do_execute(): {:8x}: {} : {:10} ({:12}, {})'.format(_pc, _word, insn.get('cmd'), state.get('cycle'), insn.get('function', '')))
-        _f = {
-            'LUI': do_lui,
-            'AUIPC': do_auipc,
-            'JAL': do_jal,
-            'JALR': do_jalr,
-            'ADDI': do_itype,
-            'ADDIW': do_itype,
-            'XORI': do_itype,
-            'ORI': do_itype,
-            'ANDI': do_itype,
-            'SLTI': do_itype,
-            'SLTIU': do_itype,
-            'ADD': do_rtype,
-            'SUB': do_rtype,
-            'XOR': do_rtype,
-            'SLL': do_rtype,
-            'SRL': do_rtype,
-            'SRA': do_rtype,
-            'SLT': do_rtype,
-            'SLTU': do_rtype,
-            'OR': do_rtype,
-            'AND': do_rtype,
-            'ADDW': do_rtype,
-            'SUBW': do_rtype,
-            'SLLW': do_rtype,
-            'SRLW': do_rtype,
-            'SRAW': do_rtype,
-            'MUL': do_rtype,
-            'MULH': do_rtype,
-            'MULHSU': do_rtype,
-            'MULHU': do_rtype,
-            'DIV': do_rtype,
-            'DIVU': do_rtype,
-            'REM': do_rtype,
-            'REMU': do_rtype,
-            'MULW': do_rtype,
-            'DIVW': do_rtype,
-            'DIVUW': do_rtype,
-            'REMW': do_rtype,
-            'REMUW': do_rtype,
-            'LD': do_load,
-            'LW': do_load,
-            'LH': do_load,
-            'LB': do_load,
-            'LWU': do_load,
-            'LHU': do_load,
-            'LBU': do_load,
-            'SD': do_store,
-            'SW': do_store,
-            'SH': do_store,
-            'SB': do_store,
-            'NOP': do_nop,
-            'SLLI': do_shift,
-            'SRLI': do_shift,
-            'SRAI': do_shift,
-            'SLLIW': do_shift,
-            'SRLIW': do_shift,
-            'SRAIW': do_shift,
-            'BEQ': do_branch,
-            'BNE': do_branch,
-            'BLT': do_branch,
-            'BGE': do_branch,
-            'BLTU': do_branch,
-            'BGEU': do_branch,
-            'ECALL': do_ecall,
-            'FENCE': do_fence,
-        }.get(insn.get('cmd'), do_unimplemented)
-        _f(service, state, insn)
-        toolbox.report_stats(service, state, 'histo', 'category', _f.__name__)
-def do_complete(service, state, insns): # finished the work of the instruction, but will not necessarily be committed
+    _insn = state.get('pending_execute')
+    _pc = int.from_bytes(_insn.get('%pc'), 'little')
+    _word = ('{:08x}'.format(_insn.get('word')) if 4 == _insn.get('size') else '    {:04x}'.format(_insn.get('word')))
+    logging.info('do_execute(): {:8x}: {} : {:10} ({:12}, {})'.format(_pc, _word, _insn.get('cmd'), state.get('cycle'), _insn.get('function', '')))
+    _f = {
+        'LUI': do_lui,
+        'AUIPC': do_auipc,
+        'JAL': do_jal,
+        'JALR': do_jalr,
+        'ADDI': do_itype,
+        'ADDIW': do_itype,
+        'XORI': do_itype,
+        'ORI': do_itype,
+        'ANDI': do_itype,
+        'SLTI': do_itype,
+        'SLTIU': do_itype,
+        'ADD': do_rtype,
+        'SUB': do_rtype,
+        'XOR': do_rtype,
+        'SLL': do_rtype,
+        'SRL': do_rtype,
+        'SRA': do_rtype,
+        'SLT': do_rtype,
+        'SLTU': do_rtype,
+        'OR': do_rtype,
+        'AND': do_rtype,
+        'ADDW': do_rtype,
+        'SUBW': do_rtype,
+        'SLLW': do_rtype,
+        'SRLW': do_rtype,
+        'SRAW': do_rtype,
+        'MUL': do_rtype,
+        'MULH': do_rtype,
+        'MULHSU': do_rtype,
+        'MULHU': do_rtype,
+        'DIV': do_rtype,
+        'DIVU': do_rtype,
+        'REM': do_rtype,
+        'REMU': do_rtype,
+        'MULW': do_rtype,
+        'DIVW': do_rtype,
+        'DIVUW': do_rtype,
+        'REMW': do_rtype,
+        'REMUW': do_rtype,
+        'LD': do_load,
+        'LW': do_load,
+        'LH': do_load,
+        'LB': do_load,
+        'LWU': do_load,
+        'LHU': do_load,
+        'LBU': do_load,
+        'SD': do_store,
+        'SW': do_store,
+        'SH': do_store,
+        'SB': do_store,
+        'NOP': do_nop,
+        'SLLI': do_shift,
+        'SRLI': do_shift,
+        'SRAI': do_shift,
+        'SLLIW': do_shift,
+        'SRLIW': do_shift,
+        'SRAIW': do_shift,
+        'BEQ': do_branch,
+        'BNE': do_branch,
+        'BLT': do_branch,
+        'BGE': do_branch,
+        'BLTU': do_branch,
+        'BGEU': do_branch,
+        'ECALL': do_ecall,
+        'FENCE': do_fence,
+    }.get(_insn.get('cmd'), do_unimplemented)
+    _f(service, state, _insn)
+    toolbox.report_stats(service, state, 'histo', 'category', _f.__name__)
+def do_complete(service, state, insn): # finished the work of the instruction, but will not necessarily be committed
     service.tx({'event': {
         'arrival': 1 + state.get('cycle'),
         'coreid': state.get('coreid'),
         'complete': {
-            'insns': insns,
+            'insn': insn,
         },
     }})
     toolbox.report_stats(service, state, 'flat', 'number_of_completes')
-def do_confirm(service, state, insns): # definitely will commit
+def do_confirm(service, state, insn): # definitely will commit
     service.tx({'event': {
         'arrival': 1 + state.get('cycle'),
         'coreid': state.get('coreid'),
         'confirm': {
-            'insns': insns,
+            'insn': insn,
         },
     }})
     toolbox.report_stats(service, state, 'flat', 'number_of_confirms')
-def do_commit(service, state, insns):
+def do_commit(service, state, insn):
     service.tx({'event': {
         'arrival': 1 + state.get('cycle'),
         'coreid': state.get('coreid'),
         'commit': {
-            'insns': insns,
+            'insn': insn,
         },
     }})
     toolbox.report_stats(service, state, 'flat', 'number_of_commits')
 
 def do_tick(service, state, results, events):
-    for rs in filter(lambda x: x, map(lambda y: y.get('register'), results)):
-        if '%pc' == rs.get('name'):
-            state.update({'%pc': rs.get('data')})
-        elif '%{}'.format(rs.get('name')) == state.get('operands').get('rs1'):
-            state.get('operands').update({'rs1': rs.get('data')})
-        elif '%{}'.format(rs.get('name')) == state.get('operands').get('rs2'):
-            state.get('operands').update({'rs2': rs.get('data')})
-        elif '%{}'.format(rs.get('name')) == state.get('operands').get('syscall_num'):
-            state.get('operands').update({'syscall_num': rs.get('data')})
-        elif '%{}'.format(rs.get('name')) == state.get('operands').get('syscall_a0'):
-            state.get('operands').update({'syscall_a0': rs.get('data')})
-        elif '%{}'.format(rs.get('name')) == state.get('operands').get('syscall_a1'):
-            state.get('operands').update({'syscall_a1': rs.get('data')})
-        elif '%{}'.format(rs.get('name')) == state.get('operands').get('syscall_a2'):
-            state.get('operands').update({'syscall_a2': rs.get('data')})
-        elif '%{}'.format(rs.get('name')) == state.get('operands').get('syscall_a3'):
-            state.get('operands').update({'syscall_a3': rs.get('data')})
-        elif '%{}'.format(rs.get('name')) == state.get('operands').get('syscall_a4'):
-            state.get('operands').update({'syscall_a4': rs.get('data')})
-        elif '%{}'.format(rs.get('name')) == state.get('operands').get('syscall_a5'):
-            state.get('operands').update({'syscall_a5': rs.get('data')})
-    for rs in filter(lambda x: x, map(lambda y: y.get('mem'), results)):
-        _mem = rs
-        if _mem.get('addr') == state.get('operands').get('mem'):
-            state.get('operands').update({'mem': _mem.get('data')})
-    for ev in filter(lambda x: x, map(lambda y: y.get('execute'), events)):
-        state.update({'pending_execute': ev.get('insns')})
+    for reg in map(lambda y: y.get('register'), filter(lambda x: x.get('register'), results)):
+        if '%{}'.format(reg.get('name')) == state.get('operands').get('rs1'):
+            state.get('operands').update({'rs1': reg.get('data')})
+        elif '%{}'.format(reg.get('name')) == state.get('operands').get('rs2'):
+            state.get('operands').update({'rs2': reg.get('data')})
+        elif '%{}'.format(reg.get('name')) == state.get('operands').get('syscall_num'):
+            state.get('operands').update({'syscall_num': reg.get('data')})
+        elif '%{}'.format(reg.get('name')) == state.get('operands').get('syscall_a0'):
+            state.get('operands').update({'syscall_a0': reg.get('data')})
+        elif '%{}'.format(reg.get('name')) == state.get('operands').get('syscall_a1'):
+            state.get('operands').update({'syscall_a1': reg.get('data')})
+        elif '%{}'.format(reg.get('name')) == state.get('operands').get('syscall_a2'):
+            state.get('operands').update({'syscall_a2': reg.get('data')})
+        elif '%{}'.format(reg.get('name')) == state.get('operands').get('syscall_a3'):
+            state.get('operands').update({'syscall_a3': reg.get('data')})
+        elif '%{}'.format(reg.get('name')) == state.get('operands').get('syscall_a4'):
+            state.get('operands').update({'syscall_a4': reg.get('data')})
+        elif '%{}'.format(reg.get('name')) == state.get('operands').get('syscall_a5'):
+            state.get('operands').update({'syscall_a5': reg.get('data')})
+    for mem in map(lambda y: y.get('mem'), filter(lambda x: x.get('mem'), results)):
+        if mem.get('addr') != state.get('operands').get('mem'): continue
+        state.get('operands').update({'mem': mem.get('data')})
+    for execute in map(lambda y: y.get('execute'), filter(lambda x: x.get('execute'), events)):
+        state.update({'pending_execute': execute.get('insn')})
     if state.get('pending_execute'): do_execute(service, state)
 
 if '__main__' == __name__:
@@ -766,7 +757,6 @@ if '__main__' == __name__:
         'pending_execute': None,
         'syscall_kwargs': {},
         'system': riscv.syscall.linux.System(),
-        '%pc': None,
         'operands': {},
     }
     _service = service.Service(state.get('service'), state.get('coreid'), _launcher.get('host'), _launcher.get('port'))
@@ -784,7 +774,6 @@ if '__main__' == __name__:
                 state.update({'ack': False})
                 state.update({'pending_execute': None})
                 state.update({'syscall_kwargs': {}})
-                state.update({'%pc': None})
                 state.update({'operands': {}})
             elif {'text': 'pause'} == {k: v}:
                 state.update({'running': False})

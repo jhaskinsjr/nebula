@@ -12,29 +12,16 @@ import riscv.constants
 import riscv.decode
 
 def do_tick(service, state, results, events):
-    for pc in map(lambda w: w.get('data'), filter(lambda x: x and '%pc' == x.get('name'), map(lambda y: y.get('register'), results))):
-        service.tx({'info': 'pc            : {}'.format(pc)})
-        service.tx({'info': 'state.get(pc) : {}'.format(state.get('%pc'))})
-        if pc != state.get('%pc'):
-            state.get('buffer').clear()
-        state.update({'%pc': pc})
-    for ev in filter(lambda x: x, map(lambda y: y.get('decode'), events)):
-        _bytes = ev.get('bytes')
-        state.get('buffer').extend(_bytes)
-        service.tx({'info': 'buffer : {}'.format(list(map(lambda x: hex(x), state.get('buffer'))))})
-        _decoded = riscv.decode.do_decode(state.get('buffer'), 1) # HACK: hard-coded max-instructions-to-decode of 1
-        for _insn in _decoded: toolbox.report_stats(service, state, 'histo', 'decoded.insn', _insn.get('cmd'))
-#        service.tx({'info': '_decoded : {}'.format(_decoded)})
-        _bytes_decoded = sum(map(lambda x: x.get('size'), _decoded))
-        state.update({'%pc': riscv.constants.integer_to_list_of_bytes(_bytes_decoded + int.from_bytes(state.get('%pc'), 'little'), 64, 'little')})
-        for _ in range(_bytes_decoded): state.get('buffer').pop(0)
-        service.tx({'result': {
-            'arrival': 1 + state.get('cycle'),
-            'coreid': state.get('coreid'),
-            'insns': {
-                'data': _decoded,
-            },
-        }})
+    for decode in map(lambda y: y.get('decode'), filter(lambda x: x.get('decode'), events)):
+        state.update({'buffer': decode.get('bytes')})
+        service.tx({'info': 'state.buffer : {}'.format(state.get('buffer'))})
+        for _insn in riscv.decode.do_decode(state.get('buffer'), 1): # HACK: hard-coded max-instructions-to-decode of 1
+            toolbox.report_stats(service, state, 'histo', 'decoded.insn', _insn.get('cmd'))
+            service.tx({'result': {
+                'arrival': 1 + state.get('cycle'),
+                'coreid': state.get('coreid'),
+                'insn': {**_insn, **{'%pc': decode.get('%pc')}},
+            }})
 
 if '__main__' == __name__:
     parser = argparse.ArgumentParser(description='Nebula: Instruction Decode')
@@ -64,7 +51,6 @@ if '__main__' == __name__:
         'coreid': args.coreid,
         'active': True,
         'running': False,
-        '%pc': None,
         'ack': True,
         'buffer': [],
     }
@@ -81,7 +67,6 @@ if '__main__' == __name__:
             elif {'text': 'run'} == {k: v}:
                 state.update({'running': True})
                 state.update({'ack': False})
-                state.update({'%pc': None})
                 state.update({'buffer': []})
             elif {'text': 'pause'} == {k: v}:
                 state.update({'running': False})
