@@ -1428,7 +1428,7 @@ class Harness:
         ).split())
         _script  = ['# Nebula test harness script']
 #        _script += ['port 10000']
-        _script += ['service pipelines/bergamot/implementation/{}:localhost:22:0'.format(s) for s in ('simplecore.py', 'regfile.py', 'decode.py', 'execute.py')]
+        _script += ['service pipelines/bergamot/implementation/{}:localhost:22:0:0'.format(s) for s in ('simplecore.py', 'regfile.py', 'decode.py', 'execute.py')]
         _script += ['spawn']
         _script += ['config mainmem:peek_latency_in_cycles 1']
         _script += ['config mainmem:filename {}'.format(os.path.join(args.dir, 'mainmem.raw'))]
@@ -1440,7 +1440,7 @@ class Harness:
         with open(os.path.join(args.dir, 'test.nebula'), 'w+') as fp: fp.write('\n'.join(_script))
         _cmd = 'python3 launcher.py --log {} --service {} --max_instructions {} -- {} {} {}'.format(
             os.path.join(os.getcwd(), args.dir),
-            'pipelines/bergamot/implementation/mainmem.py:localhost:22:-1',
+            'components/simplemainmem/mainmem.py:localhost:22:-1:-1',
             _n_instruction,
             args.port,
             os.path.join(args.dir, 'test.nebula'),
