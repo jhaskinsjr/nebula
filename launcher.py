@@ -297,7 +297,9 @@ def run(cycle, max_cycles, max_instructions, break_on_undefined, snapshot_freque
     if state.get('undefined'): logging.info('*** Encountered undefined instruction! ***')
     return cycle
 def add_service(services, arguments, s):
-    c, h, p, coreid_init, coreid_fini = s.split(':')
+    c, h, p, coreid_init, coreid_fini, params = (s + ('' if 5 == s.count(':') else ':')).split(':')
+    params = (params.replace('"', '').strip() if len(params) else None)
+    print('add_service(): params : {} ({})'.format(params, c))
     _init = int(coreid_init)
     _fini = (-1 if -1 == _init else int(coreid_fini))
     for coreid in range(_init, 1 + _fini):
@@ -309,12 +311,13 @@ def add_service(services, arguments, s):
                     '-p',
                     '{}'.format(p),
                     h,
-                    'python3 {} {} {} {} {}'.format(
+                    'python3 {} {} {} {} {} {}'.format(
                         os.path.join(os.getcwd(), c),
                         ('-D' if arguments.debug else ''),
                         '{}:{}'.format(socket.gethostbyaddr(socket.gethostname())[0], arguments.port),
                         ('--log {}'.format(arguments.log) if arguments.log else ''),
                         ('--coreid {}'.format(coreid) if -1 != int(coreid) else ''),
+                        ('{}'.format(params) if params else '')
                     )
                 ],),
                 daemon=True,
@@ -397,6 +400,7 @@ if __name__ == '__main__':
             raw = (raw[:raw.index('#')] if '#' in raw else raw)
             if '' == raw: continue
             cmd, params = ((raw.split()[0], raw.split()[1:]) if 1 < len(raw.split()) else (raw, []))
+            if 2 == len(list(filter(lambda x: '"' in x, params))) and params[-1].endswith('"'): params = [' '.join(params)]
             if 'shutdown' == cmd:
                 break
             elif 'tick' == cmd:
