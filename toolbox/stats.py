@@ -40,6 +40,7 @@ if '__main__' == __name__:
     parser = argparse.ArgumentParser(description='Nebula: Statistics')
     parser.add_argument('--debug', '-D', dest='debug', action='store_true', help='output debug messages')
     parser.add_argument('--log', type=str, dest='log', default='/tmp', help='logging output directory (absolute path!)')
+    parser.add_argument('--output_filename', type=str, dest='output_filename', default='/tmp/stats.json', help='file to output JSON results to')
     parser.add_argument('launcher', help='host:port of Nebula launcher')
     args = parser.parse_args()
     logging.basicConfig(
@@ -61,9 +62,9 @@ if '__main__' == __name__:
             'message_size': {},
             'cycle': 0,
         },
-        'config': {
-            'output_filename': None,
-        },
+#        'config': {
+#            'output_filename': None,
+#        },
     }
     _service = service.Service(state.get('service'), state.get('coreid', -1), _launcher.get('host'), _launcher.get('port'))
     while state.get('active'):
@@ -82,16 +83,16 @@ if '__main__' == __name__:
             elif {'text': 'run'} == {k: v}:
                 state.update({'running': True})
                 state.update({'ack': False})
-                _service.tx({'info': 'state.config : {}'.format(state.get('config'))})
+#                _service.tx({'info': 'state.config : {}'.format(state.get('config'))})
             elif {'text': 'pause'} == {k: v}:
                 state.update({'running': False})
             elif 'config' == k:
                 logging.info('config : {}'.format(v))
-                if state.get('service') != v.get('service'): continue
-                _field = v.get('field')
-                _val = v.get('val')
-                assert _field in state.get('config').keys(), 'No such config field, {}, in service {}!'.format(_field, state.get('service'))
-                state.get('config').update({_field: _val})
+#                if state.get('service') != v.get('service'): continue
+#                _field = v.get('field')
+#                _val = v.get('val')
+#                assert _field in state.get('config').keys(), 'No such config field, {}, in service {}!'.format(_field, state.get('service'))
+#                state.get('config').update({_field: _val})
             elif 'tick' == k:
                 state.update({'cycle': v.get('cycle')})
                 _results = v.get('results')
@@ -102,7 +103,8 @@ if '__main__' == __name__:
                 state.update({'cycle': v.get('cycle')})
                 _service.tx({'ack': {'cycle': state.get('cycle')}})
         if state.get('ack') and state.get('running'): _service.tx({'ack': {'cycle': state.get('cycle'), 'msg': msg}})
-    _output_filename = state.get('config').get('output_filename')
-    fp = (sys.stdout if not _output_filename else open(_output_filename, 'w'))
+#    _output_filename = state.get('config').get('output_filename')
+#    fp = (sys.stdout if not _output_filename else open(_output_filename, 'w'))
+    fp = (sys.stdout if not args.output_filename else open(args.output_filename, 'w'))
     json.dump(state.get('stats'), fp, indent=4)
     logging.info('state.stats : {}'.format(state.get('stats')))
