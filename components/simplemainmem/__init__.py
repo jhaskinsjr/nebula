@@ -25,10 +25,13 @@ def log2(A):
     )
 
 class SimpleMainMemory:
-    def __init__(self, name, launcher, pagesize, s=None):
+    def __init__(self, name, launcher, ps, fn, cp, lc, s=None):
         self.name = name
         self.service = (service.Service(self.get('name'), self.get('coreid', -1), launcher.get('host'), launcher.get('port')) if not s else s)
-        self.pagesize = pagesize
+        self.pagesize = ps
+        self.filename = fn
+        self.capacity = cp
+        self.peek_latency_in_cycles = lc
         self.pageoffsetmask = self.pagesize - 1
         self.pageoffsetbits = log2(self.pagesize)
         self.mmu = simplemmu.SimpleMMU(self.pagesize)
@@ -40,15 +43,18 @@ class SimpleMainMemory:
         self.fd = None
         self.mm = None
         self.snapshots = None
-        self.config = {
-            'filename': None,
-            'capacity': None,
-            'peek_latency_in_cycles': None,
-        }
+#        self.config = {
+#            'filename': None,
+#            'capacity': None,
+#            'peek_latency_in_cycles': None,
+#        }
     def boot(self):
-        self.fd = os.open(self.get('config').get('filename'), os.O_RDWR|os.O_CREAT)
-        os.ftruncate(self.get('fd'), self.get('config').get('capacity'))
-        self.mm = mmap.mmap(self.fd, self.get('config').get('capacity'))
+        self.fd = os.open(self.get('filename'), os.O_RDWR|os.O_CREAT)
+        os.ftruncate(self.get('fd'), self.get('capacity'))
+        self.mm = mmap.mmap(self.get('fd'), self.get('capacity'))
+#        self.fd = os.open(self.get('config').get('filename'), os.O_RDWR|os.O_CREAT)
+#        os.ftruncate(self.get('fd'), self.get('config').get('capacity'))
+#        self.mm = mmap.mmap(self.fd, self.get('config').get('capacity'))
     def loadbin(self, coreid, start_symbol, sp, pc, binary, *args):
         logging.info('loadbin(): binary : {} ({})'.format(binary, type(binary)))
         logging.info('loadbin(): args   : {} ({})'.format(args, type(args)))
@@ -97,8 +103,10 @@ class SimpleMainMemory:
         return _start_pc
     def snapshot(self, data):
         logging.info('snapshot(): data   : {}'.format(data))
-        _snapshot_filename = '{}.{:015}.snapshot'.format(self.get('config').get('filename'), data.get('instructions_committed'))
-        subprocess.run('cp {} {}'.format(self.get('config').get('filename'), _snapshot_filename).split())
+        _snapshot_filename = '{}.{:015}.snapshot'.format(self.get('filename'), data.get('instructions_committed'))
+        subprocess.run('cp {} {}'.format(self.get('filename'), _snapshot_filename).split())
+#        _snapshot_filename = '{}.{:015}.snapshot'.format(self.get('config').get('filename'), data.get('instructions_committed'))
+#        subprocess.run('cp {} {}'.format(self.get('config').get('filename'), _snapshot_filename).split())
         _state = json.dumps({
             **data,
             **{
@@ -108,7 +116,8 @@ class SimpleMainMemory:
         logging.info('snapshot(): mmu    : {}'.format(self.mmu.translations))
         logging.info('snapshot(): _state : {}'.format(_state))
         fd = os.open(_snapshot_filename, os.O_RDWR | os.O_CREAT)
-        os.lseek(fd, self.config.get('capacity'), os.SEEK_SET)
+        os.lseek(fd, self.get('capacity'), os.SEEK_SET)
+#        os.lseek(fd, self.config.get('capacity'), os.SEEK_SET)
         os.write(fd, len(_state).to_bytes(8, 'little'))
         os.write(fd, bytes(_state, encoding='ascii'))
         os.fsync(fd)
@@ -117,10 +126,13 @@ class SimpleMainMemory:
         # FIXME: make snapshots read-only after creation
         return _snapshot_filename
     def restore(self, snapshot_filename):
-        subprocess.run('cp {} {}'.format(snapshot_filename, self.get('config').get('filename')).split())
-        subprocess.run('chmod u+w {}'.format(self.get('config').get('filename')).split())
+        subprocess.run('cp {} {}'.format(snapshot_filename, self.get('filename')).split())
+        subprocess.run('chmod u+w {}'.format(self.get('filename')).split())
+#        subprocess.run('cp {} {}'.format(snapshot_filename, self.get('config').get('filename')).split())
+#        subprocess.run('chmod u+w {}'.format(self.get('config').get('filename')).split())
         fd = os.open(snapshot_filename, os.O_RDONLY)
-        os.lseek(fd, self.config.get('capacity'), os.SEEK_SET)
+        os.lseek(fd, self.get('capacity'), os.SEEK_SET)
+#        os.lseek(fd, self.config.get('capacity'), os.SEEK_SET)
         _state_length = int.from_bytes(os.read(fd, 8), 'little')
         _retval = str(os.read(fd, _state_length), encoding='ascii')
         _retval = json.loads(_retval)
@@ -157,7 +169,8 @@ class SimpleMainMemory:
                 toolbox.report_stats(self.service, self.state(), 'histo', 'poke.size', _size)
             elif 'peek' == _cmd:
                 self.service.tx({'result': {
-                    'arrival': self.get('config').get('peek_latency_in_cycles') + self.get('cycle'),
+                    'arrival': self.get('peek_latency_in_cycles') + self.get('cycle'),
+#                    'arrival': self.get('config').get('peek_latency_in_cycles') + self.get('cycle'),
                     'coreid': _coreid,
                     'mem': {
                         'addr': _addr,
@@ -174,7 +187,8 @@ class SimpleMainMemory:
                 assert False
     def valid_access(self, addr, size):
         retval  = addr >= 0
-        retval &= (addr + size) < self.get('config').get('capacity')
+        retval &= (addr + size) < self.get('capacity')
+#        retval &= (addr + size) < self.get('config').get('capacity')
         return retval
     def do_poke(self, addr, data, **kwargs):
         # data : list of unsigned char, e.g., to make an integer, X, into a list
@@ -234,6 +248,9 @@ if '__main__' == __name__:
     parser.add_argument('--debug', '-D', dest='debug', action='store_true', help='output debug messages')
     parser.add_argument('--log', type=str, dest='log', default='/tmp', help='logging output directory (absolute path!)')
     parser.add_argument('--pagesize', type=int, dest='pagesize', default=2**16, help='MMU page size in bytes')
+    parser.add_argument('--filename', type=str, dest='filename', default='/tmp/mainmem.raw', help='file to hold main memory')
+    parser.add_argument('--capacity', type=int, dest='capacity', default=2**32, help='size (in bytes) of main memory file')
+    parser.add_argument('--peek_latency_in_cycles', type=int, dest='peek_latency_in_cycles', default=10**3, help='# of cycles to return peek result')
     parser.add_argument('launcher', help='host:port of Nebula launcher')
     args = parser.parse_args()
     assert not os.path.isfile(args.log), '--log must point to directory, not file'
@@ -251,7 +268,7 @@ if '__main__' == __name__:
     _launcher = {x:y for x, y in zip(['host', 'port'], args.launcher.split(':'))}
     _launcher['port'] = int(_launcher['port'])
     logging.debug('_launcher : {}'.format(_launcher))
-    state = SimpleMainMemory('mainmem', _launcher, args.pagesize)
+    state = SimpleMainMemory('mainmem', _launcher, args.pagesize, args.filename, args.capacity, args.peek_latency_in_cycles)
     while state.get('active'):
         state.update({'ack': True})
         msg = state.service.rx()
@@ -267,16 +284,16 @@ if '__main__' == __name__:
                     state.update({'booted': True})
                 state.update({'running': True})
                 state.update({'ack': False})
-                state.service.tx({'info': 'state.config : {}'.format(state.get('config'))})
+#                state.service.tx({'info': 'state.config : {}'.format(state.get('config'))})
             elif {'text': 'pause'} == {k: v}:
                 state.update({'running': False})
             elif 'config' == k:
                 logging.debug('config : {}'.format(v))
-                if state.get('name') != v.get('service'): continue
-                _field = v.get('field')
-                _val = v.get('val')
-                assert _field in state.get('config').keys(), 'No such config field, {}, in service {}!'.format(_field, state.get('service'))
-                state.get('config').update({_field: _val})
+#                if state.get('name') != v.get('service'): continue
+#                _field = v.get('field')
+#                _val = v.get('val')
+#                assert _field in state.get('config').keys(), 'No such config field, {}, in service {}!'.format(_field, state.get('service'))
+#                state.get('config').update({_field: _val})
             elif 'loadbin' == k:
                 _coreid = v.get('coreid')
                 _start_symbol = v.get('start_symbol')

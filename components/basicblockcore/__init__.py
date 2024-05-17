@@ -115,8 +115,8 @@ class BasicBlockCore:
         logging.info('BasicBlockCore.__init__(): self.mainmem                 : {}'.format(dir(self.mainmem)))
         logging.info('BasicBlockCore.__init__(): self.mainmem.name            : {}'.format(self.mainmem.get('name')))
         logging.info('BasicBlockCore.__init__(): self.mainmem.fd              : {}'.format(self.mainmem.get('fd')))
-        logging.info('BasicBlockCore.__init__(): self.mainmem.config.filename : {}'.format(self.mainmem.get('config').get('filename')))
-        logging.info('BasicBlockCore.__init__(): self.mainmem.config.capacity : {}'.format(self.mainmem.get('config').get('capacity')))
+        logging.info('BasicBlockCore.__init__(): self.mainmem.filename        : {}'.format(self.mainmem.get('filename')))
+        logging.info('BasicBlockCore.__init__(): self.mainmem.capacity        : {}'.format(self.mainmem.get('capacity')))
         logging.info('BasicBlockCore.__init__(): self.regfile.registers       : {}'.format(self.regfile.registers))
         logging.info('BasicBlockCore.__init__(): self.system                  : {}'.format(dir(self.system)))
     def state(self):
@@ -286,6 +286,8 @@ if '__main__' == __name__:
     parser.add_argument('--log', type=str, dest='log', default='/tmp', help='logging output directory (absolute path!)')
     parser.add_argument('--coreid', type=int, dest='coreid', default=0, help='core ID number')
     parser.add_argument('--pagesize', type=int, dest='pagesize', default=2**16, help='MMU page size in bytes')
+    parser.add_argument('--filename', type=str, dest='filename', default='/tmp/mainmem.raw', help='file to hold main memory')
+    parser.add_argument('--capacity', type=int, dest='capacity', default=2**32, help='size (in bytes) of main memory file')
     parser.add_argument('launcher', help='host:port of Nebula launcher')
     args = parser.parse_args()
     assert not os.path.isfile(args.log), '--log must point to directory, not file'
@@ -305,7 +307,7 @@ if '__main__' == __name__:
     logging.debug('_launcher : {}'.format(_launcher))
     _service = service.Service('basicblockcore', args.coreid, _launcher.get('host'), _launcher.get('port'))
     _regfile = regfile.SimpleRegisterFile('regfile', args.coreid, _launcher, _service)
-    _mainmem = mainmem.SimpleMainMemory('mainmem', _launcher, args.pagesize, _service)
+    _mainmem = mainmem.SimpleMainMemory('mainmem', _launcher, args.pagesize, args.filename, args.capacity, 1, _service)
     _system = riscv.syscall.linux.System()
     state = BasicBlockCore('basicblockcore', args.coreid, _service, _regfile, _mainmem, _system)
     while state.get('active'):
@@ -340,7 +342,7 @@ if '__main__' == __name__:
                                 'name': x[-1]
                             } for x in _objdump
                         }})
-                logging.info('_mainmem.config : {}'.format(_mainmem.get('config')))
+#                logging.info('_mainmem.config : {}'.format(_mainmem.get('config')))
                 if not _mainmem.get('booted'): _mainmem.boot()
             elif {'text': 'pause'} == {k: v}:
                 state.update({'running': False})
@@ -350,7 +352,7 @@ if '__main__' == __name__:
                 logging.info('config : {}'.format(v))
                 _components = {
                     'regfile': _regfile,
-                    'mainmem': _mainmem,
+#                    'mainmem': _mainmem,
                     'system': _system,
                     state.get('name'): state,
                 }
