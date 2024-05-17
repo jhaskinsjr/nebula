@@ -299,7 +299,6 @@ def run(cycle, max_cycles, max_instructions, break_on_undefined, snapshot_freque
 def add_service(services, arguments, s):
     c, h, p, coreid_init, coreid_fini, params = (s + ('' if 5 == s.count(':') else ':')).split(':')
     params = (params.replace('"', '').strip() if len(params) else None)
-    print('add_service(): params : {} ({})'.format(params, c))
     _init = int(coreid_init)
     _fini = (-1 if -1 == _init else int(coreid_fini))
     for coreid in range(_init, 1 + _fini):
