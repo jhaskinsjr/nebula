@@ -16,7 +16,7 @@
         },
         "max_cycles": 500000,
         "script": "localhost.nebula",
-        "service": ["implementation/mainmem.py:localhost:22:-1:-1"],
+        "service": ["../../components/simplemainmem/mainmem.py:localhost:22:-1:-1"],
         "command": "../../examples/bin/sort 2 -3 5"
     },
     "pipelines/jabara": {
@@ -37,7 +37,7 @@
         },
         "max_cycles": 500000,
         "script": "localhost.nebula",
-        "service": ["implementation/mainmem.py:localhost:22:-1:-1"],
+        "service": ["../../components/simplemainmem/mainmem.py:localhost:22:-1:-1"],
         "command": "../../examples/bin/sort 2 -3 5"
     },
     "pipelines/rangpur": {
@@ -50,7 +50,7 @@
         },
         "max_cycles": 500000,
         "script": "localhost.nebula",
-        "service": ["implementation/mainmem.py:localhost:22:-1:-1"],
+        "service": ["../../components/simplemainmem/mainmem.py:localhost:22:-1:-1"],
         "command": "../../examples/bin/sort 2 -3 5"
     },
     "pipelines/shangjuan": {
@@ -67,7 +67,7 @@
         },
         "max_cycles": 500000,
         "script": "localhost.nebula",
-        "service": ["implementation/mainmem.py:localhost:22:-1:-1"],
+        "service": ["../../components/simplemainmem/mainmem.py:localhost:22:-1:-1"],
         "command": "../../examples/bin/sort 2 -3 5"
     }
 }

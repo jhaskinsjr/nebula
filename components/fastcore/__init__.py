@@ -421,9 +421,9 @@ if '__main__' == __name__:
     parser.add_argument('--debug', '-D', dest='debug', action='store_true', help='output debug messages')
     parser.add_argument('--log', type=str, dest='log', default='/tmp', help='logging output directory (absolute path!)')
     parser.add_argument('--coreid', type=int, dest='coreid', default=0, help='core ID number')
-    parser.add_argument('--pagesize', type=int, dest='pagesize', default=2**16, help='MMU page size in bytes')
-    parser.add_argument('--filename', type=str, dest='filename', default='/tmp/mainmem.raw', help='file to hold main memory')
-    parser.add_argument('--capacity', type=int, dest='capacity', default=2**32, help='size (in bytes) of main memory file')
+#    parser.add_argument('--pagesize', type=int, dest='pagesize', default=2**16, help='MMU page size in bytes')
+#    parser.add_argument('--filename', type=str, dest='filename', default='/tmp/mainmem.raw', help='file to hold main memory')
+#    parser.add_argument('--capacity', type=int, dest='capacity', default=2**32, help='size (in bytes) of main memory file')
     parser.add_argument('launcher', help='host:port of Nebula launcher')
     args = parser.parse_args()
     assert not os.path.isfile(args.log), '--log must point to directory, not file'
@@ -443,7 +443,7 @@ if '__main__' == __name__:
     logging.debug('_launcher : {}'.format(_launcher))
     _service = service.Service('fastcore', args.coreid, _launcher.get('host'), _launcher.get('port'))
     _regfile = regfile.SimpleRegisterFile('regfile', args.coreid, _launcher, _service)
-    _mainmem = mainmem.SimpleMainMemory('mainmem', _launcher, args.pagesize, args.filename, args.capacity, 1, _service)
+    _mainmem = mainmem.SimpleMainMemory('mainmem', _launcher, _service)
     _system = riscv.syscall.linux.System()
     state = FastCore('fastcore', args.coreid, _service, _regfile, _mainmem, _system)
     while state.get('active'):
@@ -487,7 +487,7 @@ if '__main__' == __name__:
                 logging.info('config : {}'.format(v))
                 _components = {
                     'regfile': _regfile,
-#                    'mainmem': _mainmem,
+                    'mainmem': _mainmem,
                     'system': _system,
                     state.get('name'): state,
                 }
@@ -505,12 +505,13 @@ if '__main__' == __name__:
                 _pc = v.get('pc')
                 _binary = v.get('binary')
                 _args = v.get('args')
-                _mainmem.boot()
+                if not _mainmem.get('booted'): _mainmem.boot()
                 _mainmem.loadbin(_coreid, _start_symbol, _sp, _pc, _binary, *_args)
             elif 'restore' == k:
                 assert not state.get('running'), 'Attempted restore while running!'
                 logging.info('restore : {}'.format(v))
                 _snapshot_filename = v.get('snapshot_filename')
+                if not _mainmem.get('booted'): _mainmem.boot()
                 _restore = _mainmem.restore(_snapshot_filename)
                 _regfile.registers = _restore.get('registers')
                 _regfile.update({'cycle': _restore.get('cycle')})

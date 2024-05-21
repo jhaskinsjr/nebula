@@ -12,7 +12,7 @@ example binary:
     cd ${HOME}/src/nebula/pipelines/rangpur/
     python3 ../../launcher.py \
         --log /tmp/rangpur/sum \
-        --service ../../toolbox/stats.py:localhost:-1:-1 implementation/mainmem.py:localhost:-1:-1 \
+        --service ../../toolbox/stats.py:localhost:-1:-1 ../../components/simplemainmem/mainmem.py:localhost:-1:-1 \
         --config stats:output_filename:/tmp/rangpur/sum/stats.json \
         mainmem:filename:/tmp/rangpur/sum/mainmem.raw \
         mainmem:capacity:$(( 2**32 )) \
@@ -37,7 +37,7 @@ pipeline:
     cd ${HOME}/src/nebula/pipelines/bergamot/
     python3 ../../launcher.py \
         --log /tmp/bergamot/sum \
-        --service ../../toolbox/stats.py:localhost:-1:-1 implementation/mainmem.py:localhost:-1:-1 \
+        --service ../../toolbox/stats.py:localhost:-1:-1 ../../components/simplemainmem/mainmem.py:localhost:-1:-1 \
         --config stats:output_filename:/tmp/bergamot/sum/stats.json \
         mainmem:filename:/tmp/bergamot/sum/mainmem.raw \
         mainmem:capacity:$(( 2**32 )) \

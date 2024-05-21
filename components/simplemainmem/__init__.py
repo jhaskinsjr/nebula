@@ -25,16 +25,24 @@ def log2(A):
     )
 
 class SimpleMainMemory:
-    def __init__(self, name, launcher, ps, fn, cp, lc, s=None):
+    DEFAULT = {
+        'pagesize': 2**16,
+        'filename': '/tmp/mainmem.raw',
+        'capacity': 2**32,
+        'peek_latency_in_cycles': 10**3,
+    }
+    def __init__(self, name, launcher, s=None, **kwargs):
         self.name = name
         self.service = (service.Service(self.get('name'), self.get('coreid', -1), launcher.get('host'), launcher.get('port')) if not s else s)
-        self.pagesize = ps
-        self.filename = fn
-        self.capacity = cp
-        self.peek_latency_in_cycles = lc
-        self.pageoffsetmask = self.pagesize - 1
-        self.pageoffsetbits = log2(self.pagesize)
-        self.mmu = simplemmu.SimpleMMU(self.pagesize)
+        self.config = {
+            'pagesize': kwargs.get('pagesize', self.DEFAULT.get('pagesize')),
+            'filename': kwargs.get('filename', self.DEFAULT.get('filename')),
+            'capacity': kwargs.get('capacity', self.DEFAULT.get('capacity')),
+            'peek_latency_in_cycles': kwargs.get('peek_latency_in_cycles', self.DEFAULT.get('peek_latency_in_cycles')),
+        }
+        self.pageoffsetmask = None
+        self.pageoffsetbits = None
+        self.mmu = None
         self.cycle = 0
         self.active = True
         self.running = False
@@ -49,12 +57,17 @@ class SimpleMainMemory:
 #            'peek_latency_in_cycles': None,
 #        }
     def boot(self):
-        self.fd = os.open(self.get('filename'), os.O_RDWR|os.O_CREAT)
-        os.ftruncate(self.get('fd'), self.get('capacity'))
-        self.mm = mmap.mmap(self.get('fd'), self.get('capacity'))
-#        self.fd = os.open(self.get('config').get('filename'), os.O_RDWR|os.O_CREAT)
-#        os.ftruncate(self.get('fd'), self.get('config').get('capacity'))
-#        self.mm = mmap.mmap(self.fd, self.get('config').get('capacity'))
+        assert 0 == (self.config.get('pagesize') & (self.config.get('pagesize') - 1)), 'pagesize ({}) is not power of 2!'.format(self.config.get('pagesize'))
+        self.pageoffsetmask = self.config.get('pagesize') - 1
+        self.pageoffsetbits = log2(self.config.get('pagesize'))
+        self.mmu = simplemmu.SimpleMMU(self.config.get('pagesize'))
+#        self.fd = os.open(self.get('filename'), os.O_RDWR|os.O_CREAT)
+#        os.ftruncate(self.get('fd'), self.get('capacity'))
+#        self.mm = mmap.mmap(self.get('fd'), self.get('capacity'))
+        self.fd = os.open(self.config.get('filename'), os.O_RDWR|os.O_CREAT)
+        os.ftruncate(self.get('fd'), self.config.get('capacity'))
+        self.mm = mmap.mmap(self.fd, self.config.get('capacity'))
+        self.update({'booted': True})
     def loadbin(self, coreid, start_symbol, sp, pc, binary, *args):
         logging.info('loadbin(): binary : {} ({})'.format(binary, type(binary)))
         logging.info('loadbin(): args   : {} ({})'.format(args, type(args)))
@@ -64,7 +77,7 @@ class SimpleMainMemory:
             for section in filter(lambda x: x.header.sh_addr, elffile.iter_sections()):
                 if not section: continue
                 _addr = pc + section.header.sh_addr
-                logging.info('{} : 0x{:08x} ({})'.format(section.name, _addr, section.data_size))
+                logging.info('loadbin(): {} : 0x{:08x} ({})'.format(section.name, _addr, section.data_size))
                 self.poke(_addr, section.data_size, section.data(), **{'coreid': coreid}) # FIXME: this assumes each section will be less than self.pagesize bytes
             _symbol_tables = [s for s in elffile.iter_sections() if isinstance(s, elftools.elf.elffile.SymbolTableSection)]
             _start = sum([list(filter(lambda s: start_symbol == s.name, tab.iter_symbols())) for tab in _symbol_tables], [])
@@ -103,10 +116,10 @@ class SimpleMainMemory:
         return _start_pc
     def snapshot(self, data):
         logging.info('snapshot(): data   : {}'.format(data))
-        _snapshot_filename = '{}.{:015}.snapshot'.format(self.get('filename'), data.get('instructions_committed'))
-        subprocess.run('cp {} {}'.format(self.get('filename'), _snapshot_filename).split())
-#        _snapshot_filename = '{}.{:015}.snapshot'.format(self.get('config').get('filename'), data.get('instructions_committed'))
-#        subprocess.run('cp {} {}'.format(self.get('config').get('filename'), _snapshot_filename).split())
+#        _snapshot_filename = '{}.{:015}.snapshot'.format(self.get('filename'), data.get('instructions_committed'))
+#        subprocess.run('cp {} {}'.format(self.get('filename'), _snapshot_filename).split())
+        _snapshot_filename = '{}.{:015}.snapshot'.format(self.get('config').get('filename'), data.get('instructions_committed'))
+        subprocess.run('cp {} {}'.format(self.get('config').get('filename'), _snapshot_filename).split())
         _state = json.dumps({
             **data,
             **{
@@ -116,8 +129,8 @@ class SimpleMainMemory:
         logging.info('snapshot(): mmu    : {}'.format(self.mmu.translations))
         logging.info('snapshot(): _state : {}'.format(_state))
         fd = os.open(_snapshot_filename, os.O_RDWR | os.O_CREAT)
-        os.lseek(fd, self.get('capacity'), os.SEEK_SET)
-#        os.lseek(fd, self.config.get('capacity'), os.SEEK_SET)
+#        os.lseek(fd, self.get('capacity'), os.SEEK_SET)
+        os.lseek(fd, self.config.get('capacity'), os.SEEK_SET)
         os.write(fd, len(_state).to_bytes(8, 'little'))
         os.write(fd, bytes(_state, encoding='ascii'))
         os.fsync(fd)
@@ -126,13 +139,13 @@ class SimpleMainMemory:
         # FIXME: make snapshots read-only after creation
         return _snapshot_filename
     def restore(self, snapshot_filename):
-        subprocess.run('cp {} {}'.format(snapshot_filename, self.get('filename')).split())
-        subprocess.run('chmod u+w {}'.format(self.get('filename')).split())
-#        subprocess.run('cp {} {}'.format(snapshot_filename, self.get('config').get('filename')).split())
-#        subprocess.run('chmod u+w {}'.format(self.get('config').get('filename')).split())
+#        subprocess.run('cp {} {}'.format(snapshot_filename, self.get('filename')).split())
+#        subprocess.run('chmod u+w {}'.format(self.get('filename')).split())
+        subprocess.run('cp {} {}'.format(snapshot_filename, self.get('config').get('filename')).split())
+        subprocess.run('chmod u+w {}'.format(self.get('config').get('filename')).split())
         fd = os.open(snapshot_filename, os.O_RDONLY)
-        os.lseek(fd, self.get('capacity'), os.SEEK_SET)
-#        os.lseek(fd, self.config.get('capacity'), os.SEEK_SET)
+#        os.lseek(fd, self.get('capacity'), os.SEEK_SET)
+        os.lseek(fd, self.config.get('capacity'), os.SEEK_SET)
         _state_length = int.from_bytes(os.read(fd, 8), 'little')
         _retval = str(os.read(fd, _state_length), encoding='ascii')
         _retval = json.loads(_retval)
@@ -169,8 +182,8 @@ class SimpleMainMemory:
                 toolbox.report_stats(self.service, self.state(), 'histo', 'poke.size', _size)
             elif 'peek' == _cmd:
                 self.service.tx({'result': {
-                    'arrival': self.get('peek_latency_in_cycles') + self.get('cycle'),
-#                    'arrival': self.get('config').get('peek_latency_in_cycles') + self.get('cycle'),
+#                    'arrival': self.get('peek_latency_in_cycles') + self.get('cycle'),
+                    'arrival': self.get('config').get('peek_latency_in_cycles') + self.get('cycle'),
                     'coreid': _coreid,
                     'mem': {
                         'addr': _addr,
@@ -187,8 +200,8 @@ class SimpleMainMemory:
                 assert False
     def valid_access(self, addr, size):
         retval  = addr >= 0
-        retval &= (addr + size) < self.get('capacity')
-#        retval &= (addr + size) < self.get('config').get('capacity')
+#        retval &= (addr + size) < self.get('capacity')
+        retval &= (addr + size) < self.get('config').get('capacity')
         return retval
     def do_poke(self, addr, data, **kwargs):
         # data : list of unsigned char, e.g., to make an integer, X, into a list
@@ -201,11 +214,14 @@ class SimpleMainMemory:
             pass # FIXME: Something other than ignoring the issue should happen here!
     def poke(self, addr, size, data, **kwargs):
         def accesses(addr, size, data, **kwargs):
-            _addrs = [addr] + list(map(lambda x: (x * self.pagesize) + ((addr | self.pageoffsetmask) ^ self.pageoffsetmask), range(1 + (size // self.pagesize))))[1:]
-            _sizes = [min((((addr | self.pageoffsetmask) ^ self.pageoffsetmask) + self.pagesize) - addr, size)]
+#            _addrs = [addr] + list(map(lambda x: (x * self.pagesize) + ((addr | self.pageoffsetmask) ^ self.pageoffsetmask), range(1 + (size // self.pagesize))))[1:]
+            _addrs = [addr] + list(map(lambda x: (x * self.config.get('pagesize')) + ((addr | self.pageoffsetmask) ^ self.pageoffsetmask), range(1 + (size // self.config.get('pagesize')))))[1:]
+#            _sizes = [min((((addr | self.pageoffsetmask) ^ self.pageoffsetmask) + self.pagesize) - addr, size)]
+            _sizes = [min((((addr | self.pageoffsetmask) ^ self.pageoffsetmask) + self.config.get('pagesize')) - addr, size)]
             _datas, data = [data[:_sizes[0]]], data[_sizes[0]:]
             for _ in _addrs[1:]:
-                _sizes += [min(self.pagesize, len(data))]
+#                _sizes += [min(self.pagesize, len(data))]
+                _sizes += [min(self.config.get('pagesize'), len(data))]
                 _s = _sizes[-1]
                 _d, data = data[:_s], data[_s:]
                 _datas += [_d]
@@ -229,10 +245,13 @@ class SimpleMainMemory:
             return []
     def peek(self, addr, size, **kwargs):
         def accesses(addr, size, **kwargs):
-            _addrs = [addr] + list(map(lambda x: (x * self.pagesize) + ((addr | self.pageoffsetmask) ^ self.pageoffsetmask), range(1 + (size // self.pagesize))))[1:]
-            _sizes = [min((((addr | self.pageoffsetmask) ^ self.pageoffsetmask) + self.pagesize) - addr, size)]
+#            _addrs = [addr] + list(map(lambda x: (x * self.pagesize) + ((addr | self.pageoffsetmask) ^ self.pageoffsetmask), range(1 + (size // self.pagesize))))[1:]
+            _addrs = [addr] + list(map(lambda x: (x * self.config.get('pagesize')) + ((addr | self.pageoffsetmask) ^ self.pageoffsetmask), range(1 + (size // self.config.get('pagesize')))))[1:]
+#            _sizes = [min((((addr | self.pageoffsetmask) ^ self.pageoffsetmask) + self.pagesize) - addr, size)]
+            _sizes = [min((((addr | self.pageoffsetmask) ^ self.pageoffsetmask) + self.config.get('pagesize')) - addr, size)]
             for _ in _addrs[1:]:
-                _sizes += [min(self.pagesize, size - sum(_sizes))]
+#                _sizes += [min(self.pagesize, size - sum(_sizes))]
+                _sizes += [min(self.config.get('pagesize'), size - sum(_sizes))]
             logging.debug('peek.accesses({}, {}, {}): ({}) {}'.format(addr, size, kwargs, kwargs.get('coreid'), list(zip(_addrs, _sizes))))
             return zip(_addrs, _sizes)
         assert isinstance(kwargs.get('coreid'), int)
@@ -268,7 +287,12 @@ if '__main__' == __name__:
     _launcher = {x:y for x, y in zip(['host', 'port'], args.launcher.split(':'))}
     _launcher['port'] = int(_launcher['port'])
     logging.debug('_launcher : {}'.format(_launcher))
-    state = SimpleMainMemory('mainmem', _launcher, args.pagesize, args.filename, args.capacity, args.peek_latency_in_cycles)
+    state = SimpleMainMemory('mainmem', _launcher, **{
+        'pagesize': args.pagesize,
+        'filename': args.filename,
+        'capacity': args.capacity,
+        'peek_latency_in_cycles': args.peek_latency_in_cycles,
+    })
     while state.get('active'):
         state.update({'ack': True})
         msg = state.service.rx()
@@ -279,21 +303,19 @@ if '__main__' == __name__:
                 state.update({'active': False})
                 state.update({'running': False})
             elif {'text': 'run'} == {k: v}:
-                if not state.get('booted'):
-                    state.boot()
-                    state.update({'booted': True})
+                if not state.get('booted'): state.boot()
                 state.update({'running': True})
                 state.update({'ack': False})
-#                state.service.tx({'info': 'state.config : {}'.format(state.get('config'))})
+                state.service.tx({'info': 'state.config : {}'.format(state.get('config'))})
             elif {'text': 'pause'} == {k: v}:
                 state.update({'running': False})
             elif 'config' == k:
                 logging.debug('config : {}'.format(v))
-#                if state.get('name') != v.get('service'): continue
-#                _field = v.get('field')
-#                _val = v.get('val')
-#                assert _field in state.get('config').keys(), 'No such config field, {}, in service {}!'.format(_field, state.get('service'))
-#                state.get('config').update({_field: _val})
+                if state.get('name') != v.get('service'): continue
+                _field = v.get('field')
+                _val = v.get('val')
+                assert _field in state.get('config').keys(), 'No such config field, {}, in service {}!'.format(_field, state.get('service'))
+                state.get('config').update({_field: _val})
             elif 'loadbin' == k:
                 _coreid = v.get('coreid')
                 _start_symbol = v.get('start_symbol')
@@ -301,11 +323,11 @@ if '__main__' == __name__:
                 _pc = v.get('pc')
                 _binary = v.get('binary')
                 _args = v.get('args')
-                state.boot()
+                if not state.get('booted'): state.boot()
                 state.loadbin(_coreid, _start_symbol, _sp, _pc, _binary, *_args)
             elif 'restore' == k:
                 _snapshot_filename = v.get('snapshot_filename')
-                state.boot()
+                if not state.get('booted'): state.boot()
                 state.restore(_snapshot_filename)
                 state.service.tx({'ack': {'cycle': state.get('cycle')}})
             elif 'snapshots' == k:
@@ -319,11 +341,11 @@ if '__main__' == __name__:
                 _results = v.get('results')
                 _events = v.get('events')
                 state.do_tick(_results, _events)
-            elif 'restore' == k:
-                assert not state.get('running'), 'Attempted restore while running!'
-                state.update({'cycle': v.get('cycle')})
-                state.restore(v.get('snapshot_filename'))
-                state.service.tx({'ack': {'cycle': state.get('cycle')}})
+#            elif 'restore' == k:
+#                assert not state.get('running'), 'Attempted restore while running!'
+#                state.update({'cycle': v.get('cycle')})
+#                state.restore(v.get('snapshot_filename'))
+#                state.service.tx({'ack': {'cycle': state.get('cycle')}})
         if state.get('ack') and state.get('running'): state.service.tx({'ack': {'cycle': state.get('cycle'), 'msg': msg}})
     state.get('mm').flush()
     state.get('mm').close()

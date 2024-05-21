@@ -1,5 +1,6 @@
 # Sample Nebula script
 # only does single-core for now
+service implementation/basicblockcore.py:localhost:22:0:0:""
 spawn
 run
 shutdown

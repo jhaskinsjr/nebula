@@ -307,7 +307,7 @@ if '__main__' == __name__:
     logging.debug('_launcher : {}'.format(_launcher))
     _service = service.Service('basicblockcore', args.coreid, _launcher.get('host'), _launcher.get('port'))
     _regfile = regfile.SimpleRegisterFile('regfile', args.coreid, _launcher, _service)
-    _mainmem = mainmem.SimpleMainMemory('mainmem', _launcher, args.pagesize, args.filename, args.capacity, 1, _service)
+    _mainmem = mainmem.SimpleMainMemory('mainmem', _launcher, _service)
     _system = riscv.syscall.linux.System()
     state = BasicBlockCore('basicblockcore', args.coreid, _service, _regfile, _mainmem, _system)
     while state.get('active'):
@@ -342,7 +342,7 @@ if '__main__' == __name__:
                                 'name': x[-1]
                             } for x in _objdump
                         }})
-#                logging.info('_mainmem.config : {}'.format(_mainmem.get('config')))
+                logging.info('_mainmem.config : {}'.format(_mainmem.get('config')))
                 if not _mainmem.get('booted'): _mainmem.boot()
             elif {'text': 'pause'} == {k: v}:
                 state.update({'running': False})
@@ -352,7 +352,7 @@ if '__main__' == __name__:
                 logging.info('config : {}'.format(v))
                 _components = {
                     'regfile': _regfile,
-#                    'mainmem': _mainmem,
+                    'mainmem': _mainmem,
                     'system': _system,
                     state.get('name'): state,
                 }
@@ -370,12 +370,14 @@ if '__main__' == __name__:
                 _pc = v.get('pc')
                 _binary = v.get('binary')
                 _args = v.get('args')
-                _mainmem.boot()
+#                _mainmem.boot()
+                if not _mainmem.get('booted'): _mainmem.boot()
                 _mainmem.loadbin(_coreid, _start_symbol, _sp, _pc, _binary, *_args)
             elif 'restore' == k:
                 assert not state.get('running'), 'Attempted restore while running!'
                 logging.info('restore : {}'.format(v))
                 _snapshot_filename = v.get('snapshot_filename')
+                if not _mainmem.get('booted'): _mainmem.boot()
                 _restore = _mainmem.restore(_snapshot_filename)
                 _regfile.registers = _restore.get('registers')
                 _regfile.update({'cycle': _restore.get('cycle')})
