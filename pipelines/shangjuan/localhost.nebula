@@ -41,6 +41,6 @@ config l2:l2_nbytesperblock 16
 config l2:l2_evictionpolicy lru # random
 config l2:l2_hitlatency 5
 config watchdog:result_name retire
-config watchdog:result_cycles 1000
+config watchdog:result_cycles 10000
 run
 shutdown
