@@ -6,7 +6,7 @@ service implementation/decode.py:localhost:22:0:0
 service implementation/alu.py:localhost:22:0:0
 service implementation/lsu.py:localhost:22:0:0
 service implementation/commit.py:localhost:22:0:0
-service implementation/l2.py:localhost:22:0:0
+service implementation/l2.py:localhost:22:-1:-1:"--cores 0-0 --next mem"
 service implementation/watchdog.py:localhost:22:0:0
 ## quad-core
 #service implementation/regfile.py:localhost:22:0:3
@@ -15,7 +15,7 @@ service implementation/watchdog.py:localhost:22:0:0
 #service implementation/alu.py:localhost:22:0:3
 #service implementation/lsu.py:localhost:22:0:3
 #service implementation/commit.py:localhost:22:0:3
-#service implementation/l2.py:localhost:22:0:3
+#service implementation/l2.py:localhost:22:-1:-1:"--cores 0-3 --next mem"
 #service implementation/watchdog.py:localhost:22:0:3
 spawn
 config fetch:l1ic_nsets 16
@@ -27,11 +27,11 @@ config lsu:l1dc_nsets 16
 config lsu:l1dc_nways 2
 config lsu:l1dc_nbytesperblock 16
 config lsu:l1dc_evictionpolicy lru # random
-config l2:l2_nsets 32
-config l2:l2_nways 16
-config l2:l2_nbytesperblock 16
-config l2:l2_evictionpolicy lru # random
-config l2:l2_hitlatency 5
+config l2:nsets 32
+config l2:nways 16
+config l2:nbytesperblock 16
+config l2:evictionpolicy lru # random
+config l2:hitlatency 5
 config watchdog:result_name retire
 config watchdog:result_cycles 10000
 run
