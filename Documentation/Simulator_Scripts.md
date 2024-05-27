@@ -28,11 +28,11 @@ Consider the script pipelines/pompia/localhost.nebula:
     config fetch:l1ic_nbytesperblock 16
     config fetch:l1ic_evictionpolicy lru # random
     config decode:max_instructions_to_decode 4
-    config l2:l2_nsets 32
-    config l2:l2_nways 16
-    config l2:l2_nbytesperblock 16
-    config l2:l2_evictionpolicy lru # random
-    config l2:l2_hitlatency 5
+    config l2:nsets 32
+    config l2:nways 16
+    config l2:nbytesperblock 16
+    config l2:evictionpolicy lru # random
+    config l2:hitlatency 5
     config mainmem:peek_latency_in_cycles 25
     config mainmem:filename /tmp/mainmem.raw
     config mainmem:capacity 4294967296

@@ -23,7 +23,7 @@ l1ic_size.exec:
             "fetch:l1ic_nways": [2, 4],
             "fetch:l1ic_nbytesperblock": [16, 32],
             "fetch:l1ic_evictionpolicy": ["random", "lru"],
-            "l2:l2_nbytesperblock": [64],
+            "l2:nbytesperblock": [64],
             "mainmem:capacity": [4297967296]
         },
         "max_cycles": 100000,
@@ -40,7 +40,7 @@ l1ic_size.exec:
             "fetch:l1ic_nbytesperblock": [16, 32],
             "fetch:l1ic_evictionpolicy": ["random", "lru"],
             "decode:max_bytes_to_decode": [32],
-            "l2:l2_nbytesperblock": [64],
+            "l2:nbytesperblock": [64],
             "mainmem:capacity": [4297967296],
             "_comment": "decode:max_bytes_to_decode must be >= fetch:l1ic_nbytesperblock"
         },
