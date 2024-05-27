@@ -3,7 +3,7 @@
         "config": {
             "watchdog:event_name": ["commit"],
             "watchdog:event_cycles": [10],
-            "l2:l2_hitlatency": [1, 10],
+            "l2:hitlatency": [1, 10],
             "mainmem:peek_latency_in_cycles": [1, 10, 100],
             "mainmem:capacity": [4294967296]
         },
@@ -16,7 +16,7 @@
         "config": {
             "watchdog:result_name": ["retire"],
             "watchdog:result_cycles": [10],
-            "l2:l2_hitlatency": [1, 10],
+            "l2:hitlatency": [1, 10],
             "mainmem:peek_latency_in_cycles": [1, 10, 100],
             "mainmem:capacity": [4294967296]
         },
@@ -29,7 +29,7 @@
         "config": {
             "watchdog:result_name": ["retire"],
             "watchdog:result_cycles": [10],
-            "l2:l2_hitlatency": [1, 10],
+            "l2:hitlatency": [1, 10],
             "mainmem:peek_latency_in_cycles": [1, 10, 100],
             "mainmem:capacity": [4294967296]
         },
@@ -42,7 +42,7 @@
         "config": {
             "watchdog:result_name": ["retire"],
             "watchdog:result_cycles": [10],
-            "l2:l2_hitlatency": [1, 10],
+            "l2:hitlatency": [1, 10],
             "mainmem:peek_latency_in_cycles": [1, 10, 100],
             "mainmem:capacity": [4294967296]
         },
