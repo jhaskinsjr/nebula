@@ -10,7 +10,7 @@
     "pipelines/bergamot": {
         "config": {
             "watchdog:event_name": ["commit"],
-            "watchdog:event_cycles": [1000],
+            "watchdog:event_cycles": [10000],
             "mainmem:peek_latency_in_cycles": [1, 25],
             "mainmem:capacity": [4294967296]
         },
@@ -30,7 +30,7 @@
     "pipelines/pompia": {
         "config": {
             "watchdog:result_name": ["retire"],
-            "watchdog:result_cycles": [1000],
+            "watchdog:result_cycles": [10000],
             "l2:hitlatency": [1, 5],
             "mainmem:peek_latency_in_cycles": [1, 25],
             "mainmem:capacity": [4294967296]
@@ -44,7 +44,7 @@
     "pipelines/rangpur": {
         "config": {
             "watchdog:result_name": ["retire"],
-            "watchdog:result_cycles": [1000],
+            "watchdog:result_cycles": [10000],
             "l2:hitlatency": [1, 5],
             "mainmem:peek_latency_in_cycles": [1, 25],
             "mainmem:capacity": [4294967296]
@@ -58,7 +58,7 @@
     "pipelines/shangjuan": {
         "config": {
             "watchdog:result_name": ["retire"],
-            "watchdog:result_cycles": [1000],
+            "watchdog:result_cycles": [10000],
             "l2:hitlatency": [1, 5],
             "mainmem:peek_latency_in_cycles": [1, 25],
             "mainmem:capacity": [4294967296],

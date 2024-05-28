@@ -2,7 +2,7 @@
     "pipelines/pompia": {
         "config": {
             "watchdog:result_name": ["retire"],
-            "watchdog:result_cycles": [1000],
+            "watchdog:result_cycles": [10000],
             "fetch:l1ic_nsets": [16, 64],
             "fetch:l1ic_nways": [2, 4],
             "fetch:l1ic_nbytesperblock": [16, 32],
@@ -18,7 +18,7 @@
     "pipelines/rangpur": {
         "config": {
             "watchdog:result_name": ["retire"],
-            "watchdog:result_cycles": [1000],
+            "watchdog:result_cycles": [10000],
             "fetch:l1ic_nsets": [16, 64],
             "fetch:l1ic_nways": [2, 4],
             "fetch:l1ic_nbytesperblock": [16, 32],
@@ -36,7 +36,7 @@
     "pipelines/shangjuan": {
         "config": {
             "watchdog:result_name": ["retire"],
-            "watchdog:result_cycles": [1000],
+            "watchdog:result_cycles": [10000],
             "fetch:l1ic_nsets": [16, 64],
             "fetch:l1ic_nways": [2, 4],
             "fetch:l1ic_nbytesperblock": [16, 32],
