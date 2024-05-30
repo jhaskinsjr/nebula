@@ -1,9 +1,9 @@
 # Sample Pipelines
 
-There have been nine sample pipeline implementations, each named
+There have been ten sample pipeline implementations, each named
 after a citrus fruit: Amanatsu, Bergamot, Clementine (**DEPRECATED**),
 Jabara, Lime (**DEPRECATED**), Oroblanco (**DEPRECATED**),
-Pompia, Rangpur, and Shangjuan.
+Pompia, Rangpur, Shangjuan, and Tangelo.
 
 The [Quick Start](../README.md#quick-start) guide shows how to execute the
 examples/bin/sum program
@@ -20,6 +20,7 @@ For a brief overview of each pipeline implmentation, follow the links below:
 * [Pompia](../pipelines/pompia/README.md)
 * [Rangpur](../pipelines/rangpur/README.md)
 * [Shangjuan](../pipelines/shangjuan/README.md)
+* [Tangelo](../pipelines/tangelo/README.md)
 
 As noted above, the Clementine, Lime, and Oroblanco pipelines are now
 deprecated. These were very early efforts to forge Nebula pipeline examples,
