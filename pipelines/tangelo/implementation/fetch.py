@@ -117,6 +117,7 @@ if '__main__' == __name__:
             'l1ic_nways': 2**1,
             'l1ic_nbytesperblock': 2**4,
             'l1ic_evictionpolicy': 'lru',
+            'pagesize': 2**16,
         },
     }
     _service = service.Service(state.get('service'), state.get('coreid'), _launcher.get('host'), _launcher.get('port'))
@@ -130,6 +131,7 @@ if '__main__' == __name__:
                 state.update({'active': False})
                 state.update({'running': False})
             elif {'text': 'run'} == {k: v}:
+                logging.info('state.config : {}'.format(state.get('config')))
                 state.update({'running': True})
                 state.update({'ack': False})
                 state.update({'pending_fetch': []})
@@ -147,10 +149,13 @@ if '__main__' == __name__:
                 state.update({'running': False})
             elif 'config' == k:
                 logging.debug('config : {}'.format(v))
-                if state.get('service') != v.get('service'): continue
+                logging.debug('config : {}'.format(v))
+#                if state.get('name') != v.get('service'): continue
+                if v.get('service') not in [state.get('name'), 'all']: continue
                 _field = v.get('field')
                 _val = v.get('val')
-                assert _field in state.get('config').keys(), 'No such config field, {}, in service {}!'.format(_field, state.get('service'))
+#                assert _field in state.get('config').keys(), 'No such config field, {}, in service {}!'.format(_field, state.get('service'))
+                assert _field in state.get('config').keys() or 'all' == v.get('service'), 'No such config field, {}, in service {}!'.format(_field, state.get('service'))
                 state.get('config').update({_field: _val})
             elif 'tick' == k:
                 state.update({'cycle': v.get('cycle')})
