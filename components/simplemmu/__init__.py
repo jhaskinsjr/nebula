@@ -17,13 +17,15 @@ class SimpleMMU:
         self.pageoffsetmask = self.pagesize - 1
         self.pageoffsetbits = log2(self.pagesize)
         self.translations = {}
+    def offset(self, addr): return (addr & self.pageoffsetmask)
+    def coreid(self, k): return (k >> self.pageoffsetbits)
     def translate(self, addr, coreid):
 #        _k = (coreid, addr >> self.pageoffsetbits) # BLERG: tuples cannot be keys in JSON
         _k = (coreid << self.pageoffsetbits) | (addr >> self.pageoffsetbits)
         self.translations.update({_k: self.translations.get(_k, self.BASE + (len(self.translations.keys()) << self.pageoffsetbits))})
-        return self.translations.get(_k) | (addr & self.pageoffsetmask)
+        return self.translations.get(_k) | self.offset(addr)
     def purge(self, coreid):
-        self.translations = {k:v for k, v in self.translations.items() if coreid != (k >> self.pageoffsetbits)}
+        self.translations = {k:v for k, v in self.translations.items() if coreid != self.coreid(k)}
     def get(self, attribute, alternative=None):
         return (self.__dict__[attribute] if attribute in dir(self) else alternative)
     def update(self, d):
