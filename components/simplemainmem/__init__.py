@@ -198,6 +198,22 @@ class SimpleMainMemory:
             else:
                 logging.fatal('ev : {}'.format(ev))
                 assert False
+        for _coreid, ev in map(lambda x: (x.get('coreid'), x.get('mmu')), filter(lambda y: 'mmu' in y.keys(), events)):
+            _cmd = ev.get('cmd')
+            _vaddr = ev.get('vaddr')
+            if 'purge' == _cmd:
+                self.mmu.purge(_coreid)
+            elif 'v2p' == _cmd:
+                _paddr = self.mmu.translate(_vaddr, _coreid)
+                self.service.tx({'result': {
+                    'arrival': 10 + self.get('cycle'), # FIXME: latency should be a config, not 10
+                    'coreid': _coreid,
+                    'mmu': {
+                        'vaddr': _vaddr,
+                        'offset': self.mmu.offset(_paddr),
+                        'frame': self.mmu.frame(_paddr, _coreid),
+                    }
+                }})
     def valid_access(self, addr, size):
         retval  = addr >= 0
 #        retval &= (addr + size) < self.get('capacity')
@@ -327,6 +343,7 @@ if '__main__' == __name__:
                 _binary = v.get('binary')
                 _args = v.get('args')
                 if not state.get('booted'): state.boot()
+                state.mmu.purge(_coreid)
                 state.loadbin(_coreid, _start_symbol, _sp, _pc, _binary, *_args)
             elif 'restore' == k:
                 _snapshot_filename = v.get('snapshot_filename')
