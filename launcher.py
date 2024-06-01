@@ -213,12 +213,20 @@ def run(cycle, max_cycles, max_instructions, break_on_undefined, snapshot_freque
         if any(state.get('shutdown').values()) and len(_cmdline):
             _coreid = next(filter(lambda x: state.get('shutdown').get(x), state.get('shutdown').keys()))
             # NOTE: drain results and events from any prior binary executed on this core
+#            state.update({'futures': {
+#                c: {
+#                    'results': list(filter(lambda x: _coreid != x.get('coreid'), state.get('futures').get(c).get('results'))),
+#                    'events': list(filter(lambda x: _coreid != x.get('coreid'), state.get('futures').get(c).get('events'))),
+#                }
+#                for c in state.get('futures').keys()
+#            }})
             state.update({'futures': {
                 c: {
-                    'results': list(filter(lambda x: _coreid != x.get('coreid'), state.get('futures').get(c).get('results'))),
-                    'events': list(filter(lambda x: _coreid != x.get('coreid'), state.get('futures').get(c).get('events'))),
+                    'results': list(filter(lambda x: coreid != x.get('coreid'), state.get('futures').get(c).get('results'))),
+                    'events': list(filter(lambda x: coreid != x.get('coreid'), state.get('futures').get(c).get('events'))),
                 }
                 for c in state.get('futures').keys()
+                for coreid in filter(lambda x: state.get('shutdown').get(x), state.get('shutdown').keys())
             }})
             _conn = list(map(lambda x: x.get('conn'), state.get('connections').get(_coreid)))
             tx(_conn, 'pause')
@@ -241,6 +249,7 @@ def run(cycle, max_cycles, max_instructions, break_on_undefined, snapshot_freque
                     'args': ((_binary,) + _args),
                 }
             })
+            tx(map(lambda x: x.get('conn'), state.get('connections').get(-1, [])), {'reset': {'coreid': _coreid}})
             tx(map(lambda x: x.get('conn'), state.get('connections').get(-1, [])), 'run')
             register(_conn, _coreid, 'set', 1, hex(0))
             register(_conn, _coreid, 'set', 2, hex(_sp))
@@ -254,6 +263,7 @@ def run(cycle, max_cycles, max_instructions, break_on_undefined, snapshot_freque
             logging.info('\t_cmd           : {}'.format(_cmd))
             logging.info('\t_binary        : {}'.format(_binary))
             logging.info('\t_args          : {}'.format(_args))
+            logging.info('\t_pc            : {}'.format(_pc + get_startsymbol(_binary, _start_symbol)))
             state.get('shutdown').update({_coreid: False})
             _futures = state.get('futures').pop(1 + cycle, {'results': [], 'events': []})
             _futures.get('events').extend([{'coreid': _coreid, 'init': True}])

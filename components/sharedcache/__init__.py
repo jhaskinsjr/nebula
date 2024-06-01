@@ -13,7 +13,8 @@ import simplecache
 def fetch_block(service, state, coreid, addr):
     _blockaddr = state.get('cache').blockaddr(addr)
     _blocksize = state.get('cache').nbytesperblock
-    state.get('pending_fetch').append(_blockaddr)
+#    state.get('pending_fetch').append(_blockaddr)
+    state.get('pending_fetch').append({'blockaddr': _blockaddr, 'coreid': coreid})
     service.tx({'event': {
         'arrival': 1 + state.get('cycle'),
         'coreid': coreid,
@@ -99,22 +100,24 @@ def do_cache(service, state, coreid, addr, size, data=None):
     toolbox.report_stats(service, state, 'flat', '{}_accesses'.format(state.get('service')))
 
 def do_tick(service, state, results, events):
-    for _mem in filter(lambda x: x, map(lambda y: y.get(state.get('next')), results)):
-        logging.info('_mem : {}'.format(_mem))
-        _addr = _mem.get('addr')
-        if _addr == state.get('operands').get(state.get('next')):
-            state.get('operands').update({state.get('next'): _mem.get('data')})
-        elif _addr in state.get('pending_fetch'):
-            service.tx({'info': '_mem : {}'.format(_mem)})
-            state.get('cache').poke(_addr, _mem.get('data'))
-            state.get('pending_fetch').remove(_addr)
+#    for _mem in filter(lambda x: x, map(lambda y: y.get(state.get('next')), results)):
+    for rs in map(lambda y: y.get(state.get('next')), filter(lambda x: x.get(state.get('next')), results)):
+        logging.info('rs : {}'.format(rs))
+        _addr = rs.get('addr')
+#        if _addr in state.get('pending_fetch'):
+        if any(map(lambda x: _addr == x.get('blockaddr'), state.get('pending_fetch'))):
+            service.tx({'info': '_mem : {}'.format(rs)})
+            state.get('cache').poke(_addr, rs.get('data'))
+#            state.get('pending_fetch').remove(_addr)
+            state.update({'pending_fetch': list(filter(lambda x: _addr != x.get('blockaddr'), state.get('pending_fetch')))})
     for coreid, ev in map(lambda y: (y.get('coreid'), y.get(state.get('service'))), filter(lambda x: x.get(state.get('service')), events)):
         ev = {**ev, **{'coreid': coreid}}
-        logging.info('ev  : {}'.format(ev))
+        logging.info('ev : {}'.format(ev))
         if 'cmd' in ev.keys() and 'purge' == ev.get('cmd'):
             state.get('cache').purge()
             continue
         state.get('executing').append(ev)
+        logging.info('state.executing : {}'.format(state.get('executing')))
     if len(state.get('executing')):
         _op = state.get('executing')[0] # forcing single outstanding operation for now
         # NOTE: _op.get('cmd') assumed to be 'poke' if message contains a payload (i.e., _op.get('data') != None)
@@ -151,14 +154,13 @@ if '__main__' == __name__:
     state = {
         'service': (args.name if args.name else os.path.basename(os.path.splitext(sys.argv[0])[0])),
         'cycle': 0,
+        'booted': False,
         'cache': None,
         'pending_fetch': [],
         'active': True,
         'running': False,
         'ack': True,
-        'pending_execute': [],
         'executing': [],
-        'operands': {},
         'next': args.next,
         'cores': (tuple(range(*(lambda a, b: (a, 1+b))(*map(lambda x: int(x), args.cores.split('-')))))),
         'config': {
@@ -179,20 +181,24 @@ if '__main__' == __name__:
             if {'text': 'bye'} == {k: v}:
                 state.update({'active': False})
                 state.update({'running': False})
+            elif 'reset' == k:
+                _coreid = v.get('coreid')
+                state.update({'executing': list(filter(lambda x: _coreid != x.get('coreid'), state.get('executing')))})
+                state.update({'pending_fetch': list(filter(lambda x: _coreid != x.get('coreid'), state.get('pending_fetch')))})
             elif {'text': 'run'} == {k: v}:
                 state.update({'running': True})
                 state.update({'ack': False})
-                state.update({'pending_fetch': []})
-                state.update({'pending_execute': []})
-                state.update({'executing': []})
-                state.update({'operands': {}})
-                _service.tx({'info': 'state.config : {}'.format(state.get('config'))})
-                state.update({'cache': simplecache.SimpleCache(
-                    state.get('config').get('nsets'),
-                    state.get('config').get('nways'),
-                    state.get('config').get('nbytesperblock'),
-                    state.get('config').get('evictionpolicy'),
-                )})
+                if not state.get('booted'):
+                    state.update({'booted': True})
+                    state.update({'pending_fetch': []})
+                    state.update({'executing': []})
+                    state.update({'cache': simplecache.SimpleCache(
+                        state.get('config').get('nsets'),
+                        state.get('config').get('nways'),
+                        state.get('config').get('nbytesperblock'),
+                        state.get('config').get('evictionpolicy'),
+                    )})
+                _service.tx({'info': 'state.config : {} (state.cores : {})'.format(state.get('config'), state.get('cores'))})
                 logging.info('state : {}'.format(state))
             elif {'text': 'pause'} == {k: v}:
                 state.update({'running': False})
