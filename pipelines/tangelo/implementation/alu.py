@@ -786,6 +786,8 @@ if '__main__' == __name__:
             elif {'text': 'run'} == {k: v}:
                 state.update({'running': True})
                 state.update({'ack': False})
+                state.update({'recovery_iid': None})
+                state.update({'flush_until': None})
                 state.update({'pending_execute': []})
                 state.update({'syscall_kwargs': {}})
                 state.update({'operands': {
