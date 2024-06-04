@@ -10,7 +10,7 @@ import service
 import toolbox
 import simplecache
 
-def fetch_block(service, state, coreid, addr):
+def fetch_block(service, state, coreid, addr, physical):
     _blockaddr = state.get('cache').blockaddr(addr)
     _blocksize = state.get('cache').nbytesperblock
 #    state.get('pending_fetch').append(_blockaddr)
@@ -22,10 +22,11 @@ def fetch_block(service, state, coreid, addr):
             'cmd': 'peek',
             'addr': _blockaddr,
             'size': _blocksize,
+            'physical': physical,
         },
     }})
     toolbox.report_stats(service, state, 'flat', '{}_misses'.format(state.get('service')))
-def do_cache(service, state, coreid, addr, size, data=None):
+def do_cache(service, state, coreid, addr, size, physical, data=None):
     service.tx({'info': 'addr : {}'.format(addr)})
     _ante = None
     _post = None
@@ -34,7 +35,7 @@ def do_cache(service, state, coreid, addr, size, data=None):
 #        service.tx({'info': '_data : {}'.format(_data)})
         if not _data:
             if len(state.get('pending_fetch')): return # only 1 pending fetch at a time is primitive, but good enough for now
-            fetch_block(service, state, coreid, addr)
+            fetch_block(service, state, coreid, addr, physical)
             return
     else:
         _blockaddr = state.get('cache').blockaddr(addr)
@@ -43,12 +44,12 @@ def do_cache(service, state, coreid, addr, size, data=None):
         _ante = state.get('cache').peek(addr, _size)
         if not _ante:
             if len(state.get('pending_fetch')): return # only 1 pending fetch at a time is primitive, but good enough for now
-            fetch_block(service, state, coreid, addr)
+            fetch_block(service, state, coreid, addr, physical)
             return
         _post = state.get('cache').peek(addr + _size, size - _size)
         if not _post:
             if len(state.get('pending_fetch')): return # only 1 pending fetch at a time is primitive, but good enough for now
-            fetch_block(service, state, coreid, addr + _size)
+            fetch_block(service, state, coreid, addr + _size, physical)
             return
         # NOTE: In an L1DC with only a single block, an incoming _post would
         #       always displace _ante, and an incoming _ante would always displace
@@ -122,10 +123,11 @@ def do_tick(service, state, results, events):
         _op = state.get('executing')[0] # forcing single outstanding operation for now
         # NOTE: _op.get('cmd') assumed to be 'poke' if message contains a payload (i.e., _op.get('data') != None)
         _coreid = _op.get('coreid')
+        _physical = _op.get('physical')
         _addr = _op.get('addr')
         _size = _op.get('size')
         _data = _op.get('data')
-        do_cache(service, state, _coreid, _addr, _size, _data)
+        do_cache(service, state, _coreid, _addr, _size, _physical, _data)
 
 if '__main__' == __name__:
     parser = argparse.ArgumentParser(description='Nebula: Shared Cache')

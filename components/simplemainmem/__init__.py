@@ -176,7 +176,8 @@ class SimpleMainMemory:
             _addr = ev.get('addr')
             _size = ev.get('size')
             _data = ev.get('data')
-            _kwargs = ({'coreid': _coreid} if not ev.get('physical') else {'physical': ev.get('physical')})
+#            _kwargs = ({'coreid': _coreid} if not ev.get('physical') else {'physical': ev.get('physical')})
+            _kwargs = {'coreid': _coreid, **({} if not ev.get('physical') else {'physical': ev.get('physical')})}
             if 'poke' == _cmd:
                 self.poke(_addr, _size, _data, **_kwargs)
                 toolbox.report_stats(self.service, self.state(), 'histo', 'poke.size', _size)
