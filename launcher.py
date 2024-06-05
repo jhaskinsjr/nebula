@@ -288,10 +288,11 @@ def run(cycle, max_cycles, max_instructions, break_on_undefined, snapshot_freque
         ))
         cycle = (min(state.get('futures').keys()) if len(state.get('futures').keys()) else 1 + cycle)
         _futures = state.get('futures').pop(cycle, {'results': [], 'events': []})
-        _futures.update({'results': list(filter(lambda x: not state.get('shutdown').get(x.get('coreid')), _futures.get('results')))})
-        _futures.update({'events': list(filter(lambda x: not state.get('shutdown').get(x.get('coreid')), _futures.get('events')))})
+#        _futures.update({'results': list(filter(lambda x: not state.get('shutdown').get(x.get('coreid')), _futures.get('results')))})
+#        _futures.update({'events': list(filter(lambda x: not state.get('shutdown').get(x.get('coreid')), _futures.get('events')))})
         state.update({'ack': sum(map(lambda x: [{'coreid': x}] * len(state.get('connections').get(x)), state.get('connections').keys()), [])})
-        for c in state.get('connections').keys():
+#        for c in state.get('connections').keys():
+        for c in filter(lambda x: not state.get('shutdown').get(x), state.get('connections').keys()):
             _res_evt = {
                 'results': (_futures.get('results') if -1 == c else list(filter(lambda x: x.get('coreid') == c, _futures.get('results')))),
                 'events': (_futures.get('events') if -1 == c else list(filter(lambda x: x.get('coreid') == c, _futures.get('events')))),
