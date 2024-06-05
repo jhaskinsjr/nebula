@@ -127,7 +127,7 @@ def do_tick(service, state, results, events):
         _op = state.get('executing')[0] # forcing single outstanding operation for now
         # NOTE: _op.get('cmd') assumed to be 'poke' if message contains a payload (i.e., _op.get('data') != None)
         _coreid = _op.get('coreid')
-        _physical = _op.get('physical')
+        _physical = _op.get('physical', False)
         _addr = _op.get('addr')
         _size = _op.get('size')
         _data = _op.get('data')
