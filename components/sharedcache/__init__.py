@@ -82,7 +82,8 @@ def do_cache(service, state, coreid, addr, size, physical, data=None):
                 'cmd': 'poke',
                 'addr': addr,
                 'size': len(data),
-                'data': data
+                'data': data,
+                'physical': physical,
             }
         }})
     else:
