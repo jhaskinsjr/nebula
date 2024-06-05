@@ -4,18 +4,18 @@ Presented in no particular order, below are some additional features that will
 extend and enhance the simulator. (Once-future features that have already been
 implemented have been struck through.)
 
-1. standalone MMU service (separate from main memory)
 1. pipeline implementation with value prediction
 1. pipeline implementation with out-of-order execution
 1. perfect branch predictor
 1. perfect value predictor
 1. return address stack
+1. implement new eviction policies (e.g., least frequently used) for SimpleCache and SimpleBTB
+1. Kubernetes deployment
 1. ARM instruction set support
 1. MIPS instruction set support
 1. x86_64 instruction set support
 1. SPARC v9 instruction set support
-1. implement new eviction policies (e.g., least frequently used) for SimpleCache and SimpleBTB
-1. Kubernetes deployment
+1. ~~MMU service~~
 1. ~~shared caches~~
 1. ~~accelerated `mmap`-based main memory implementation~~
 1. ~~sample Jupyter Notebook for fetching and processing data from MongoDB~~
