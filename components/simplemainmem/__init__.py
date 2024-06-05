@@ -71,6 +71,7 @@ class SimpleMainMemory:
     def loadbin(self, coreid, start_symbol, sp, pc, binary, *args):
         logging.info('loadbin(): binary : {} ({})'.format(binary, type(binary)))
         logging.info('loadbin(): args   : {} ({})'.format(args, type(args)))
+        logging.info('loadbin(): coreid : {} ({})'.format(coreid, type(coreid)))
         _start_pc = pc
         with open(binary, 'rb') as fp:
             elffile = elftools.elf.elffile.ELFFile(fp)
@@ -211,8 +212,8 @@ class SimpleMainMemory:
                     'coreid': _coreid,
                     'mmu': {
                         'vaddr': _vaddr,
+                        'frame': self.mmu.frame(_paddr),
                         'offset': self.mmu.offset(_paddr),
-                        'frame': self.mmu.frame(_paddr, _coreid),
                     }
                 }})
     def valid_access(self, addr, size):
@@ -223,29 +224,29 @@ class SimpleMainMemory:
     def do_poke(self, addr, data, **kwargs):
         # data : list of unsigned char, e.g., to make an integer, X, into a list
         # of N little-endian-formatted bytes -> list(X.to_bytes(N, 'little'))
-        logging.debug('do_poke({:08x}, ..., {}) -> {:08x}'.format(addr, kwargs, addr))
+        assert isinstance(kwargs.get('coreid'), int)
         _addr = (self.mmu.translate(addr, kwargs.get('coreid')) if not kwargs.get('physical') else addr)
+        logging.debug('do_poke({:08x}, ..., {}) -> {:08x}'.format(addr, kwargs, _addr))
         try:
             self.mm[_addr:_addr+len(data)] = bytes(data) 
         except:
             pass # FIXME: Something other than ignoring the issue should happen here!
     def poke(self, addr, size, data, **kwargs):
         def accesses(addr, size, data, **kwargs):
-#            _addrs = [addr] + list(map(lambda x: (x * self.pagesize) + ((addr | self.pageoffsetmask) ^ self.pageoffsetmask), range(1 + (size // self.pagesize))))[1:]
-            _addrs = [addr] + list(map(lambda x: (x * self.config.get('pagesize')) + ((addr | self.pageoffsetmask) ^ self.pageoffsetmask), range(1 + (size // self.config.get('pagesize')))))[1:]
-#            _sizes = [min((((addr | self.pageoffsetmask) ^ self.pageoffsetmask) + self.pagesize) - addr, size)]
-            _sizes = [min((((addr | self.pageoffsetmask) ^ self.pageoffsetmask) + self.config.get('pagesize')) - addr, size)]
-            _datas, data = [data[:_sizes[0]]], data[_sizes[0]:]
-            for _ in _addrs[1:]:
-#                _sizes += [min(self.pagesize, len(data))]
-                _sizes += [min(self.config.get('pagesize'), len(data))]
-                _s = _sizes[-1]
-                _d, data = data[:_s], data[_s:]
-                _datas += [_d]
-            logging.debug('poke.accesses(): _addrs : ({}) {}'.format(kwargs.get('coreid'), _addrs))
+            _pagesize = self.config.get('pagesize')
+            if simplemmu.frame(_pagesize, addr) == simplemmu.frame(_pagesize, addr + size): return zip([addr], [data])
+            _addrs = [addr]
+            _sizes = [_pagesize - (addr - self.mmu.frame(addr))]
+            _datas = [data[:_sizes[-1]]]
+            while sum(_sizes) < len(data):
+                _addrs += [self.mmu.frame(addr) + (len(_addrs) * _pagesize)]
+                _x = _sizes[-1]
+                _sizes += [min(_pagesize, size - sum(_sizes))]
+                _datas += [data[_x:(_x + _sizes[-1])]]
+            logging.debug('poke.accesses(): _addrs : ({}) {}'.format(kwargs.get('coreid'), '[{}]'.format(', '.join(map(lambda x: '{:08x}'.format(x), _addrs)))))
             return zip(_addrs, _datas)
         assert isinstance(kwargs.get('coreid'), int)
-        logging.debug('poke({:08x}, {}, ..., {}) -> {:08x}'.format(addr, size, kwargs, addr))
+        logging.debug('poke({:08x}, {}, ..., {})'.format(addr, size, kwargs))
         if not self.valid_access(addr, size):
             logging.info('poke({:08}, {}, ..., {}): Access does not fit in memory boundaries!'.format(addr, size, kwargs))
             return
@@ -255,24 +256,23 @@ class SimpleMainMemory:
         # a list, X, of N bytes -> int.from_bytes(X, 'little')
         assert isinstance(kwargs.get('coreid'), int)
         _addr = (self.mmu.translate(addr, kwargs.get('coreid')) if not kwargs.get('physical') else addr)
-        logging.debug('do_peek({}, {}, {}) -> {:08x}'.format(addr, size, kwargs, _addr))
+        logging.debug('do_peek({:08x}, {}, {}) -> {:08x}'.format(addr, size, kwargs, _addr))
         try:
             return list(self.mm[_addr:_addr + size])
         except:
             return []
     def peek(self, addr, size, **kwargs):
         def accesses(addr, size, **kwargs):
-#            _addrs = [addr] + list(map(lambda x: (x * self.pagesize) + ((addr | self.pageoffsetmask) ^ self.pageoffsetmask), range(1 + (size // self.pagesize))))[1:]
-            _addrs = [addr] + list(map(lambda x: (x * self.config.get('pagesize')) + ((addr | self.pageoffsetmask) ^ self.pageoffsetmask), range(1 + (size // self.config.get('pagesize')))))[1:]
-#            _sizes = [min((((addr | self.pageoffsetmask) ^ self.pageoffsetmask) + self.pagesize) - addr, size)]
-            _sizes = [min((((addr | self.pageoffsetmask) ^ self.pageoffsetmask) + self.config.get('pagesize')) - addr, size)]
-            for _ in _addrs[1:]:
-#                _sizes += [min(self.pagesize, size - sum(_sizes))]
-                _sizes += [min(self.config.get('pagesize'), size - sum(_sizes))]
-            logging.debug('peek.accesses({}, {}, {}): ({}) {}'.format(addr, size, kwargs, kwargs.get('coreid'), list(zip(_addrs, _sizes))))
+            _pagesize = self.config.get('pagesize')
+            if simplemmu.frame(_pagesize, addr) == simplemmu.frame(_pagesize, addr + size): return zip([addr], [size])
+            _addrs = [addr]
+            _sizes = [_pagesize - (addr - self.mmu.frame(addr))]
+            while sum(_sizes) < size:
+                _addrs += [self.mmu.frame(addr) + (len(_addrs) * _pagesize)]
+                _sizes += [min(_pagesize, size - sum(_sizes))]
             return zip(_addrs, _sizes)
         assert isinstance(kwargs.get('coreid'), int)
-        logging.debug('peek({:08x}, {}, ..., {}) -> {:08x}'.format(addr, size, kwargs, addr))
+        logging.debug('peek({:08x}, {}, ..., {})'.format(addr, size, kwargs))
         if not self.valid_access(addr, size):
             logging.info('peek({:08}, {}, ..., {}): Access does not fit in memory boundaries!'.format(addr, size, kwargs))
             return []
