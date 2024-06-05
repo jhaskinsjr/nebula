@@ -20,7 +20,8 @@ service implementation/watchdog.py:localhost:22:0:0
 #service implementation/alu.py:localhost:22:0:3
 #service implementation/lsu.py:localhost:22:0:3
 #service implementation/commit.py:localhost:22:0:3
-#service implementation/l2.py:localhost:22:-1:-1:"--cores 0-3 --next l3"
+#service implementation/l2.py:localhost:22:-1:-1:"--cores 0-1 --next l3"
+#service implementation/l2.py:localhost:22:-1:-1:"--cores 2-3 --next l3"
 #service implementation/l3.py:localhost:22:-1:-1:"--cores 0-3 --next mem"
 #service implementation/watchdog.py:localhost:22:0:3
 spawn
