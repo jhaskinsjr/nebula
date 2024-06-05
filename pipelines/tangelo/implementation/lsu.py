@@ -11,14 +11,15 @@ import struct
 import service
 import toolbox
 import components.simplecache
+import components.simplemmu
 import riscv.execute
 import riscv.constants
 import riscv.syscall.linux
 
-def fetch_block(service, state, addr):
+def fetch_block(service, state, addr, physical):
     _blockaddr = state.get('l1dc').blockaddr(addr)
     _blocksize = state.get('l1dc').nbytesperblock
-    service.tx({'info': 'fetch_block(..., {})'.format(addr)})
+    service.tx({'info': 'fetch_block(..., {} ({:08x}))'.format(addr, _blockaddr)})
     state.get('pending_fetch').append(_blockaddr)
     service.tx({'event': {
         'arrival': 1 + state.get('cycle'),
@@ -27,21 +28,29 @@ def fetch_block(service, state, addr):
             'cmd': 'peek',
             'addr': _blockaddr,
             'size': _blocksize,
+            'physical': physical,
         },
     }})
     toolbox.report_stats(service, state, 'flat', 'l1dc_misses')
 def do_l1dc(service, state):
     for _insn in filter(lambda x: not x.get('done'), state.get('executing')):
-        _addr = _insn.get('operands').get('addr')
+        _vaddr = _insn.get('operands').get('addr')
+        _pagesize = state.get('config').get('pagesize')
+        _frame = components.simplemmu.frame(_pagesize, _vaddr)
+        if _frame not in state.get('tlb').keys(): continue
+        _addr = state.get('tlb').get(_frame) | components.simplemmu.offset(_pagesize, _vaddr)
+        _physical = True
+#        _addr = _insn.get('operands').get('addr')
+#        _physical = False
         _size = _insn.get('nbytes')
-        service.tx({'info': '_addr : {}'.format(_addr)})
+        service.tx({'info': '_addr : {} ({})'.format(_addr, _vaddr)})
         _ante = None
         _post = None
         if state.get('l1dc').fits(_addr, _size):
             _data = state.get('l1dc').peek(_addr, _size)
             if not _data:
                 if len(state.get('pending_fetch')): continue # only 1 pending fetch at a time is primitive, but good enough for now
-                fetch_block(service, state, _addr)
+                fetch_block(service, state, _addr, _physical)
                 continue
             service.tx({'info': '_data : @{} {}'.format(_addr, _data)})
         else:
@@ -51,12 +60,12 @@ def do_l1dc(service, state):
             _ante = state.get('l1dc').peek(_addr, _antesize)
             if not _ante:
                 if len(state.get('pending_fetch')): continue # only 1 pending fetch at a time is primitive, but good enough for now
-                fetch_block(service, state, _addr)
+                fetch_block(service, state, _addr, _physical)
                 continue
             _post = state.get('l1dc').peek(_addr + len(_ante), _size - len(_ante))
             if not _post:
                 if len(state.get('pending_fetch')): continue # only 1 pending fetch at a time is primitive, but good enough for now
-                fetch_block(service, state, _addr + len(_ante))
+                fetch_block(service, state, _addr + len(_ante), _physical)
                 continue
             service.tx({'info': '_ante : @{} {}'.format(_addr, _ante)})
             service.tx({'info': '_post : @{} {}'.format(_addr + len(_ante), _post)})
@@ -85,7 +94,8 @@ def do_l1dc(service, state):
                     'cmd': 'poke',
                     'addr': _addr,
                     'size': len(_insn.get('operands').get('data')),
-                    'data': _insn.get('operands').get('data')
+                    'data': _insn.get('operands').get('data'),
+                    'physical': _physical,
                 }
             }})
         else:
@@ -95,7 +105,8 @@ def do_l1dc(service, state):
                 'arrival': 1 + state.get('cycle'),
                 'coreid': state.get('coreid'),
                 'l1dc': {
-                    'addr': _addr,
+                    'addr': _vaddr,
+#                    'addr': _addr,
                     'size': _size,
                     'data': _data,
                 },
@@ -177,15 +188,39 @@ def do_tick(service, state, results, events):
             state.get('pending_execute')[_ndx].update({'retired': True})
     for _l2 in filter(lambda x: x, map(lambda y: y.get('l2'), results)):
         _addr = _l2.get('addr')
-        if _addr == state.get('operands').get('l2'):
-            state.get('operands').update({'l2': _l2.get('data')})
-        elif _addr in state.get('pending_fetch') and 'data' in _l2.keys():
-            service.tx({'info': '_l2 : {}'.format(_l2)})
-            state.get('l1dc').poke(_addr, _l2.get('data'))
-            state.get('pending_fetch').remove(_addr)
+        if _addr not in state.get('pending_fetch'): continue
+        service.tx({'info': '_l2 : {}'.format(_l2)})
+        state.get('l1dc').poke(_addr, _l2.get('data'))
+        state.get('pending_fetch').remove(_addr)
+#        if _addr == state.get('operands').get('l2'): # FIXME: delete this case???
+#            state.get('operands').update({'l2': _l2.get('data')})
+#        elif _addr in state.get('pending_fetch') and 'data' in _l2.keys():
+#            service.tx({'info': '_l2 : {}'.format(_l2)})
+#            state.get('l1dc').poke(_addr, _l2.get('data'))
+#            state.get('pending_fetch').remove(_addr)
+    for _mmu in map(lambda y: y.get('mmu'), filter(lambda x: x.get('mmu'), results)):
+        _vaddr = _mmu.get('vaddr')
+        _pagesize = state.get('config').get('pagesize')
+        _frame = components.simplemmu.frame(_pagesize, _vaddr)
+        if _frame not in state.get('pending_v2p'): continue
+        state.update({'pending_v2p': list(filter(lambda x: _frame != x, state.get('pending_v2p')))})
+        state.get('tlb').update({_frame: _mmu.get('frame')})
     for _lsu in map(lambda y: y.get('lsu'), filter(lambda x: x.get('lsu'), events)):
         if 'insn' in _lsu.keys():
             _insn = _lsu.get('insn')
+            _vaddr = _insn.get('operands').get('addr')
+            _pagesize = state.get('config').get('pagesize')
+            _frame = components.simplemmu.frame(_pagesize, _vaddr)
+            if _frame not in state.get('tlb').keys():
+                state.get('pending_v2p').append(_frame)
+                service.tx({'event': {
+                    'arrival': 1 + state.get('cycle'),
+                    'coreid': state.get('coreid'),
+                    'mmu': {
+                        'cmd': 'v2p',
+                        'vaddr': _vaddr,
+                    }
+                }})
             if _insn.get('cmd') in riscv.constants.STORES:
                 _data = _insn.get('operands').get('data')
                 _data = {
@@ -248,13 +283,15 @@ if '__main__' == __name__:
         'cycle': 0,
         'coreid': args.coreid,
         'l1dc': None,
+        'tlb': {},
+        'pending_v2p': [],
         'pending_fetch': [],
         'active': True,
         'running': False,
         'ack': True,
         'pending_execute': [],
         'executing': [],
-        'operands': {},
+#        'operands': {},
         'config': {
             'l1dc_nsets': 2**4,
             'l1dc_nways': 2**1,
@@ -277,10 +314,12 @@ if '__main__' == __name__:
                 logging.info('state.config : {}'.format(state.get('config')))
                 state.update({'running': True})
                 state.update({'ack': False})
+                state.update({'tlb': {}})
+                state.update({'pending_v2p': []})
                 state.update({'pending_fetch': []})
                 state.update({'pending_execute': []})
                 state.update({'executing': []})
-                state.update({'operands': {}})
+#                state.update({'operands': {}})
                 _service.tx({'info': 'state.config : {}'.format(state.get('config'))})
                 state.update({'l1dc': components.simplecache.SimpleCache(
                     state.get('config').get('l1dc_nsets'),
@@ -310,3 +349,4 @@ if '__main__' == __name__:
                 state.update({'cycle': v.get('cycle')})
                 _service.tx({'ack': {'cycle': state.get('cycle')}})
         if state.get('ack') and state.get('running'): _service.tx({'ack': {'cycle': state.get('cycle')}})
+    logging.info('state : {}'.format(state))

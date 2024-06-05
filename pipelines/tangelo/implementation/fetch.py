@@ -9,11 +9,13 @@ import time
 import service
 import toolbox
 import components.simplecache
+import components.simplemmu
 import riscv.constants
 
-def fetch_block(service, state, jp):
+def fetch_block(service, state, jp, physical):
     _blockaddr = state.get('l1ic').blockaddr(jp)
     _blocksize = state.get('l1ic').nbytesperblock
+    service.tx({'info': 'fetch_block(..., {} ({:08x}))'.format(jp, _blockaddr)})
     state.get('pending_fetch').append(_blockaddr)
     service.tx({'event': {
         'arrival': 1 + state.get('cycle'),
@@ -22,13 +24,20 @@ def fetch_block(service, state, jp):
             'cmd': 'peek',
             'addr': _blockaddr,
             'size': _blocksize,
+            'physical': physical,
         },
     }})
     toolbox.report_stats(service, state, 'flat', 'l1ic_misses')
 def do_l1ic(service, state):
     _req = state.get('fetch_buffer')[0]
     logging.debug('_req : {}'.format(_req))
-    _jp = _req.get('addr')
+    _vaddr = _req.get('addr')
+    _pagesize = state.get('config').get('pagesize')
+    _frame = components.simplemmu.frame(_pagesize, _vaddr)
+    if _frame not in state.get('tlb').keys(): return
+    _jp = state.get('tlb').get(_frame) | components.simplemmu.offset(_pagesize, _vaddr)
+    _physical = True
+#    _jp = _req.get('addr')
     service.tx({'info': '_jp : {} ({})'.format(list(_jp.to_bytes(8, 'little')), _jp)})
     _blockaddr = state.get('l1ic').blockaddr(_jp)
     _blocksize = state.get('l1ic').nbytesperblock
@@ -36,14 +45,15 @@ def do_l1ic(service, state):
     service.tx({'info': '_data : {}'.format(_data)})
     if not _data:
         if len(state.get('pending_fetch')): return # only 1 pending fetch at a time is primitive, but good enough for now
-        fetch_block(service, state, _jp)
+        fetch_block(service, state, _jp, _physical)
         return
     _data = _data[(_jp - _blockaddr):]
     service.tx({'result': {
         'arrival': 1 + state.get('cycle'),
         'coreid': state.get('coreid'),
         'l1ic': {
-            'addr': _jp,
+            'addr': _vaddr,
+#            'addr': _jp,
             'size': len(_data),
             'data': _data,
         },
@@ -52,7 +62,8 @@ def do_l1ic(service, state):
         'arrival': 1 + state.get('cycle'),
         'coreid': state.get('coreid'),
         'decode': {
-            'addr': _jp,
+            'addr': _vaddr,
+#            'addr': _jp,
             'data': _data,
         },
     }})
@@ -65,14 +76,34 @@ def do_tick(service, state, results, events):
         service.tx({'info': '_l2 : {}'.format(_l2)})
         state.get('l1ic').poke(_addr, _l2.get('data'))
         state.get('pending_fetch').remove(_addr)
+    for _mmu in map(lambda y: y.get('mmu'), filter(lambda x: x.get('mmu'), results)):
+        _vaddr = _mmu.get('vaddr')
+        _pagesize = state.get('config').get('pagesize')
+        _frame = components.simplemmu.frame(_pagesize, _vaddr)
+        if _frame not in state.get('pending_v2p'): continue
+        state.update({'pending_v2p': list(filter(lambda x: _frame != x, state.get('pending_v2p')))})
+        state.get('tlb').update({_frame: _mmu.get('frame')})
     for _fetch in map(lambda y: y.get('fetch'), filter(lambda x: x.get('fetch'), events)):
         if 'cmd' in _fetch.keys():
             if 'purge' == _fetch.get('cmd'):
                 state.get('l1ic').purge()
             elif 'get' == _fetch.get('cmd'):
+                _vaddr = _fetch.get('addr')
                 state.get('fetch_buffer').append({
-                    'addr': _fetch.get('addr'),
+                    'addr': _vaddr,
                 })
+                _pagesize = state.get('config').get('pagesize')
+                _frame = components.simplemmu.frame(_pagesize, _vaddr)
+                if _frame not in state.get('tlb').keys():
+                    state.get('pending_v2p').append(_frame)
+                    service.tx({'event': {
+                        'arrival': 1 + state.get('cycle'),
+                        'coreid': state.get('coreid'),
+                        'mmu': {
+                            'cmd': 'v2p',
+                            'vaddr': _vaddr,
+                        }
+                    }})
     if not len(state.get('fetch_buffer')): return
     service.tx({'info': 'fetch_buffer : {}'.format(state.get('fetch_buffer'))})
     do_l1ic(service, state)
@@ -105,6 +136,8 @@ if '__main__' == __name__:
         'cycle': 0,
         'coreid': args.coreid,
         'l1ic': None,
+        'tlb': {},
+        'pending_v2p': [],
         'pending_fetch': [],
         'active': True,
         'running': False,
@@ -134,6 +167,8 @@ if '__main__' == __name__:
                 logging.info('state.config : {}'.format(state.get('config')))
                 state.update({'running': True})
                 state.update({'ack': False})
+                state.update({'tlb': {}})
+                state.update({'pending_v2p': []})
                 state.update({'pending_fetch': []})
                 state.update({'active': True})
                 state.update({'fetch_buffer': []})
@@ -174,3 +209,4 @@ if '__main__' == __name__:
                 state.update({'%pc': v.get('data')})
                 logging.info('state : {}'.format(state))
         if state.get('ack') and state.get('running'): _service.tx({'ack': {'cycle': state.get('cycle')}})
+    logging.info('state : {}'.format(state))
