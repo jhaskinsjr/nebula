@@ -196,7 +196,7 @@ class SimpleMainMemory:
                     }
                 }})
                 toolbox.report_stats(self.service, self.state(), 'histo', 'peek.size', _size)
-            elif 'purge' == _cmd:
+            elif 'purge' == _cmd: # FIXME: remove this and concomitant code from pipelines
                 self.mmu.purge(_coreid)
                 logging.info('@{:15} : self.mmu.purge({})...'.format(state.get('cycle'), _coreid))
                 toolbox.report_stats(self.service, self.state(), 'histo', 'purges', _coreid)
@@ -327,7 +327,11 @@ if '__main__' == __name__:
             elif 'reset' == k:
                 _coreid = v.get('coreid')
                 logging.info('@{:15} : {}'.format(state.get('cycle'), msg))
-                if state.get('booted'): state.mmu.purge(_coreid)
+                if state.get('booted'):
+                    logging.info('@{:15} : state.mmu.translations : {}'.format(state.get('cycle'), state.mmu.get('translations')))
+                    _pagesize = state.get('config').get('pagesize')
+                    for f in state.mmu.pframes(_coreid): state.poke(f, _pagesize, [0] * _pagesize, **{'coreid': _coreid, 'physical': True})
+                    state.mmu.purge(_coreid)
             elif {'text': 'run'} == {k: v}:
                 logging.info('state.config : {}'.format(state.get('config')))
                 if not state.get('booted'): state.boot()
@@ -354,6 +358,7 @@ if '__main__' == __name__:
                 _args = v.get('args')
                 if not state.get('booted'): state.boot()
                 state.mmu.purge(_coreid)
+                logging.info('@{:15} : state.mmu.translations : {}'.format(state.get('cycle'), state.mmu.get('translations')))
                 state.loadbin(_coreid, _start_symbol, _sp, _pc, _binary, *_args)
             elif 'restore' == k:
                 _snapshot_filename = v.get('snapshot_filename')

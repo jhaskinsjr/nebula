@@ -31,6 +31,19 @@ class SimpleCache:
                 } for _ in range(self.nways)
              ] for x in range(self.nsets)
         }
+    def invalidate(self, **kwargs):
+        if kwargs.get('misc'):
+            _misc = kwargs.get('misc')
+            self.sets = {
+                x: [
+                    (y if _misc != y.get('misc') else {
+                        'tag': None,
+                        'data': [0xff] * self.nbytesperblock,
+                        'dirty': False,
+                        'misc': {},
+                    }) for y in self.sets[x]
+                ] for x in self.sets.keys()
+            }
     def tag(self, addr): return (addr >> (log2(self.nsets) + log2(self.nbytesperblock)))
     def setnum(self, addr): return (addr >> log2(self.nbytesperblock)) & ((1 << log2(self.nsets)) - 1)
     def waynum(self, addr, s):
@@ -70,6 +83,14 @@ class SimpleCache:
             _retval = _set[_w].get('data')[_offset:(_offset + nbytes)]
             _set.insert(0, _set.pop(_w))
 #        print('  peek(): _w : {} ({}, {}, {}, {})'.format(_w, self.setnum(addr), _offset, nbytes, _retval))
+        return _retval
+    def misc(self, addr, data=None):
+        _set = self.sets[self.setnum(addr)]
+        _w = self.waynum(addr, _set)
+        _retval = None
+        if isinstance(_w, int):
+            if data: _set[_w].update({'misc': data})
+            _retval = _set[_w].get('misc')
         return _retval
     def poke(self, addr, data):
         _offset = self.offset(addr)

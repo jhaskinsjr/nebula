@@ -24,6 +24,7 @@ class SimpleMMU:
     def offset(self, addr): return offset(self.pagesize, addr)
 #    def frame(self, addr, coreid): return frame(self.pagesize, addr, coreid)
     def frame(self, addr): return frame(self.pagesize, addr)
+    def pframes(self, coreid): return list(map(lambda y: y.get('frame'), filter(lambda x: coreid == x.get('coreid'), self.translations.values())))
 #    def coreid(self, frame): return coreid(self.pagesize, frame)
 #    def coreid(self, k): return (k >> self.pageoffsetbits)
     def translate(self, addr, coreid):

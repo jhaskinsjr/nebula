@@ -71,9 +71,12 @@ def do_cache(service, state, coreid, addr, size, physical, data=None):
         if _ante:
             assert _post
             state.get('cache').poke(addr, _ante)
+            state.get('cache').misc(addr, {'coreid': coreid})
             state.get('cache').poke(addr + size, _post)
+            state.get('cache').misc(addr + size, {'coreid': coreid})
         else:
             state.get('cache').poke(addr, data)
+            state.get('cache').misc(addr, {'coreid': coreid})
         # writethrough
         service.tx({'event': {
             'arrival': 1 + state.get('cycle'),
@@ -103,7 +106,7 @@ def do_cache(service, state, coreid, addr, size, physical, data=None):
 
 def do_tick(service, state, results, events):
 #    for _mem in filter(lambda x: x, map(lambda y: y.get(state.get('next')), results)):
-    for rs in map(lambda y: y.get(state.get('next')), filter(lambda x: x.get(state.get('next')), results)):
+    for _coreid, rs in map(lambda y: (y.get('coreid'), y.get(state.get('next'))), filter(lambda x: x.get(state.get('next')), results)):
         service.tx({'info': 'rs : {}'.format(rs)})
         service.tx({'info': 'state.pending_fetch : {}'.format(state.get('pending_fetch'))})
         service.tx({'info': 'state.executing     : {}'.format(state.get('executing'))})
@@ -112,6 +115,7 @@ def do_tick(service, state, results, events):
         if any(map(lambda x: _addr == x.get('blockaddr'), state.get('pending_fetch'))):
             service.tx({'info': '_mem : {}'.format(rs)})
             state.get('cache').poke(_addr, rs.get('data'))
+            state.get('cache').misc(_addr, {'coreid': _coreid})
 #            state.get('pending_fetch').remove(_addr)
             state.update({'pending_fetch': list(filter(lambda x: _addr != x.get('blockaddr'), state.get('pending_fetch')))})
     for coreid, ev in map(lambda y: (y.get('coreid'), y.get(state.get('service'))), filter(lambda x: x.get(state.get('service')), events)):
@@ -191,6 +195,7 @@ if '__main__' == __name__:
                 _coreid = v.get('coreid')
                 state.update({'executing': list(filter(lambda x: _coreid != x.get('coreid'), state.get('executing')))})
                 state.update({'pending_fetch': list(filter(lambda x: _coreid != x.get('coreid'), state.get('pending_fetch')))})
+                if state.get('booted'): state.get('cache').invalidate(**{'misc': {'coreid': _coreid}})
                 logging.info('@{:15} : {}'.format(state.get('cycle'), msg))
             elif {'text': 'run'} == {k: v}:
                 state.update({'running': True})
