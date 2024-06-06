@@ -30,6 +30,7 @@ class SimpleMainMemory:
         'filename': '/tmp/mainmem.raw',
         'capacity': 2**32,
         'peek_latency_in_cycles': 10**3,
+        'v2p_latency_in_cycles': 10**2,
     }
     def __init__(self, name, launcher, s=None, **kwargs):
         self.name = name
@@ -39,6 +40,7 @@ class SimpleMainMemory:
             'filename': kwargs.get('filename', self.DEFAULT.get('filename')),
             'capacity': kwargs.get('capacity', self.DEFAULT.get('capacity')),
             'peek_latency_in_cycles': kwargs.get('peek_latency_in_cycles', self.DEFAULT.get('peek_latency_in_cycles')),
+            'v2p_latency_in_cycles': kwargs.get('v2p_latency_in_cycles', self.DEFAULT.get('v2p_latency_in_cycles')),
         }
         self.pageoffsetmask = None
         self.pageoffsetbits = None
@@ -196,6 +198,7 @@ class SimpleMainMemory:
                 toolbox.report_stats(self.service, self.state(), 'histo', 'peek.size', _size)
             elif 'purge' == _cmd:
                 self.mmu.purge(_coreid)
+                logging.info('@{:15} : self.mmu.purge({})...'.format(state.get('cycle'), _coreid))
                 toolbox.report_stats(self.service, self.state(), 'histo', 'purges', _coreid)
             else:
                 logging.fatal('ev : {}'.format(ev))
@@ -208,7 +211,7 @@ class SimpleMainMemory:
             elif 'v2p' == _cmd:
                 _paddr = self.mmu.translate(_vaddr, _coreid)
                 self.service.tx({'result': {
-                    'arrival': 10 + self.get('cycle'), # FIXME: latency should be a config, not 10
+                    'arrival': self.get('config').get('v2p_latency_in_cycles') + self.get('cycle'),
                     'coreid': _coreid,
                     'mmu': {
                         'vaddr': _vaddr,
@@ -287,6 +290,7 @@ if '__main__' == __name__:
     parser.add_argument('--filename', type=str, dest='filename', default='/tmp/mainmem.raw', help='file to hold main memory')
     parser.add_argument('--capacity', type=int, dest='capacity', default=2**32, help='size (in bytes) of main memory file')
     parser.add_argument('--peek_latency_in_cycles', type=int, dest='peek_latency_in_cycles', default=10**3, help='# of cycles to return peek result')
+    parser.add_argument('--v2p_latency_in_cycles', type=int, dest='v2p_latency_in_cycles', default=10**2, help='# of cycles to return MMU result')
     parser.add_argument('launcher', help='host:port of Nebula launcher')
     args = parser.parse_args()
     assert not os.path.isfile(args.log), '--log must point to directory, not file'
@@ -309,6 +313,7 @@ if '__main__' == __name__:
         'filename': args.filename,
         'capacity': args.capacity,
         'peek_latency_in_cycles': args.peek_latency_in_cycles,
+        'v2p_latency_in_cycles': args.v2p_latency_in_cycles,
     })
     while state.get('active'):
         state.update({'ack': True})
@@ -319,6 +324,10 @@ if '__main__' == __name__:
             if {'text': 'bye'} == {k: v}:
                 state.update({'active': False})
                 state.update({'running': False})
+            elif 'reset' == k:
+                _coreid = v.get('coreid')
+                logging.info('@{:15} : {}'.format(state.get('cycle'), msg))
+                if state.get('booted'): state.mmu.purge(_coreid)
             elif {'text': 'run'} == {k: v}:
                 logging.info('state.config : {}'.format(state.get('config')))
                 if not state.get('booted'): state.boot()
@@ -330,7 +339,7 @@ if '__main__' == __name__:
             elif 'config' == k:
                 logging.debug('config : {}'.format(v))
 #                if state.get('name') != v.get('service'): continue
-                if v.get('service') not in [state.get('name'), 'all']: continue
+                if v.get('service') not in [state.get('name'), 'all', 'mmu']: continue
                 _field = v.get('field')
                 _val = v.get('val')
 #                assert _field in state.get('config').keys(), 'No such config field, {}, in service {}!'.format(_field, state.get('service'))
