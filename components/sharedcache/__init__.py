@@ -191,6 +191,7 @@ if '__main__' == __name__:
                 _coreid = v.get('coreid')
                 state.update({'executing': list(filter(lambda x: _coreid != x.get('coreid'), state.get('executing')))})
                 state.update({'pending_fetch': list(filter(lambda x: _coreid != x.get('coreid'), state.get('pending_fetch')))})
+                logging.info('@{:15} : {}'.format(state.get('cycle'), msg))
             elif {'text': 'run'} == {k: v}:
                 state.update({'running': True})
                 state.update({'ack': False})
