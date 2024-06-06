@@ -202,7 +202,7 @@ def run(cycle, max_cycles, max_instructions, break_on_undefined, snapshot_freque
         })
     state.get('lock').acquire()
     for c in (args.config if args.config else []): config(map(lambda x: x.get('conn'), state.get('connections').get(-1)), *c.split(':'))
-    tx(map(lambda x: x.get('conn'), state.get('connections').get(-1)), 'run')
+#    tx(map(lambda x: x.get('conn'), state.get('connections').get(-1)), 'run')
     state.get('lock').release()
     while (cycle < max_cycles if max_cycles else True) and \
           (state.get('instructions_committed') < max_instructions if max_instructions else True) and \
@@ -239,6 +239,7 @@ def run(cycle, max_cycles, max_instructions, break_on_undefined, snapshot_freque
             _pc = integer(args.loadbin[1])
             _start_symbol = args.loadbin[2]
             tx(map(lambda x: x.get('conn'), state.get('connections').get(-1, [])), 'pause')
+            tx(map(lambda x: x.get('conn'), state.get('connections').get(-1, [])), {'reset': {'coreid': _coreid}})
             tx(_conn + list(map(lambda x: x.get('conn'), state.get('connections').get(-1, []))), {
                 'loadbin': {
                     'coreid': _coreid,
@@ -249,7 +250,6 @@ def run(cycle, max_cycles, max_instructions, break_on_undefined, snapshot_freque
                     'args': ((_binary,) + _args),
                 }
             })
-            tx(map(lambda x: x.get('conn'), state.get('connections').get(-1, [])), {'reset': {'coreid': _coreid}})
             tx(map(lambda x: x.get('conn'), state.get('connections').get(-1, [])), 'run')
             register(_conn, _coreid, 'set', 1, hex(0))
             register(_conn, _coreid, 'set', 2, hex(_sp))
