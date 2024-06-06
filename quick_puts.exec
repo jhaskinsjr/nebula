@@ -70,7 +70,7 @@
         "service": ["../../components/simplemainmem/mainmem.py:localhost:22:-1:-1"],
         "command": "../../examples/bin/puts"
     },
-    "pipelines/tangleo": {
+    "pipelines/tangelo": {
         "config": {
             "watchdog:result_name": ["retire"],
             "watchdog:result_cycles": [10000],
