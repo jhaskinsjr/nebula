@@ -48,8 +48,6 @@ class SimpleCache:
     def setnum(self, addr): return (addr >> log2(self.nbytesperblock)) & ((1 << log2(self.nsets)) - 1)
     def waynum(self, addr, s):
         _way = list(filter(lambda w: s[w].get('tag') == self.tag(addr), range(self.nways)))
-#        print('- waynum():    s : {}'.format(s))
-#        print('- waynmu(): _way : {}'.format(_way))
         if not len(_way): return None
         assert 1 == len(_way), 'Multiple tag matches among the ways?!?!? (@{:08x} {})'.format(addr, s)
         return _way.pop()
@@ -77,12 +75,10 @@ class SimpleCache:
         assert self.fits(addr, nbytes), 'request does not fit in block! ({:08x} {} {})'.format(addr, _offset, nbytes)
         _set = self.sets[self.setnum(addr)]
         _w = self.waynum(addr, _set)
-#        print('  peek(): [{}:{}]'.format(_offset, (_offset + nbytes)))
         _retval = None
         if isinstance(_w, int):
             _retval = _set[_w].get('data')[_offset:(_offset + nbytes)]
             _set.insert(0, _set.pop(_w))
-#        print('  peek(): _w : {} ({}, {}, {}, {})'.format(_w, self.setnum(addr), _offset, nbytes, _retval))
         return _retval
     def misc(self, addr, data=None):
         _set = self.sets[self.setnum(addr)]
@@ -106,7 +102,3 @@ class SimpleCache:
             'dirty': True,
             'misc': _set[_w].get('misc')
         })
-#        print('+ poke(): _w : {} ({})'.format(_w, _data))
-#        print('+ setnum : {}'.format(self.setnum(addr)))
-#        print('+ 0:', _set)
-#        print('+ 1:', self.sets[self.setnum(addr)])

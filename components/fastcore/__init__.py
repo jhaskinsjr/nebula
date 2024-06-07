@@ -477,7 +477,6 @@ if '__main__' == __name__:
                                 'name': x[-1]
                             } for x in _objdump
                         }})
-#                logging.info('_mainmem.config : {}'.format(_mainmem.get('config')))
                 if not _mainmem.get('booted'): _mainmem.boot()
             elif {'text': 'pause'} == {k: v}:
                 state.update({'running': False})
@@ -538,9 +537,6 @@ if '__main__' == __name__:
                         'cmdline': state.get('cmdline'),
                         'registers': _regfile.registers,
                     })
-#                _results = v.get('results')
-#                _events = v.get('events')
-#                do_tick(_service, state, _results, _events)
             elif 'register' == k:
                 logging.info('register : {}'.format(v))
                 if not state.get('coreid') == v.get('coreid'): continue

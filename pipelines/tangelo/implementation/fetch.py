@@ -37,7 +37,6 @@ def do_l1ic(service, state):
     if _frame not in state.get('tlb').keys(): return
     _jp = state.get('tlb').get(_frame) | components.simplemmu.offset(_pagesize, _vaddr)
     _physical = True
-#    _jp = _req.get('addr')
     service.tx({'info': '_jp : {} ({})'.format(list(_jp.to_bytes(8, 'little')), _jp)})
     _blockaddr = state.get('l1ic').blockaddr(_jp)
     _blocksize = state.get('l1ic').nbytesperblock
@@ -53,7 +52,6 @@ def do_l1ic(service, state):
         'coreid': state.get('coreid'),
         'l1ic': {
             'addr': _vaddr,
-#            'addr': _jp,
             'size': len(_data),
             'data': _data,
         },
@@ -63,7 +61,6 @@ def do_l1ic(service, state):
         'coreid': state.get('coreid'),
         'decode': {
             'addr': _vaddr,
-#            'addr': _jp,
             'data': _data,
         },
     }})
@@ -185,11 +182,9 @@ if '__main__' == __name__:
             elif 'config' == k:
                 logging.debug('config : {}'.format(v))
                 logging.debug('config : {}'.format(v))
-#                if state.get('name') != v.get('service'): continue
                 if v.get('service') not in [state.get('name'), 'all']: continue
                 _field = v.get('field')
                 _val = v.get('val')
-#                assert _field in state.get('config').keys(), 'No such config field, {}, in service {}!'.format(_field, state.get('service'))
                 assert _field in state.get('config').keys() or 'all' == v.get('service'), 'No such config field, {}, in service {}!'.format(_field, state.get('service'))
                 state.get('config').update({_field: _val})
             elif 'tick' == k:

@@ -370,7 +370,6 @@ if '__main__' == __name__:
                 _pc = v.get('pc')
                 _binary = v.get('binary')
                 _args = v.get('args')
-#                _mainmem.boot()
                 if not _mainmem.get('booted'): _mainmem.boot()
                 _mainmem.loadbin(_coreid, _start_symbol, _sp, _pc, _binary, *_args)
             elif 'restore' == k:
@@ -404,9 +403,6 @@ if '__main__' == __name__:
                         'cmdline': state.get('cmdline'),
                         'registers': _regfile.registers,
                     })
-#                _results = v.get('results')
-#                _events = v.get('events')
-#                do_tick(_service, state, _results, _events)
             elif 'register' == k:
                 logging.info('register : {}'.format(v))
                 if not state.get('coreid') == v.get('coreid'): continue

@@ -32,7 +32,6 @@ def do_cache(service, state, coreid, addr, size, physical, data=None):
     _post = None
     if state.get('cache').fits(addr, size):
         _data = state.get('cache').peek(addr, size)
-#        service.tx({'info': '_data : {}'.format(_data)})
         if not _data:
             if len(state.get('pending_fetch')): return # only 1 pending fetch at a time is primitive, but good enough for now
             fetch_block(service, state, coreid, addr, physical)
@@ -105,18 +104,15 @@ def do_cache(service, state, coreid, addr, size, physical, data=None):
     toolbox.report_stats(service, state, 'flat', '{}_accesses'.format(state.get('service')))
 
 def do_tick(service, state, results, events):
-#    for _mem in filter(lambda x: x, map(lambda y: y.get(state.get('next')), results)):
     for _coreid, rs in map(lambda y: (y.get('coreid'), y.get(state.get('next'))), filter(lambda x: x.get(state.get('next')), results)):
         service.tx({'info': 'rs : {}'.format(rs)})
         service.tx({'info': 'state.pending_fetch : {}'.format(state.get('pending_fetch'))})
         service.tx({'info': 'state.executing     : {}'.format(state.get('executing'))})
         _addr = rs.get('addr')
-#        if _addr in state.get('pending_fetch'):
         if any(map(lambda x: _addr == x.get('blockaddr'), state.get('pending_fetch'))):
             service.tx({'info': '_mem : {}'.format(rs)})
             state.get('cache').poke(_addr, rs.get('data'))
             state.get('cache').misc(_addr, {'coreid': _coreid})
-#            state.get('pending_fetch').remove(_addr)
             state.update({'pending_fetch': list(filter(lambda x: _addr != x.get('blockaddr'), state.get('pending_fetch')))})
     for coreid, ev in map(lambda y: (y.get('coreid'), y.get(state.get('service'))), filter(lambda x: x.get(state.get('service')), events)):
         ev = {**ev, **{'coreid': coreid}}
@@ -225,8 +221,6 @@ if '__main__' == __name__:
                 state.update({'cycle': v.get('cycle')})
                 _results = tuple(filter(lambda x: x.get('coreid') in state.get('cores'), v.get('results')))
                 _events = tuple(filter(lambda x:  x.get('coreid') in state.get('cores'), v.get('events')))
-#                logging.info('v.results : {}'.format(v.get('resuilts')))
-#                logging.info('v.events  : {}'.format(v.get('events')))
                 do_tick(_service, state, _results, _events)
             elif 'restore' == k:
                 assert not state.get('running'), 'Attempted restore while running!'

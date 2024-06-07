@@ -40,8 +40,6 @@ def do_l1dc(service, state):
         if _frame not in state.get('tlb').keys(): continue
         _addr = state.get('tlb').get(_frame) | components.simplemmu.offset(_pagesize, _vaddr)
         _physical = True
-#        _addr = _insn.get('operands').get('addr')
-#        _physical = False
         _size = _insn.get('nbytes')
         service.tx({'info': '_addr : {} ({})'.format(_addr, _vaddr)})
         _ante = None
@@ -106,7 +104,6 @@ def do_l1dc(service, state):
                 'coreid': state.get('coreid'),
                 'l1dc': {
                     'addr': _vaddr,
-#                    'addr': _addr,
                     'size': _size,
                     'data': _data,
                 },
@@ -192,12 +189,6 @@ def do_tick(service, state, results, events):
         service.tx({'info': '_l2 : {}'.format(_l2)})
         state.get('l1dc').poke(_addr, _l2.get('data'))
         state.get('pending_fetch').remove(_addr)
-#        if _addr == state.get('operands').get('l2'): # FIXME: delete this case???
-#            state.get('operands').update({'l2': _l2.get('data')})
-#        elif _addr in state.get('pending_fetch') and 'data' in _l2.keys():
-#            service.tx({'info': '_l2 : {}'.format(_l2)})
-#            state.get('l1dc').poke(_addr, _l2.get('data'))
-#            state.get('pending_fetch').remove(_addr)
     for _mmu in map(lambda y: y.get('mmu'), filter(lambda x: x.get('mmu'), results)):
         _vaddr = _mmu.get('vaddr')
         _pagesize = state.get('config').get('pagesize')
@@ -291,7 +282,6 @@ if '__main__' == __name__:
         'ack': True,
         'pending_execute': [],
         'executing': [],
-#        'operands': {},
         'config': {
             'l1dc_nsets': 2**4,
             'l1dc_nways': 2**1,
@@ -319,7 +309,6 @@ if '__main__' == __name__:
                 state.update({'pending_fetch': []})
                 state.update({'pending_execute': []})
                 state.update({'executing': []})
-#                state.update({'operands': {}})
                 _service.tx({'info': 'state.config : {}'.format(state.get('config'))})
                 state.update({'l1dc': components.simplecache.SimpleCache(
                     state.get('config').get('l1dc_nsets'),
@@ -332,11 +321,9 @@ if '__main__' == __name__:
             elif 'config' == k:
                 logging.debug('config : {}'.format(v))
                 logging.debug('config : {}'.format(v))
-#                if state.get('name') != v.get('service'): continue
                 if v.get('service') not in [state.get('name'), 'all']: continue
                 _field = v.get('field')
                 _val = v.get('val')
-#                assert _field in state.get('config').keys(), 'No such config field, {}, in service {}!'.format(_field, state.get('service'))
                 assert _field in state.get('config').keys() or 'all' == v.get('service'), 'No such config field, {}, in service {}!'.format(_field, state.get('service'))
                 state.get('config').update({_field: _val})
             elif 'tick' == k:

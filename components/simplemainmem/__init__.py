@@ -53,19 +53,11 @@ class SimpleMainMemory:
         self.fd = None
         self.mm = None
         self.snapshots = None
-#        self.config = {
-#            'filename': None,
-#            'capacity': None,
-#            'peek_latency_in_cycles': None,
-#        }
     def boot(self):
         assert 0 == (self.config.get('pagesize') & (self.config.get('pagesize') - 1)), 'pagesize ({}) is not power of 2!'.format(self.config.get('pagesize'))
         self.pageoffsetmask = self.config.get('pagesize') - 1
         self.pageoffsetbits = log2(self.config.get('pagesize'))
         self.mmu = simplemmu.SimpleMMU(self.config.get('pagesize'))
-#        self.fd = os.open(self.get('filename'), os.O_RDWR|os.O_CREAT)
-#        os.ftruncate(self.get('fd'), self.get('capacity'))
-#        self.mm = mmap.mmap(self.get('fd'), self.get('capacity'))
         self.fd = os.open(self.config.get('filename'), os.O_RDWR|os.O_CREAT)
         os.ftruncate(self.get('fd'), self.config.get('capacity'))
         self.mm = mmap.mmap(self.fd, self.config.get('capacity'))
@@ -119,8 +111,6 @@ class SimpleMainMemory:
         return _start_pc
     def snapshot(self, data):
         logging.info('snapshot(): data   : {}'.format(data))
-#        _snapshot_filename = '{}.{:015}.snapshot'.format(self.get('filename'), data.get('instructions_committed'))
-#        subprocess.run('cp {} {}'.format(self.get('filename'), _snapshot_filename).split())
         _snapshot_filename = '{}.{:015}.snapshot'.format(self.get('config').get('filename'), data.get('instructions_committed'))
         subprocess.run('cp {} {}'.format(self.get('config').get('filename'), _snapshot_filename).split())
         _state = json.dumps({
@@ -132,7 +122,6 @@ class SimpleMainMemory:
         logging.info('snapshot(): mmu    : {}'.format(self.mmu.translations))
         logging.info('snapshot(): _state : {}'.format(_state))
         fd = os.open(_snapshot_filename, os.O_RDWR | os.O_CREAT)
-#        os.lseek(fd, self.get('capacity'), os.SEEK_SET)
         os.lseek(fd, self.config.get('capacity'), os.SEEK_SET)
         os.write(fd, len(_state).to_bytes(8, 'little'))
         os.write(fd, bytes(_state, encoding='ascii'))
@@ -142,12 +131,9 @@ class SimpleMainMemory:
         # FIXME: make snapshots read-only after creation
         return _snapshot_filename
     def restore(self, snapshot_filename):
-#        subprocess.run('cp {} {}'.format(snapshot_filename, self.get('filename')).split())
-#        subprocess.run('chmod u+w {}'.format(self.get('filename')).split())
         subprocess.run('cp {} {}'.format(snapshot_filename, self.get('config').get('filename')).split())
         subprocess.run('chmod u+w {}'.format(self.get('config').get('filename')).split())
         fd = os.open(snapshot_filename, os.O_RDONLY)
-#        os.lseek(fd, self.get('capacity'), os.SEEK_SET)
         os.lseek(fd, self.config.get('capacity'), os.SEEK_SET)
         _state_length = int.from_bytes(os.read(fd, 8), 'little')
         _retval = str(os.read(fd, _state_length), encoding='ascii')
@@ -179,14 +165,12 @@ class SimpleMainMemory:
             _addr = ev.get('addr')
             _size = ev.get('size')
             _data = ev.get('data')
-#            _kwargs = ({'coreid': _coreid} if not ev.get('physical') else {'physical': ev.get('physical')})
             _kwargs = {'coreid': _coreid, **({} if not ev.get('physical') else {'physical': ev.get('physical')})}
             if 'poke' == _cmd:
                 self.poke(_addr, _size, _data, **_kwargs)
                 toolbox.report_stats(self.service, self.state(), 'histo', 'poke.size', _size)
             elif 'peek' == _cmd:
                 self.service.tx({'result': {
-#                    'arrival': self.get('peek_latency_in_cycles') + self.get('cycle'),
                     'arrival': self.get('config').get('peek_latency_in_cycles') + self.get('cycle'),
                     'coreid': _coreid,
                     'mem': {
@@ -221,7 +205,6 @@ class SimpleMainMemory:
                 }})
     def valid_access(self, addr, size):
         retval  = addr >= 0
-#        retval &= (addr + size) < self.get('capacity')
         retval &= (addr + size) < self.get('config').get('capacity')
         return retval
     def do_poke(self, addr, data, **kwargs):
@@ -342,11 +325,9 @@ if '__main__' == __name__:
                 state.update({'running': False})
             elif 'config' == k:
                 logging.debug('config : {}'.format(v))
-#                if state.get('name') != v.get('service'): continue
                 if v.get('service') not in [state.get('name'), 'all', 'mmu']: continue
                 _field = v.get('field')
                 _val = v.get('val')
-#                assert _field in state.get('config').keys(), 'No such config field, {}, in service {}!'.format(_field, state.get('service'))
                 assert _field in state.get('config').keys() or 'all' == v.get('service'), 'No such config field, {}, in service {}!'.format(_field, state.get('service'))
                 state.get('config').update({_field: _val})
             elif 'loadbin' == k:
@@ -376,11 +357,6 @@ if '__main__' == __name__:
                 _results = v.get('results')
                 _events = v.get('events')
                 state.do_tick(_results, _events)
-#            elif 'restore' == k:
-#                assert not state.get('running'), 'Attempted restore while running!'
-#                state.update({'cycle': v.get('cycle')})
-#                state.restore(v.get('snapshot_filename'))
-#                state.service.tx({'ack': {'cycle': state.get('cycle')}})
         if state.get('ack') and state.get('running'): state.service.tx({'ack': {'cycle': state.get('cycle'), 'msg': msg}})
     state.get('mm').flush()
     state.get('mm').close()
