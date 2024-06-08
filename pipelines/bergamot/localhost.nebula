@@ -5,12 +5,6 @@ service implementation/regfile.py:localhost:22:0:0
 service implementation/decode.py:localhost:22:0:0
 service implementation/execute.py:localhost:22:0:0
 service implementation/watchdog.py:localhost:22:0:0
-## quad-core
-#service implementation/simplecore.py:localhost:22:0:3
-#service implementation/regfile.py:localhost:22:0:3
-#service implementation/decode.py:localhost:22:0:3
-#service implementation/execute.py:localhost:22:0:3
-#service implementation/watchdog.py:localhost:22:0:3
 spawn
 config watchdog:event_name commit
 config watchdog:event_cycles 10000

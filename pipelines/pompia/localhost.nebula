@@ -8,18 +8,6 @@ service implementation/lsu.py:localhost:22:0:0
 service implementation/commit.py:localhost:22:0:0
 service implementation/l2.py:localhost:22:-1:-1:"--cores 0-0 --next mem"
 service implementation/watchdog.py:localhost:22:0:0
-## quad-core
-#service implementation/regfile.py:localhost:22:0:3
-#service implementation/fetch.py:localhost:22:0:3
-#service implementation/decode.py:localhost:22:0:3
-#service implementation/alu.py:localhost:22:0:3
-#service implementation/lsu.py:localhost:22:0:3
-#service implementation/commit.py:localhost:22:0:3
-#service implementation/l2.py:localhost:22:-1:-1:"--cores 0-0 --next mem" # Pompia can't do shared caches
-#service implementation/l2.py:localhost:22:-1:-1:"--cores 1-1 --next mem" # Pompia can't do shared caches
-#service implementation/l2.py:localhost:22:-1:-1:"--cores 2-2 --next mem" # Pompia can't do shared caches
-#service implementation/l2.py:localhost:22:-1:-1:"--cores 3-3 --next mem" # Pompia can't do shared caches
-#service implementation/watchdog.py:localhost:22:0:3
 spawn
 config fetch:l1ic_nsets 16
 config fetch:l1ic_nways 2

@@ -1,0 +1,13 @@
+# Sample Nebula script
+service ../../pipelines/bergamot/implementation/simplecore.py:localhost:22:0:127
+service ../../pipelines/bergamot/implementation/regfile.py:localhost:22:0:127
+service ../../pipelines/bergamot/implementation/decode.py:localhost:22:0:127
+service ../../pipelines/bergamot/implementation/execute.py:localhost:22:0:127
+service ../../pipelines/bergamot/implementation/watchdog.py:localhost:22:0:127
+spawn
+config watchdog:event_name commit
+config watchdog:event_cycles 10000
+run
+shutdown
+run
+shutdown
