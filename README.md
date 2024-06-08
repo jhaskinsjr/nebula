@@ -102,8 +102,7 @@ There is much more to Nebula than what is covered in the [Quick Start](#quick-st
 (supra). Consider, for instance, that the Nebula framework uses multiple,
 loosely coupled, independent processes to effect cycle-accurate simulations;
 see: [Software Architecture](Documentation/Software_Architecture.md).
-Consider
-further that these independent processes need not all execute on the same
+Consider further that these independent processes need not all execute on the same
 node; see: [Distributed Simulation](Documentation/Distributed_Simulation.md).
 Consider further still that the Nebula framework also includes tools to
 facilitate large-scale studies via MongoDB, Pandas, and Jupyter Notebooks ; see:
@@ -127,6 +126,15 @@ about these topics and much more are covered in the links below.
 
 # Recent Revision History
 
+Gid tag `v1.3.0` (20240608):
+* *new* [Tangelo](pipelines/tangelo/README.md) pipeline model with V2P, TLB, shared caches
+* MMU service
+* cache block marking, fine-grained invalidation (see: [components/simplecache/__init__.py](components/simplecache/__init__.py))
+* shared caches (among multiple cores) (see: [components/sharedcache/__init__.py](components/sharedcache/__init__.py))
+* arbitrarily deep cache hierarchy
+* heterogenous cores simulations (e.g.: [chips/4t4b/localhost.nebula](chips/4t4b/localhost.nebula); 4 Tangelo cores + 4 Bergamot cores)
+* massively multicore simulations (e.g.: [chips/128b/localhost.nebula](chips/128b/localhost.nebula); 128 Bergamot cores)
+
 Git tag `v1.2.0` (20240428):
 * easier multicore specification (see: [Multicore Simulation](Documentation/Multicore_Simulation.md))
 * `zlib`-compressed messages
@@ -143,18 +151,6 @@ Git tag `v1.1.0` (20240205):
 * documentation updates and clarifications
 * updated Jupyter Notebook example
 
-Git tag `v1.0.0` (20240102):
-
-* removed deprecated pipeline examples Clementine, Lime, Oroblanco
-
-Git tag `v0.9.0` (20231214):
-
-* updated [riscv/test.py](riscv/test.py)
-* adds SSH port specifier for services
-* makes watchdog service default in all sample pipelines
-* adds `cycles_per_STORE`, `cycles_per_LOAD` counters
-* adds [examples/src/ldst/ldst.c](examples/src/ldst/ldst.c)
-* adds `alu:result_forwarding` option for [Shangjuan](pipelines/shangjuan/README.md) sample pipeline
 
 # Contact
 
