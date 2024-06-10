@@ -35,7 +35,7 @@ https://www.ibm.com/support/pages/configuring-ssh-login-without-password
 
 **Step 4.** Create a folder for the execution artifacts:
 
-    mkdir -p /tmp/pompia/sum
+    mkdir -p /tmp/pompia/sieve
 
 **Step 5.** Enter the directory of one of the sample pipelines; for this
 example, we will use the Pompia pipeline:
@@ -45,48 +45,48 @@ example, we will use the Pompia pipeline:
 **Step 6.** Execute:
 
     python3 ../../launcher.py \
-        --log /tmp/pompia/sum \
+        --log /tmp/pompia/sieve \
         --service ../../toolbox/stats.py:localhost:22:-1:-1 ../../components/simplemainmem/mainmem.py:localhost:22:-1:-1 \
-        --config stats:output_filename:/tmp/pompia/sum/stats.json \
-        mainmem:filename:/tmp/pompia/sum/mainmem.raw \
+        --config stats:output_filename:/tmp/pompia/sieve/stats.json \
+        mainmem:filename:/tmp/pompia/sieve/mainmem.raw \
         mainmem:capacity:$(( 2**32 )) \
         --max_instructions $(( 10**5 )) \
         -- \
         12345 \
         localhost.nebula \
-        ../../examples/bin/sum 2 3 5 7 11 13
+        ../../examples/bin/sieve 10
 
 The "python3" command executes the Nebula launcher (launcher.py),
 which begins by opening a socket and accepting connections on port 12345,
 executing the script localhost.nebula, and loading the binary
-(${HOME}/src/nebula/examples/bin/sum) together with its command-line
-parameters "2 3 5 7 11 13", into the simulated main memory. With this
+(${HOME}/src/nebula/examples/bin/sieve) together with its command-line
+parameter "10", into the simulated main memory. With this
 foundation established, the simulator will execute a maximum of 100,000
 simulated instructions.
 
 **Step 7.** Examine the output:
 
-The output emitted to the console from the simulator should be 41, the sum
-of the first six prime integers; to wit:
+The output emitted to the console from the simulator should be all the
+prime integers less than or equal to 10; to wit:
 
-    41
+    2 3 5 7
 
 For a more in-depth analysis of the actions taken by the simulator,
 each module emits its own log file:
 
-* **/tmp/pompia/sum/launcher.py.log**: detailed
+* **/tmp/pompia/sieve/launcher.py.log**: detailed
 information about the operation of the Pompia pipeline
-* **/tmp/pompia/sum/mainmem.py.log**: loading the binary and placing the
+* **/tmp/pompia/sieve/mainmem.py.log**: loading the binary and placing the
 command line arguments
-* **/tmp/pompia/sum/stats.py.log**: module configuration and the final
+* **/tmp/pompia/sieve/stats.py.log**: module configuration and the final
 JSON object
-* **/tmp/pompia/sum/0000_regfile.py.log**: initial- and final states of
+* **/tmp/pompia/sieve/0000_regfile.py.log**: initial- and final states of
 the register file on core 0
-* **/tmp/pompia/sum/0000_alu.py.log**: instructions that executed
+* **/tmp/pompia/sieve/0000_alu.py.log**: instructions that executed
 on core 0 (irrespective of whether they ultimately retire)
-* **/tmp/pompia/sum/0000_commit.py.log**: all instructions that
+* **/tmp/pompia/sieve/0000_commit.py.log**: all instructions that
 retired on core 0
-* **/tmp/pompia/sum/stats.json**: counts of key events that occurred
+* **/tmp/pompia/sieve/stats.json**: counts of key events that occurred
 during the simulation for each core
 
 These log files assist with debugging and gaining deeper insights about the
