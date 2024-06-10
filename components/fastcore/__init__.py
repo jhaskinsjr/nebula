@@ -162,13 +162,6 @@ class FastCore:
             self.service.tx({'shutdown': {
                 'coreid': state.get('coreid'),
             }})
-            self.service.tx({'event': {
-                'arrival': 1 + state.get('cycle'),
-                'coreid': state.get('coreid'),
-                'mem': {
-                    'cmd': 'purge',
-                }
-            }})
             self.update({'shutdown': True})
     def getregister(self, regfile, reg):
         return regfile.getregister(regfile.registers, reg)

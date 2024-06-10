@@ -180,10 +180,6 @@ class SimpleMainMemory:
                     }
                 }})
                 toolbox.report_stats(self.service, self.state(), 'histo', 'peek.size', _size)
-            elif 'purge' == _cmd: # FIXME: remove this and concomitant code from pipelines
-                self.mmu.purge(_coreid)
-                logging.info('@{:15} : self.mmu.purge({})...'.format(state.get('cycle'), _coreid))
-                toolbox.report_stats(self.service, self.state(), 'histo', 'purges', _coreid)
             else:
                 logging.fatal('ev : {}'.format(ev))
                 assert False
