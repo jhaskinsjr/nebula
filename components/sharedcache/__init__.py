@@ -22,7 +22,7 @@ def fetch_block(service, state, coreid, addr, physical):
             'cmd': 'peek',
             'addr': _blockaddr,
             'size': _blocksize,
-            'physical': physical,
+            **({'physical': True} if physical else {}),
         },
     }})
     toolbox.report_stats(service, state, 'flat', '{}_misses'.format(state.get('service')))
@@ -85,7 +85,7 @@ def do_cache(service, state, coreid, addr, size, physical, data=None):
                 'addr': addr,
                 'size': len(data),
                 'data': data,
-                'physical': physical,
+                **({'physical': True} if physical else {}),
             }
         }})
     else:
@@ -105,18 +105,20 @@ def do_cache(service, state, coreid, addr, size, physical, data=None):
 
 def do_tick(service, state, results, events):
     for _coreid, rs in map(lambda y: (y.get('coreid'), y.get(state.get('next'))), filter(lambda x: x.get(state.get('next')), results)):
-        service.tx({'info': 'rs : {}'.format(rs)})
+        service.tx({'info': 'rs : {} (_coreid : {})'.format(rs, _coreid)})
         service.tx({'info': 'state.pending_fetch : {}'.format(state.get('pending_fetch'))})
         service.tx({'info': 'state.executing     : {}'.format(state.get('executing'))})
         _addr = rs.get('addr')
+        _data = rs.get('data')
+        if not _data: continue
         if any(map(lambda x: _addr == x.get('blockaddr'), state.get('pending_fetch'))):
-            service.tx({'info': '_mem : {}'.format(rs)})
-            state.get('cache').poke(_addr, rs.get('data'))
+            service.tx({'info': 'rs : {}'.format(rs)})
+            state.get('cache').poke(_addr, _data)
             state.get('cache').misc(_addr, {'coreid': _coreid})
             state.update({'pending_fetch': list(filter(lambda x: _addr != x.get('blockaddr'), state.get('pending_fetch')))})
-    for coreid, ev in map(lambda y: (y.get('coreid'), y.get(state.get('service'))), filter(lambda x: x.get(state.get('service')), events)):
-        ev = {**ev, **{'coreid': coreid}}
-        service.tx({'info': 'ev : {}'.format(ev)})
+    for _coreid, ev in map(lambda y: (y.get('coreid'), y.get(state.get('service'))), filter(lambda x: x.get(state.get('service')), events)):
+        ev = {**ev, **{'coreid': _coreid}}
+        service.tx({'info': 'ev : {} (_coreid : {})'.format(ev, _coreid)})
         service.tx({'info': 'state.pending_fetch : {}'.format(state.get('pending_fetch'))})
         if 'cmd' in ev.keys() and 'purge' == ev.get('cmd'):
             state.get('cache').purge()
@@ -127,7 +129,7 @@ def do_tick(service, state, results, events):
         _op = state.get('executing')[0] # forcing single outstanding operation for now
         # NOTE: _op.get('cmd') assumed to be 'poke' if message contains a payload (i.e., _op.get('data') != None)
         _coreid = _op.get('coreid')
-        _physical = _op.get('physical', False)
+        _physical = _op.get('physical')
         _addr = _op.get('addr')
         _size = _op.get('size')
         _data = _op.get('data')

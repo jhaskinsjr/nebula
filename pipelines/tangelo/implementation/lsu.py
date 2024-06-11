@@ -186,6 +186,7 @@ def do_tick(service, state, results, events):
     for _l2 in filter(lambda x: x, map(lambda y: y.get('l2'), results)):
         _addr = _l2.get('addr')
         if _addr not in state.get('pending_fetch'): continue
+        if not 'data' in _l2.keys(): continue # b/c lower levels in the cache hierarchy report POKE oeprations
         service.tx({'info': '_l2 : {}'.format(_l2)})
         state.get('l1dc').poke(_addr, _l2.get('data'))
         state.get('pending_fetch').remove(_addr)
