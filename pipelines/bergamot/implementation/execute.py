@@ -564,10 +564,19 @@ def do_ecall(service, state, insn):
             }})
             state.get('operands').update({'mem': _addr})
     if 'shutdown' in _side_effect.keys():
-        service.tx({'info': 'ECALL {}... graceful shutdown'.format(int.from_bytes(_syscall_num, 'little'))})
-        service.tx({'shutdown': {
-            'coreid': state.get('coreid'),
-        }})
+        insn = {
+            **insn,
+            **{'operands': {
+                17: state.get('operands').get('syscall_num'),
+                10: state.get('operands').get('syscall_a0'),
+                11: state.get('operands').get('syscall_a1'),
+                12: state.get('operands').get('syscall_a2'),
+                13: state.get('operands').get('syscall_a3'),
+                14: state.get('operands').get('syscall_a4'),
+                15: state.get('operands').get('syscall_a5'),
+            }},
+            **{'shutdown': True},
+        }
     if not _done: return
     if 'output' in _side_effect.keys():
         service.tx({'event': {

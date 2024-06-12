@@ -117,6 +117,13 @@ def do_commit(service, state):
                     'data': _insn.get('result'),
                 },
             }})
+        if _insn.get('shutdown'):
+            _insn.update({'operands': {int(k):v for k, v in _insn.get('operands').items()}})
+            _x17 = _insn.get('operands').get(17)
+            service.tx({'info': 'ECALL {}... graceful shutdown'.format(int.from_bytes(_x17, 'little'))})
+            service.tx({'shutdown': {
+                'coreid': state.get('coreid'),
+            }})
         service.tx({'result': {
             'arrival': 1 + state.get('cycle'),
             'coreid': state.get('coreid'),

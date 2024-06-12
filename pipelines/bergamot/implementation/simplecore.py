@@ -84,6 +84,13 @@ def do_tick(service, state, results, events):
         state.update({'pending_execute': None})
     for commit in map(lambda y: y.get('commit'), filter(lambda x: x.get('commit'), events)):
         _insn = commit.get('insn')
+        if _insn.get('shutdown'):
+            _insn.update({'operands': {int(k):v for k, v in _insn.get('operands').items()}})
+            _x17 = _insn.get('operands').get(17)
+            service.tx({'info': 'ECALL {}... graceful shutdown'.format(int.from_bytes(_x17, 'little'))})
+            service.tx({'shutdown': {
+                'coreid': state.get('coreid'),
+            }})
         service.tx({'committed': 1})
         logging.info('retiring : {}'.format(_insn))
     if not state.get('pending_pc') and not state.get('pending_fetch') and not state.get('pending_decode') and not state.get('pending_execute'):
