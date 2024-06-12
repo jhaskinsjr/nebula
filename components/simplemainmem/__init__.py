@@ -180,6 +180,8 @@ class SimpleMainMemory:
                     }
                 }})
                 toolbox.report_stats(self.service, self.state(), 'histo', 'peek.size', _size)
+            elif _cmd in ['purge', 'invalidate']:
+                pass # b/c these may be propogated down the cache hierarchy
             else:
                 logging.fatal('ev : {}'.format(ev))
                 assert False

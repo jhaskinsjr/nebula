@@ -120,9 +120,17 @@ def do_tick(service, state, results, events):
         ev = {**ev, **{'coreid': _coreid}}
         service.tx({'info': 'ev : {} (_coreid : {})'.format(ev, _coreid)})
         service.tx({'info': 'state.pending_fetch : {}'.format(state.get('pending_fetch'))})
-        if 'cmd' in ev.keys() and 'purge' == ev.get('cmd'):
-            state.get('cache').purge()
-            continue
+        if 'cmd' in ev.keys():
+            if 'purge' == ev.get('cmd'):
+                state.get('cache').purge()
+                service.tx({'event': {
+                    'arrival': 1 + state.get('cycle'),
+                    'coreid': _coreid,
+                    state.get('next'): {
+                        'cmd': 'purge',
+                    },
+                }})
+                continue
         state.get('executing').append(ev)
         service.tx({'info': 'state.executing : {}'.format(state.get('executing'))})
     if len(state.get('executing')):
