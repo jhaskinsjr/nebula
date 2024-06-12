@@ -131,6 +131,16 @@ def do_tick(service, state, results, events):
                     },
                 }})
                 continue
+            if 'invalidate' == ev.get('cmd'):
+                state.get('cache').invalidate(**{'misc': {'coreid': _coreid}})
+                service.tx({'event': {
+                    'arrival': 1 + state.get('cycle'),
+                    'coreid': _coreid,
+                    state.get('next'): {
+                        'cmd': 'invalidate',
+                    },
+                }})
+                continue
         state.get('executing').append(ev)
         service.tx({'info': 'state.executing : {}'.format(state.get('executing'))})
     if len(state.get('executing')):

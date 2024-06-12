@@ -497,7 +497,7 @@ def do_ecall(service, stats, insn):
                 'arrival': 1 + state.get('cycle'),
                 'coreid': state.get('coreid'),
                 'l2': {
-                    'cmd': 'purge',
+                    'cmd': 'invalidate',
                 }
             }})
         state.update({'syscall_kwargs': {}})
