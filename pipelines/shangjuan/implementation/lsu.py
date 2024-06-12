@@ -177,12 +177,11 @@ def do_tick(service, state, results, events):
             state.get('pending_execute')[_ndx].update({'retired': True})
     for _l2 in filter(lambda x: x, map(lambda y: y.get('l2'), results)):
         _addr = _l2.get('addr')
-        if _addr == state.get('operands').get('l2'):
-            state.get('operands').update({'l2': _l2.get('data')})
-        elif _addr in state.get('pending_fetch') and 'data' in _l2.keys():
-            service.tx({'info': '_l2 : {}'.format(_l2)})
-            state.get('l1dc').poke(_addr, _l2.get('data'))
-            state.get('pending_fetch').remove(_addr)
+        if _addr not in state.get('pending_fetch'): continue
+        if not 'data' in _l2.keys(): continue # b/c lower levels in the cache hierarchy report POKE oeprations
+        service.tx({'info': '_l2 : {}'.format(_l2)})
+        state.get('l1dc').poke(_addr, _l2.get('data'))
+        state.get('pending_fetch').remove(_addr)
     for _lsu in map(lambda y: y.get('lsu'), filter(lambda x: x.get('lsu'), events)):
         if 'insn' in _lsu.keys():
             _insn = _lsu.get('insn')
@@ -254,7 +253,7 @@ if '__main__' == __name__:
         'ack': True,
         'pending_execute': [],
         'executing': [],
-        'operands': {},
+#        'operands': {},
         'config': {
             'l1dc_nsets': 2**4,
             'l1dc_nways': 2**1,
@@ -278,7 +277,7 @@ if '__main__' == __name__:
                 state.update({'pending_fetch': []})
                 state.update({'pending_execute': []})
                 state.update({'executing': []})
-                state.update({'operands': {}})
+#                state.update({'operands': {}})
                 _service.tx({'info': 'state.config : {}'.format(state.get('config'))})
                 state.update({'l1dc': components.simplecache.SimpleCache(
                     state.get('config').get('l1dc_nsets'),
