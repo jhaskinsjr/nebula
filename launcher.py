@@ -287,6 +287,7 @@ def run(cycle, max_cycles, max_instructions, break_on_undefined, snapshot_freque
             ), sorted(state.get('futures').keys())))
         ))
         cycle = (min(state.get('futures').keys()) if len(state.get('futures').keys()) else 1 + cycle)
+        if 0 == len(state.get('futures').keys()): state.update({'running': False})
         _futures = state.get('futures').pop(cycle, {'results': [], 'events': []})
 #        _futures.update({'results': list(filter(lambda x: not state.get('shutdown').get(x.get('coreid')), _futures.get('results')))})
 #        _futures.update({'events': list(filter(lambda x: not state.get('shutdown').get(x.get('coreid')), _futures.get('events')))})
