@@ -214,9 +214,9 @@ class BasicBlockCore:
         elif None == _result:
             assert nibble.get('insn').get('cmd') in riscv.constants.STORES + ['NOP'], 'nibble : {}'.format(nibble)
         return regs
-    def do_unimplemented(self, insn, service, state, **kwargs):
+    def do_unimplemented(self, **kwargs):
         logging.info('Unimplemented: {}'.format(state.get('pending_execute')))
-        service.tx({'undefined': insn})
+#        service.tx({'undefined': insn})
         return None
     def mk_load(self, cmd):
         def fetcher(cmd, n, r, *a, **k):
