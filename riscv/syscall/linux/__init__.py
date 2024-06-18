@@ -2,6 +2,7 @@
 
 import os
 import sys
+import time
 import logging
 
 # The syscall numbers were learned from
@@ -20,8 +21,12 @@ import logging
 
 class System:
     PAGESIZE = 2**12    # HACK: pages need not necessarily always be 4096 B
-    SIZEOF_VOID_P = 8   # HACK: this is highly (!) 64-bit-specific
-    SIZEOF_SIZE_T = 8   # HACK: this is highly (!) 64-bit specific
+    SIZEOF = {
+        # HACK: this is all highly (!) 64-bit-specific
+        'void *': 8,
+        'size_t': 8,
+        'long': 8,
+    }
     def __init__(self):
         self.state = {}
     def do_syscall(self, syscall_num, a0, a1, a2, a3, a4, a5, **kwargs):
@@ -45,7 +50,7 @@ class System:
              93: self.do_exit,
              98: self.do_futex,
             160: self.do_uname,
-    #        169: self.do_gettimeofday,
+            169: self.do_gettimeofday,
             172: self.do_getpid,
             174: self.do_getuid,
             175: self.do_geteuid,
@@ -242,10 +247,10 @@ class System:
             _iovcnt = int.from_bytes(a2, 'little')
             if len(kwargs.get('arg')) <= _iovcnt:
                 _iov_so_far = len(kwargs.get('arg')) - 1
-                _p = _iov_so_far * (self.SIZEOF_VOID_P + self.SIZEOF_SIZE_T)
-                _addr = int.from_bytes(kwargs.get('arg')[0][_p:(self.SIZEOF_VOID_P + _p)], 'little')
-                _p += self.SIZEOF_VOID_P
-                _size = int.from_bytes(kwargs.get('arg')[0][_p:(self.SIZEOF_SIZE_T + _p)], 'little')
+                _p = _iov_so_far * (self.SIZEOF.get('void *') + self.SIZEOF.get('size_t'))
+                _addr = int.from_bytes(kwargs.get('arg')[0][_p:(self.SIZEOF.get('void *') + _p)], 'little')
+                _p += self.SIZEOF.get('void *')
+                _size = int.from_bytes(kwargs.get('arg')[0][_p:(self.SIZEOF.get('size_t') + _p)], 'little')
                 return {
                     'done': False,
                     'peek': {
@@ -459,6 +464,36 @@ class System:
             'poke': {
                 'addr': a0, # FIXME: convert this (i.e.: int.from_bytes(a3, 'little')) here
                 'data': list(bytes(''.join(map(lambda x: x + ('\0' * (65 - len(x))), _os_uname)), encoding='ascii')),
+            },
+        }
+    def do_gettimeofday(self, a0, a1, a2, a3, a4, a5, **kwargs):
+        logging.info('do_gettimeofday(): a0     : {}'.format(a0))
+        logging.info('do_gettimeodday(): a1     : {}'.format(a1))
+        logging.info('do_read(): kwargs : {}'.format(kwargs))
+        try:
+            # struct timeval *tv, struct timezone *tz; see: https://linux.die.net/man/2/gettimeofday
+            _tvptr = int.from_bytes(a0, 'little')
+            _tzptr = int.from_bytes(a1, 'little')
+            _time = time.time()
+            _tv_sec = int(_time)
+            _tv_usec = int(10**6 * (_time - int(_time)))
+            _retval = 0
+            logging.info('gettimeofday({}, {}) -> {} ({}; [tv_sec: {}, tv_usec: {}])'.format(_tvptr, _tzptr, _retval, _time, _tv_sec, _tv_usec))
+        except Exception as ex:
+            _retval = -1
+            logging.fatal('dp_gettimeofday(): Exception ({})!'.format(ex))
+        return {
+            'done': True,
+            'output': {
+                'register': {
+                    'cmd': 'set',
+                    'name': 10,
+                    'data': list(_retval.to_bytes(8, 'little', signed=True)),
+                },
+            },
+            'poke': {
+                'addr': a0, # FIXME: convert this (i.e.: int.from_bytes(a3, 'little')) here
+                'data': list(_tv_sec.to_bytes(self.SIZEOF.get('long'), 'little')) + list(_tv_usec.to_bytes(self.SIZEOF.get('long'), 'little')),
             },
         }
     def do_getpid(self, a0, a1, a2, a3, a4, a5, **kwargs):
