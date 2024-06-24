@@ -1,0 +1,33 @@
+20240624
+
+Q: Whence the gzip source?
+
+    https://ftp.gnu.org/gnu/gzip/gzip-1.2.4.tar.gz
+
+Q: Why v1.2.4?
+
+    Because among the many versions available in the GNU archive, it gave
+    me the least trouble building with my RISC-V toolchain.
+
+Q: Whence the RISC-V toolchain?
+
+    https://github.com/riscv-collab/riscv-gnu-toolchain#installation-newlib
+
+Q: Were there changes to the gzip source to get it to build?
+
+    Yes; both O_CREAT and O_EXCL were #undef'd and re-#defined to use
+    my native Linux system's values (64 and 128, respectively).
+    
+    Also, a handful of #define NO_CHMOD--#endif blocks were added to
+    eliminate calls to chmod(), since my RISC-V toolchain's linker could
+    not resolve the chmod symbol.
+
+Q: What was the build recipe?
+
+    gunzip -c gzip-1.2.4.tar.gz | tar -xf - && \
+    cd gzip-1.2.4 && \
+    make clean && \
+    export CC=~/opt/riscv/bin/riscv64-unknown-elf-gcc && \
+    export CFLAGS="-static -DNO_SYMLINK -DNO_CHMOD -DNO_CHOWN -DNO_UTIME -DNO_FSTAT=0" && \
+    ./configure --host=x86_64 && \
+    make

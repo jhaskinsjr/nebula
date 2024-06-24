@@ -2,6 +2,7 @@
 
 import os
 import sys
+import stat
 import time
 import logging
 
@@ -59,7 +60,9 @@ class System:
             214: self.do_brk,
             215: self.do_munmap,
             222: self.do_mmap,
-           1024: self.do_open, 
+           1024: self.do_open,
+           1026: self.do_unlink,
+           1038: self.do_stat,
         }.get(int.from_bytes(syscall_num, 'little'), self.null)
         if 'null' == f.__name__: kwargs.update({
             'log': '*** Syscall ({}) not implemented! ***'.format(int.from_bytes(syscall_num, 'little')),
@@ -357,6 +360,10 @@ class System:
                 },
             },
             'poke': {
+                # TODO: update do_fstat() to user do_stat()'s
+                # reverse-engineered struct stat layout, then
+                # leverage do_fstat() to implement do_stat(),
+                # e.g., self.do_fstat(os.open(...).to_bytes(8, 'little)), a1, **kwargs)
                 'addr': a1,
                 'data': list(b''.join([
                     _os_fstat.st_dev.to_bytes(4, 'little', signed=True),
@@ -625,6 +632,132 @@ class System:
             _len = 256 # HACK: This is the pathname of SYS_open, which has
                     # function prototype open(const char * pathname, int flags);
                     # see: https://man7.org/linux/man-pages/man2/open.2.html. How long is
+                    # the pathname? Who knows? It could, in theory, be much more than 256
+                    # bytes, but I can't be bothered with making this general-purpose right now.
+            _retval = {
+                'done': False,
+                'peek': {
+                    'addr': int.from_bytes(a0, 'little'),
+                    'size': _len,
+                },
+            }
+        return _retval
+    def do_unlink(self, a0, a1, a2, a3, a4, a5, **kwargs):
+        logging.info('do_unlink(): a0     : {}'.format(a0))
+        logging.info('do_unlink(): kwargs : {}'.format(kwargs))
+        if 'arg' in kwargs.keys():
+            kwargs.get('arg')[0] += bytes([0])
+            _pathname = kwargs.get('arg')[0][:kwargs.get('arg')[0].index(0)].decode('ascii')
+            try:
+                logging.info('_pathname : {}'.format(_pathname))
+                os.unlink(_pathname)
+                _errno = 0
+            except:
+                _errno = -1
+            _retval = {
+                'done': True,
+                'output': {
+                    'register': {
+                        'cmd': 'set',
+                        'name': 10,
+                        'data': list(_errno.to_bytes(8, 'little', signed=True)),
+                    },
+                },
+            }
+            logging.info('unlink() -> {}'.format(_errno))
+        else:
+            _len = 256 # HACK: This is the pathname of SYS_stat, which has
+                    # function prototype open(const char * pathname, struct stat * statbuf);
+                    # see: https://www.man7.org/linux/man-pages/man2/stat.2.html. How long is
+                    # the pathname? Who knows? It could, in theory, be much more than 256
+                    # bytes, but I can't be bothered with making this general-purpose right now.
+            _retval = {
+                'done': False,
+                'peek': {
+                    'addr': int.from_bytes(a0, 'little'),
+                    'size': _len,
+                },
+            }
+        return _retval
+    def do_stat(self, a0, a1, a2, a3, a4, a5, **kwargs):
+        logging.info('do_stat(): a0     : {}'.format(a0))
+        logging.info('do_stat(): a1     : {}'.format(a1))
+        logging.info('do_stat(): kwargs : {}'.format(kwargs))
+        if 'arg' in kwargs.keys():
+            kwargs.get('arg')[0] += bytes([0])
+            _pathname = kwargs.get('arg')[0][:kwargs.get('arg')[0].index(0)].decode('ascii')
+            try:
+                logging.info('_pathname : {}'.format(_pathname))
+                _os_stat = os.stat(_pathname)
+                logging.info('_os_stat  : {}'.format(_os_stat))
+                _errno = 0
+                _retval = {
+                    'done': True,
+                    'output': {
+                        'register': {
+                            'cmd': 'set',
+                            'name': 10,
+                            'data': list(_errno.to_bytes(8, 'little', signed=True)),
+                        },
+                    },
+                    'poke': {
+                        # HACK: The 'data' field is very ugly! It was painstakingly
+                        # reverse-engineered while working to get gzip-1.2.4 to run
+                        # on Nebula. The hard-coded filler values (e.g., 0x1111) are
+                        # just padding to make everything line up *and* to aid with
+                        # debugging. They don't hurt anything, and, since this may
+                        # require additional work in the future, will be left in
+                        # place, ugliness notwithstanding.
+                        'addr': a1,
+                        'data': list(b''.join([
+                            _os_stat.st_dev.to_bytes(2, 'little'),
+                            (0x1111).to_bytes(2, 'little'),
+                            (0x2222).to_bytes(2, 'little'),
+                            (0x3333).to_bytes(2, 'little'),
+                            (0x44445555).to_bytes(4, 'little'),
+                            _os_stat.st_ino.to_bytes(4, 'little'),
+                            (
+                                # HACK: hard-coded these according to my RISC-V compiler's sys/stat.h
+                                (0o040000 if stat.S_ISDIR(_os_stat.st_mode) else 0) |
+                                (0o020000 if stat.S_ISCHR(_os_stat.st_mode) else 0) |
+                                (0o010000 if stat.S_ISBLK(_os_stat.st_mode) else 0) |
+                                (0o100000 if stat.S_ISREG(_os_stat.st_mode) else 0) |
+                                (0o120000 if stat.S_ISLNK(_os_stat.st_mode) else 0) |
+                                (0o140000 if stat.S_ISSOCK(_os_stat.st_mode) else 0) |
+                                (0o010000 if stat.S_ISFIFO(_os_stat.st_mode) else 0) |
+                                0
+                            ).to_bytes(4, 'little'), #_os_stat.st_mode.to_bytes(4, 'little'),
+                            _os_stat.st_nlink.to_bytes(2, 'little'),
+                            (0x7777).to_bytes(2, 'little'),
+                            _os_stat.st_uid.to_bytes(2, 'little'),
+                            (0x8888).to_bytes(2, 'little'),
+                            _os_stat.st_gid.to_bytes(2, 'little'),
+                            (0x88889999aaaabbbb).to_bytes(8, 'little'),
+                            (0x9999999999999999).to_bytes(8, 'little'),
+                            (0xaaaa).to_bytes(2, 'little'),
+                            (_os_stat.st_size & 0xffffffff).to_bytes(4, 'little'),
+                            (0xdddd).to_bytes(2, 'little'),
+                            (0xeeeeeeeeeeeeeeee).to_bytes(8, 'little'),
+                        ])),
+                    },
+                }
+            except:
+                _errno = -1
+                _retval = {
+                    'done': True,
+                    'output': {
+                        'register': {
+                            'cmd': 'set',
+                            'name': 10,
+                            'data': list(_errno.to_bytes(8, 'little', signed=True)),
+                        },
+                    },
+                }
+            logging.info('stat() -> {}'.format(_errno))
+        else:
+            _len = 256 # HACK: This is the pathname of SYS_stat, which has
+                    # function prototype open(const char * pathname, struct stat * statbuf);
+                    # see: https://www.man7.org/linux/man-pages/man2/stat.2.html. How long is
                     # the pathname? Who knows? It could, in theory, be much more than 256
                     # bytes, but I can't be bothered with making this general-purpose right now.
             _retval = {
