@@ -8,6 +8,13 @@ The sample binaries...
 * examples/bin/puts
 * examples/bin/cat
 * examples/bin/3sat
+* examples/bin/gzip
+* examples/bin/gunzip
+* examples/bin/zcat
+* examples/bin/sizeof
+* examples/bin/dry2
+* examples/bin/dry2o
+* examples/bin/dry2nr
 
 were created using the RISC-V
 cross compiler at https://github.com/riscv-collab/riscv-gnu-toolchain,
@@ -37,3 +44,8 @@ which is compiled accordingly:
 
 Please note that the binary is statically linked, since the simulator at
 this stage makes NO effort to accommodate dynamic linking.
+
+The gzip source was downloaded from
+https://ftp.gnu.org/gnu/gzip/gzip-1.2.4.tar.gz, and built with
+slight modifications according to a build recipe chronicled
+[here](../examples/src/gzip-1.2.4/NEBULA).
