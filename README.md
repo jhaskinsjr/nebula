@@ -126,7 +126,11 @@ about these topics and much more are covered in the links below.
 
 # Recent Revision History
 
-Gid tag `v1.3.0` (20240608):
+Git tag `v1.3.1` (20240625):
+* Dhrystone benchmark
+* gzip benchmark
+
+Git tag `v1.3.0` (20240608):
 * *new* [Tangelo](pipelines/tangelo/README.md) pipeline model with V2P, TLB, shared caches
 * MMU service
 * cache block marking, fine-grained invalidation (see: [components/simplecache/__init__.py](components/simplecache/__init__.py))
