@@ -19,10 +19,8 @@ The sample binaries...
 were created using the RISC-V
 cross compiler at https://github.com/riscv-collab/riscv-gnu-toolchain,
 following the directions under the "Installation (Newlib)" section; see:
-https://github.com/riscv-collab/riscv-gnu-toolchain#installation-newlib. (It
-would be a *lot* more work to execute binaries built for Linux, i.e.,
-following the directions under the "Installation (Linux)" section.)
-Consider the source for the sum program:
+https://github.com/riscv-collab/riscv-gnu-toolchain#installation-newlib.
+Consider, for instance, the source for the sum program:
 
     /* examples/src/sum.c */
     #include <stdio.h>
@@ -45,7 +43,60 @@ which is compiled accordingly:
 Please note that the binary is statically linked, since the simulator at
 this stage makes NO effort to accommodate dynamic linking.
 
+### Outside benchmarks
+
 The gzip source was downloaded from
 https://ftp.gnu.org/gnu/gzip/gzip-1.2.4.tar.gz, and built with
 slight modifications according to a build recipe chronicled
 [here](../examples/src/gzip-1.2.4/NEBULA).
+
+Unlike the other sample programs, gzip is not a mere toy, but,
+rather, a *real* benchmark that does *real* work. I have used it successfully
+to compress my `.bash_history` file from about 400 KB down to about 13 KB
+with the [Jabara](../pipelines/jabara/README.md) sample model; to wit:
+
+    cd ${HOME}/src/nebula/pipelines/jabara ; \
+    LOGDIR=/tmp/log/$( basename $( pwd ) ) ; \
+    mkdir -p ${LOGDIR} ; \
+    rm -f ${LOGDIR}/* ; \
+    cp -f ${HOME}/.bash_history /tmp/.bash_history ; \
+    time ( \
+        python3 ../../launcher.py \
+            --log ${LOGDIR} \
+            --service ../../toolbox/stats.py:localhost:22:-1:-1 \
+            --config \
+                stats:output_filename:${LOGDIR}/stats.json \
+                mainmem:filename:${LOGDIR}/mainmem.raw \
+                mainmem:capacity:$(( 2**32 )) \
+            -- \
+            $(( 1000 + ${RANDOM} )) \
+            localhost.nebula \
+            /home/john/src/nebula/examples/bin/gzip /tmp/.bash_history \
+    )
+
+On my laptop the simulation, executing at a rate of about 51,000
+instructions/second, completed in a bit more than 26 minutes. As
+expected, this emitted nothing to my terminal, but wrote
+`.bash_history.gz` and deleted the original `.bash_history` file. And
+uncompressing...
+
+    cd ${HOME}/src/nebula/pipelines/jabara ; \
+    LOGDIR=/tmp/log/$( basename $( pwd ) ) ; \
+    mkdir -p ${LOGDIR} ; \
+    rm -f ${LOGDIR}/* ; \
+    time ( \
+        python3 ../../launcher.py \
+            --log ${LOGDIR} \
+            --service ../../toolbox/stats.py:localhost:22:-1:-1 \
+            --config \
+                stats:output_filename:${LOGDIR}/stats.json \
+                mainmem:filename:${LOGDIR}/mainmem.raw \
+                mainmem:capacity:$(( 2**32 )) \
+            -- \
+            $(( 1000 + ${RANDOM} )) \
+            localhost.nebula \
+            /home/john/src/nebula/examples/bin/gunzip /tmp/.bash_history.gz \
+    )
+
+...took a little less than 4 minutes, writing `.bash_history` and
+deletint `.bash_history.gz`.
