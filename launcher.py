@@ -133,12 +133,15 @@ def register(connections, coreid, cmd, name, data=None):
         _name = int(_name)
     except:
         pass
+    _data = data
+    if isinstance(data, str): _data = riscv.constants.integer_to_list_of_bytes(integer(data), 64, 'little')
+    if isinstance(data, int): _data = riscv.constants.integer_to_list_of_bytes(data, 64, 'little')
     tx(connections, {'register': {**{
             'coreid': coreid,
             'cmd': cmd,
             'name': _name,
         },
-        **({'data': (riscv.constants.integer_to_list_of_bytes(integer(data), 64, 'little') if isinstance(data, str) else riscv.constants.integer_to_list_of_bytes(data, 64, 'little'))} if data else {}),
+        **({'data': _data} if _data else {}),
     }})
 def config(connections, service, field, val):
     _val = val
@@ -166,6 +169,8 @@ def restore(state, snapshot_filename):
     return _cycle
 def waitforack(state):
     _ack = False
+    logging.debug('state.ack                  : {}'.format(state.get('ack')))
+    logging.debug('state.connections.values() : {}'.format(state.get('connections').values()))
     while not _ack:
         time.sleep(0.001)
         logging.debug('state.ack : {} ({})'.format(state.get('ack'), len(state.get('ack'))))
@@ -181,18 +186,6 @@ def run(cycle, max_cycles, max_instructions, break_on_undefined, snapshot_freque
     #   }
     # }
     _cmdline = (list(filter(lambda x: len(x), ' '.join(args.cmdline).strip().split(','))) if args.cmdline else [])
-    if args.restore:
-        _coreid = 0 # snapshot restore for now assumes a single core
-        state.get('shutdown').update({_coreid: False})
-        for c in (args.config if args.config else []): config(map(
-            lambda x: x.get('conn'),
-            sum(state.get('connections').values(), [])
-        ), *c.split(':'))
-        cycle = restore(state, args.restore)
-        _futures = state.get('futures').pop(1 + cycle, {'results': [], 'events': []})
-        _futures.get('events').extend([{'coreid': _coreid, 'init': True}])
-        state.get('futures').update({1 + cycle: _futures})
-        tx(map(lambda x: x.get('conn'), state.get('connections').get(_coreid)), 'run')
     if args.snapshots:
         tx(map(lambda x: x.get('conn'), sum(state.get('connections').values(), [])), {
             'snapshots': {
@@ -202,8 +195,16 @@ def run(cycle, max_cycles, max_instructions, break_on_undefined, snapshot_freque
         })
     state.get('lock').acquire()
     for c in (args.config if args.config else []): config(map(lambda x: x.get('conn'), state.get('connections').get(-1)), *c.split(':'))
-#    tx(map(lambda x: x.get('conn'), state.get('connections').get(-1)), 'run')
     state.get('lock').release()
+    if args.restore:
+        _coreid = 0 # snapshot restore for now assumes a single core
+        state.get('shutdown').update({_coreid: False})
+        cycle = restore(state, args.restore)
+        _futures = state.get('futures').pop(1 + cycle, {'results': [], 'events': []})
+        _futures.get('events').extend([{'coreid': _coreid, 'init': True}])
+        state.get('futures').update({1 + cycle: _futures})
+        tx(map(lambda x: x.get('conn'), state.get('connections').get(_coreid)), 'run')
+        tx(map(lambda x: x.get('conn'), state.get('connections').get(-1, [])), 'run')
     while (cycle < max_cycles if max_cycles else True) and \
           (state.get('instructions_committed') < max_instructions if max_instructions else True) and \
           (state.get('running')) and \
@@ -292,6 +293,7 @@ def run(cycle, max_cycles, max_instructions, break_on_undefined, snapshot_freque
 #        _futures.update({'results': list(filter(lambda x: not state.get('shutdown').get(x.get('coreid')), _futures.get('results')))})
 #        _futures.update({'events': list(filter(lambda x: not state.get('shutdown').get(x.get('coreid')), _futures.get('events')))})
         state.update({'ack': sum(map(lambda x: [{'coreid': x}] * len(state.get('connections').get(x)), state.get('connections').keys()), [])})
+        logging.debug('state.ack - 0 : {}'.format(state.get('ack')))
 #        for c in state.get('connections').keys():
         for c in filter(lambda x: not state.get('shutdown').get(x), state.get('connections').keys()):
             _res_evt = {
@@ -304,6 +306,7 @@ def run(cycle, max_cycles, max_instructions, break_on_undefined, snapshot_freque
                 **_res_evt,
             }})
             state.update({'ack': list(filter(lambda x: x.get('coreid') != c, state.get('ack')))})
+            logging.debug('state.ack - 1 : {}'.format(state.get('ack')))
         state.get('lock').release()
         waitforack(state)
     if state.get('undefined'): logging.info('*** Encountered undefined instruction! ***')
