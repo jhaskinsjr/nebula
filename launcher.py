@@ -176,7 +176,7 @@ def waitforack(state):
         logging.debug('state.ack : {} ({})'.format(state.get('ack'), len(state.get('ack'))))
         assert len(state.get('ack')) <= len(sum(state.get('connections').values(), [])), 'Something ACK\'d more than once!!! state.ack : ({}) {}'.format(len(state.get('ack')), state.get('ack'))
         _ack = len(state.get('ack')) == len(sum(state.get('connections').values(), []))
-def run(cycle, max_cycles, max_instructions, break_on_undefined, snapshot_frequency):
+def run(cycle, max_cycles, max_instructions, break_on_undefined, snapshots):
     global state
     # {
     #   'tick': {
@@ -186,11 +186,12 @@ def run(cycle, max_cycles, max_instructions, break_on_undefined, snapshot_freque
     #   }
     # }
     _cmdline = (list(filter(lambda x: len(x), ' '.join(args.cmdline).strip().split(','))) if args.cmdline else [])
-    if args.snapshots:
+    if snapshots:
+        logging.info('snapshots : {}'.format(snapshots))
         tx(map(lambda x: x.get('conn'), sum(state.get('connections').values(), [])), {
             'snapshots': {
-                'checkpoints': args.snapshots,
-                'cmdline': state.get('cmdline'),
+                'checkpoints': snapshots,
+                'cmdline': _cmdline,
             }
         })
     state.get('lock').acquire()
@@ -431,7 +432,7 @@ if __name__ == '__main__':
             elif 'run' == cmd:
                 assert not (len(args.cmdline) and args.restore), 'Both command line and --restore given!'
                 state.update({'running': True})
-                state.update({'cycle': run(state.get('cycle'), args.max_cycles, args.max_instructions, args.break_on_undefined, args.snapshots)})
+                state.update({'cycle': run(state.get('cycle'), args.max_cycles, args.max_instructions, args.break_on_undefined, (sorted(args.snapshots) if args.snapshots else None))})
                 state.update({'running': False})
             else:
                 {
