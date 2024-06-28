@@ -49,7 +49,6 @@ class SimpleStat:
     def do_tick(self, results, events):
         for _coreid, _stats in map(lambda y: (y.get('coreid', -1), y.get('stats')), filter(lambda x: x.get('stats'), events)):
             logging.debug('do_tick(): [{:04}] _stats : {}'.format(_coreid, _stats))
-#            self.service.tx({'info': '_stats : {}'.format(_stats)})
             _s = _stats.get('service')
             _t = _stats.get('type')
             _n = _stats.get('name')
@@ -78,21 +77,6 @@ if '__main__' == __name__:
     _launcher = {x:y for x, y in zip(['host', 'port'], args.launcher.split(':'))}
     _launcher['port'] = int(_launcher['port'])
     logging.debug('_launcher : {}'.format(_launcher))
-#    state = {
-#        'service': 'stats',
-#        'cycle': 0,
-#        'active': True,
-#        'running': False,
-#        'ack': True,
-#        'stats': {
-#            'message_size': {},
-#            'cycle': 0,
-#        },
-#        'config': {
-#            'output_filename': None,
-#        },
-#    }
-#    _service = service.Service(state.get('service'), state.get('coreid', -1), _launcher.get('host'), _launcher.get('port'))
     state = SimpleStat('stats', _launcher, **{
         'output_filename': args.output_filename,
     })
@@ -100,7 +84,6 @@ if '__main__' == __name__:
         state.update({'ack': True})
         msg = state.service.rx()
         _tmp = json.dumps(msg)
-#        state.get('stats').get('message_size').update({len(_tmp): 1 + state.get('stats').get('message_size').get(len(_tmp), 0)})
         state.get('stats').get('message_size').update({2**log2(len(_tmp)): 1 + state.get('stats').get('message_size').get(2**log2(len(_tmp)), 0)})
         state.get('stats').update({'cycle': state.get('cycle')})
 #        _service.tx({'info': {'msg': msg, 'msg.size()': len(msg)}})
@@ -112,7 +95,6 @@ if '__main__' == __name__:
             elif {'text': 'run'} == {k: v}:
                 state.update({'running': True})
                 state.update({'ack': False})
-#                if args.output_filename: state.get('config').update({'output_filename': args.output_filename})
                 state.service.tx({'info': 'state.config : {}'.format(state.get('config'))})
             elif {'text': 'pause'} == {k: v}:
                 state.update({'running': False})
@@ -133,8 +115,6 @@ if '__main__' == __name__:
                 state.update({'cycle': v.get('cycle')})
                 state.service.tx({'ack': {'cycle': state.get('cycle')}})
         if state.get('ack') and state.get('running'): state.service.tx({'ack': {'cycle': state.get('cycle'), 'msg': msg}})
-#    _output_filename = state.get('config').get('output_filename')
-#    fp = (sys.stdout if not _output_filename else open(_output_filename, 'w'))
     fp = (sys.stdout if not state.get('config').get('output_filename') else open(state.get('config').get('output_filename'), 'w'))
     json.dump(state.get('stats'), fp, indent=4)
     logging.info('state.stats : {}'.format(state.get('stats')))
