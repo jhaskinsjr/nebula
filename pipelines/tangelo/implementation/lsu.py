@@ -10,6 +10,7 @@ import struct
 
 import service
 import toolbox
+import toolbox.stats
 import components.simplecache
 import components.simplemmu
 import riscv.execute
@@ -31,7 +32,8 @@ def fetch_block(service, state, addr, physical):
             'physical': physical,
         },
     }})
-    toolbox.report_stats(service, state, 'flat', 'l1dc_misses')
+#    toolbox.report_stats(service, state, 'flat', 'l1dc_misses')
+    state.get('stats').refresh('flat', 'l1dc_misses')
 def do_l1dc(service, state):
     for _insn in filter(lambda x: not x.get('done'), state.get('executing')):
         _vaddr = _insn.get('operands').get('addr')
@@ -110,7 +112,8 @@ def do_l1dc(service, state):
             }})
         _insn.update({'done': True})
         if len(state.get('pending_fetch')): state.get('pending_fetch').pop(0)
-        toolbox.report_stats(service, state, 'flat', 'l1dc_accesses')
+#        toolbox.report_stats(service, state, 'flat', 'l1dc_accesses')
+        state.get('stats').refresh('flat', 'l1dc_accesses')
 
 def do_unimplemented(service, state, insn):
     logging.info('Unimplemented: {}'.format(state.get('insn')))
@@ -118,7 +121,8 @@ def do_unimplemented(service, state, insn):
 def do_load(service, state, insn):
     if insn.get('peeked'):
         insn.update({'done': True})
-        toolbox.report_stats(service, state, 'flat', 'load_serviced_by_preceding_queued_store')
+#        toolbox.report_stats(service, state, 'flat', 'load_serviced_by_preceding_queued_store')
+        state.get('stats').refresh('flat', 'load_serviced_by_preceding_queued_store')
 def do_store(service, state, insn):
     insn.update({'result': None})
 
@@ -197,6 +201,11 @@ def do_tick(service, state, results, events):
         if _frame not in state.get('pending_v2p'): continue
         state.update({'pending_v2p': list(filter(lambda x: _frame != x, state.get('pending_v2p')))})
         state.get('tlb').update({_frame: _mmu.get('frame')})
+    for _perf in map(lambda y: y.get('perf'), filter(lambda x: x.get('perf'), events)):
+        _cmd = _perf.get('cmd')
+        if 'report_stats' == _cmd:
+            _dict = state.get('stats').get(state.get('coreid')).get(state.get('service'))
+            toolbox.report_stats_from_dict(service, state, _dict)
     for _lsu in map(lambda y: y.get('lsu'), filter(lambda x: x.get('lsu'), events)):
         if 'insn' in _lsu.keys():
             _insn = _lsu.get('insn')
@@ -283,6 +292,7 @@ if '__main__' == __name__:
         'ack': True,
         'pending_execute': [],
         'executing': [],
+        'stats': None,
         'config': {
             'l1dc_nsets': 2**4,
             'l1dc_nways': 2**1,
@@ -317,6 +327,7 @@ if '__main__' == __name__:
                     state.get('config').get('l1dc_nbytesperblock'),
                     state.get('config').get('l1dc_evictionpolicy'),
                 )})
+                state.update({'stats': toolbox.stats.CounterBank(state.get('coreid'), state.get('service'))})
             elif {'text': 'pause'} == {k: v}:
                 state.update({'running': False})
             elif 'config' == k:

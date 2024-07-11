@@ -10,6 +10,7 @@ import itertools
 
 import service
 import toolbox
+import toolbox.stats
 import riscv.constants
 import riscv.decode
 
@@ -20,7 +21,8 @@ def hazard(p, c):
     return _conflict
 def do_issue(service, state):
     if not len(state.get('decoded')): return
-    toolbox.report_stats(service, state, 'flat', 'decoded_not_empty')
+#    toolbox.report_stats(service, state, 'flat', 'decoded_not_empty')
+    state.get('stats').refresh('flat', 'decode_not_empty')
     _remove_from_decoded = []
     for _insn in state.get('decoded'):
         # ECALL/FENCE must execute alone, i.e., all issued instructions
@@ -102,7 +104,8 @@ def do_issue(service, state):
             }})
             state.update({'recovery_iid': None})
         state.get('issued').append(_insn)
-        toolbox.report_stats(service, state, 'histo', 'issued.insn', _insn.get('cmd'))
+#        toolbox.report_stats(service, state, 'histo', 'issued.insn', _insn.get('cmd'))
+        state.get('stats').refresh('histo', 'issued_insn', _insn.get('cmd'))
         if _insn.get('cmd') in riscv.constants.BRANCHES + riscv.constants.JUMPS and 'prediction' in _insn.keys():
             _prediction = _insn.get('prediction')
             if 'branch' == _prediction.get('type') and _prediction.get('targetpc') != _insn.get('_pc') + _insn.get('size'): break
@@ -135,6 +138,11 @@ def do_tick(service, state, results, events):
             service.tx({'info': '_pr : {}'.format(_pr)})
             state.get('predictions').update({_pr.get('branchpc'): _pr})
         service.tx({'info': 'state.predictions           : {} ({})'.format(state.get('predictions'), len(state.get('predictions').keys()))})
+        for _perf in map(lambda y: y.get('perf'), filter(lambda x: x.get('perf'), events)):
+            _cmd = _perf.get('cmd')
+            if 'report_stats' == _cmd:
+                _dict = state.get('stats').get(state.get('coreid')).get(state.get('service'))
+                toolbox.report_stats_from_dict(service, state, _dict)
         for _iss in map(lambda y: y.get('issue'), filter(lambda x: x.get('issue'), events)):
             if state.get('drop_until') and _iss.get('insn').get('%pc') != state.get('drop_until'): continue
             state.update({'drop_until': None})
@@ -197,6 +205,7 @@ if '__main__' == __name__:
         'predictions': {},
         'iid': 0,
         'objmap': None,
+        'stats': None,
         'config': {
         },
     }
@@ -220,6 +229,7 @@ if '__main__' == __name__:
                 state.update({'recovery_iid': None})
                 state.update({'forward': {}})
                 state.update({'predictions': {}})
+                state.update({'stats': toolbox.stats.CounterBank(state.get('coreid'), state.get('service'))})
                 _service.tx({'info': 'state.config : {}'.format(state.get('config'))})
                 logging.info('state : {}'.format(state))
             elif {'text': 'pause'} == {k: v}:

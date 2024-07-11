@@ -9,6 +9,7 @@ import time
 
 import service
 import toolbox
+import toolbox.stats
 import riscv.constants
 
 class SaturatingCounter:
@@ -114,8 +115,10 @@ def do_tick(service, state, results, events):
                         'addr': _pr.get('targetpc'),
                     }
                 })
-                toolbox.report_stats(service, state, 'flat', 'predict_taken')
-        toolbox.report_stats(service, state, 'flat', 'predictions')
+#                toolbox.report_stats(service, state, 'flat', 'predict_taken')
+                state.get('stats').refresh('flat', 'predict_taken')
+#        toolbox.report_stats(service, state, 'flat', 'predictions')
+        state.get('stats').refresh('flat', 'predictions')
         if not len(state.get('fetch_address')):
             state.get('fetch_address').append({
                 'fetch': {
@@ -135,7 +138,13 @@ def do_tick(service, state, results, events):
                 }
             })
             state.update({'drop_until': int.from_bytes(_insn.get('next_pc'), 'little')})
-            toolbox.report_stats(service, state, 'flat', 'mispredictions')
+#            toolbox.report_stats(service, state, 'flat', 'mispredictions')
+            state.get('stats').refresh('flat', 'mispredictions')
+    for _perf in map(lambda y: y.get('perf'), filter(lambda x: x.get('perf'), events)):
+        _cmd = _perf.get('cmd')
+        if 'report_stats' == _cmd:
+            _dict = state.get('stats').get(state.get('coreid')).get(state.get('service'))
+            toolbox.report_stats_from_dict(service, state, _dict)
     if not state.get('pending_fetch') and len(state.get('fetch_address')):
         state.update({'pending_fetch': state.get('fetch_address').pop(0)})
         service.tx({'event': {
@@ -187,6 +196,7 @@ if '__main__' == __name__:
         '%jp': None, # This is the fetch pointer. Why %jp? Who knows?
         '%pc': None,
         'ack': True,
+        'stats': None,
         'config': {
             'btac_entries': None,
             'predictor_type': None, # 'bimodal', 'gshare'
@@ -215,6 +225,7 @@ if '__main__' == __name__:
                 state.update({'btac': {}})
                 state.update({'drop_until': None})
                 state.update({'%jp': None})
+                state.update({'stats': toolbox.stats.CounterBank(state.get('coreid'), state.get('service'))})
                 _service.tx({'info': 'state.config : {}'.format(state.get('config'))})
                 if state.get('config').get('btac_entries'): state.update({'btac': BranchTargetAddressCache(state.get('config').get('btac_entries'))})
                 if state.get('config').get('predictor_type') and state.get('config').get('predictor_entries'): state.update({'predictor': CounterTablePredictor(
