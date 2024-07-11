@@ -17,6 +17,22 @@ def log2(A):
         len(list(itertools.takewhile(lambda x: x, map(lambda y: A >> y, range(A))))) - 1
     )
 
+class CounterBank(dict):
+    def __init__(self): pass
+    def refresh(self, coreid, svc, typ, name, data=None, **kwargs):
+        if not coreid in self.keys(): self.update({coreid: {}})
+        if not svc in self.get(coreid).keys(): self.get(coreid).update({svc: {}})
+        if not name in self.get(coreid).get(svc): self.get(coreid).get(svc).update({name : ({} if 'histo' == typ else 0)})
+        _increment = (kwargs.get('increment') if kwargs and kwargs.get('increment') else 1)
+        if 'histo' == typ:
+            assert data != None, 'Histogram-type stat {}_{}:{} requires "data" field'.format(coreid, svc, name)
+            self.get(coreid).get(svc).get(name).update({data: _increment + self.get(coreid).get(svc).get(name).get(data, 0)})
+        elif 'dict' == typ:
+            assert isinstance(data, dict)
+            assert data != None, 'Histogram-type stat {}_{}:{} requires "data" field'.format(coreid, svc, name)
+            self.get(coreid).get(svc).update({name: data})
+        else:
+            self.get(coreid).get(svc).update({name: _increment + self.get(coreid).get(svc).get(name)})
 class SimpleStat:
     def __init__(self, name, launcher, s=None, **kwargs):
         self.name = name
@@ -25,10 +41,9 @@ class SimpleStat:
         self.active = True
         self.running = False
         self.ack = True
-        self.stats = {
-            'message_size': {},
-            'cycle': 0,
-        }
+        self.stats = CounterBank()
+        self.stats.update({'message_size': {}})
+        self.stats.update({'cycle': 0})
         self.config = {
             'output_filename': kwargs.get('output_filename', None),
         }
@@ -36,16 +51,6 @@ class SimpleStat:
         return (self.__dict__[attribute] if attribute in dir(self) else alternative)
     def update(self, d):
         self.__dict__.update(d)
-    def refresh(self, coreid, svc, typ, name, data, **kwargs):
-        if not coreid in self.get('stats').keys(): self.get('stats').update({coreid: {}})
-        if not svc in self.get('stats').get(coreid).keys(): self.get('stats').get(coreid).update({svc: {}})
-        if not name in self.get('stats').get(coreid).get(svc): self.get('stats').get(coreid).get(svc).update({name : ({} if 'histo' == typ else 0)})
-        _increment = (kwargs.get('increment') if kwargs and kwargs.get('increment') else 1)
-        if 'histo' == typ:
-            assert data != None, 'Histogram-type stat {}_{}:{} requires "data" field'.format(coreid, svc, name)
-            self.get('stats').get(coreid).get(svc).get(name).update({data: _increment + self.get('stats').get(coreid).get(svc).get(name).get(data, 0)})
-        else:
-            self.get('stats').get(coreid).get(svc).update({name: _increment + self.get('stats').get(coreid).get(svc).get(name)})
     def do_tick(self, results, events):
         for _coreid, _stats in map(lambda y: (y.get('coreid', -1), y.get('stats')), filter(lambda x: x.get('stats'), events)):
             logging.debug('do_tick(): [{:04}] _stats : {}'.format(_coreid, _stats))
@@ -55,9 +60,9 @@ class SimpleStat:
             _d = _stats.get('data')
             _k = _stats.get('kwargs')
             try:
-                self.refresh(_coreid, _s, _t, _n, _d, **{**(_k if _k else {})})
+                self.stats.refresh(_coreid, _s, _t, _n, _d, **{**(_k if _k else {})})
             except:
-                logging.error('Failed stat refresh! ({})'.format(_stats))
+                logging.error('Failed stat refresh! ({:04}: {})'.format(_coreid, _stats))
 
 
 
