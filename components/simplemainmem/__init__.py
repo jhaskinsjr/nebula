@@ -15,6 +15,7 @@ import elftools.elf.elffile
 
 import service
 import toolbox
+import toolbox.stats
 import simplemmu
 
 def log2(A):
@@ -53,6 +54,7 @@ class SimpleMainMemory:
         self.fd = None
         self.mm = None
         self.snapshots = None
+        self.stats = toolbox.stats.CounterBank(self.get('coreid', -1), name)
     def boot(self):
         assert 0 == (self.config.get('pagesize') & (self.config.get('pagesize') - 1)), 'pagesize ({}) is not power of 2!'.format(self.config.get('pagesize'))
         self.pageoffsetmask = self.config.get('pagesize') - 1
@@ -154,12 +156,18 @@ class SimpleMainMemory:
         return {
             'cycle': self.get('cycle'),
             'service': self.get('name'),
+            'coreid': self.get('coreid', -1),
         }
     def get(self, attribute, alternative=None):
         return (self.__dict__[attribute] if attribute in dir(self) else alternative)
     def update(self, d):
         self.__dict__.update(d)
     def do_tick(self, results, events):
+        for _perf in map(lambda y: y.get('perf'), filter(lambda x: x.get('perf'), events)):
+            _cmd = _perf.get('cmd')
+            if 'report_stats' == _cmd:
+                _dict = self.stats.get(self.state().get('coreid')).get(self.state().get('service'))
+                toolbox.report_stats_from_dict(self.service, self.state(), _dict)
         for _coreid, ev in map(lambda x: (x.get('coreid'), x.get('mem')), filter(lambda y: 'mem' in y.keys(), events)):
             _cmd = ev.get('cmd')
             _addr = ev.get('addr')
@@ -168,7 +176,8 @@ class SimpleMainMemory:
             _kwargs = {'coreid': _coreid, **({} if not ev.get('physical') else {'physical': ev.get('physical')})}
             if 'poke' == _cmd:
                 self.poke(_addr, _size, _data, **_kwargs)
-                toolbox.report_stats(self.service, self.state(), 'histo', 'poke.size', _size)
+#                toolbox.report_stats(self.service, self.state(), 'histo', 'poke.size', _size)
+                self.stats.refresh('histo', 'poke_size', _size)
             elif 'peek' == _cmd:
                 self.service.tx({'result': {
                     'arrival': self.get('config').get('peek_latency_in_cycles') + self.get('cycle'),
@@ -179,7 +188,8 @@ class SimpleMainMemory:
                         'data': self.peek(_addr, _size, **_kwargs),
                     }
                 }})
-                toolbox.report_stats(self.service, self.state(), 'histo', 'peek.size', _size)
+#                toolbox.report_stats(self.service, self.state(), 'histo', 'peek.size', _size)
+                self.stats.refresh('histo', 'peek_size', _size)
             elif _cmd in ['purge', 'invalidate']:
                 pass # b/c these may be propogated down the cache hierarchy
             else:

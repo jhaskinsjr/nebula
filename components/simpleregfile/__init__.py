@@ -8,6 +8,7 @@ import time
 
 import service
 import toolbox
+import toolbox.stats
 import riscv.constants
 
 class SimpleRegisterFile:
@@ -24,6 +25,7 @@ class SimpleRegisterFile:
             **{x: riscv.constants.integer_to_list_of_bytes(0, 64, 'little') for x in range(32)},
             **{0x1000_0000 + x: riscv.constants.integer_to_list_of_bytes(0, 64, 'little') for x in range(32)}, # FP registers
         }
+        self.stats = toolbox.stats.CounterBank(coreid, name)
     def state(self):
         return {
             'service': self.get('name'),
@@ -35,6 +37,11 @@ class SimpleRegisterFile:
     def update(self, d):
         self.__dict__.update(d)
     def do_tick(self, results, events):
+        for _perf in map(lambda y: y.get('perf'), filter(lambda x: x.get('perf'), events)):
+            _cmd = _perf.get('cmd')
+            if 'report_stats' == _cmd:
+                _dict = self.stats.get(self.state().get('coreid')).get(self.state().get('service'))
+                toolbox.report_stats_from_dict(self.service, self.state(), _dict)
         for ev in filter(lambda x: x, map(lambda y: y.get('register'), events)):
             _cmd = ev.get('cmd')
             _name = ev.get('name')
@@ -43,18 +50,20 @@ class SimpleRegisterFile:
                 assert _name in self.get('registers').keys()
                 assert isinstance(_data, list)
                 self.update({'registers': self.setregister(self.get('registers'), _name, _data)})
-                toolbox.report_stats(self.service, self.state(), 'histo', 'set.register', _name)
+#                toolbox.report_stats(self.service, self.state(), 'histo', 'set.register', _name)
+                self.stats.refresh('histo', 'set_register', _name)
             elif 'get' == _cmd:
                 assert _name in self.get('registers').keys()
                 self.service.tx({'result': {
                     'arrival': 1 + self.get('cycle'),
-                    'coreid': state.get('coreid'),
+                    'coreid': state.get('coreid'), # FIXME: Should this be self.get('coreid')?
                     'register': {
                         'name': _name,
                         'data': self.getregister(self.get('registers'), _name),
                     }
                 }})
-                toolbox.report_stats(self.service, self.state(), 'histo', 'get.register', _name)
+#                toolbox.report_stats(self.service, self.state(), 'histo', 'get.register', _name)
+                self.stats.refresh('histo', 'get_register', _name)
             else:
                 logging.fatal('ev   : {}'.format(ev))
                 logging.fatal('_cmd : {}'.format(_cmd))
