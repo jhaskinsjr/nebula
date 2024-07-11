@@ -18,21 +18,45 @@ def log2(A):
     )
 
 class CounterBank(dict):
-    def __init__(self): pass
-    def refresh(self, coreid, svc, typ, name, data=None, **kwargs):
-        if not coreid in self.keys(): self.update({coreid: {}})
-        if not svc in self.get(coreid).keys(): self.get(coreid).update({svc: {}})
-        if not name in self.get(coreid).get(svc): self.get(coreid).get(svc).update({name : ({} if 'histo' == typ else 0)})
+    def __init__(self, coreid=None, svc=None):
+        assert (None == coreid and None == svc) or (None != coreid and None != svc), 'Both parameters must be None, or neither!'
+        self.coreid = None
+        self.svc = None
+        if None == coreid: return
+        self.update({coreid: {}})
+        self.get(coreid).update({svc: {}})
+        self.coreid = coreid
+        self.svc = svc
+    def refresh(self, typ, name, data=None, **kwargs):
+        _coreid = (kwargs.get('coreid') if None == self.coreid else self.coreid)
+        _svc = (kwargs.get('svc') if None == self.svc else self.svc)
+        if not _coreid in self.keys(): self.update({_coreid: {}})
+        if not _svc in self.get(_coreid).keys(): self.get(_coreid).update({_svc: {}})
+        if not name in self.get(_coreid).get(_svc): self.get(_coreid).get(_svc).update({name : ({} if 'histo' == typ else 0)})
         _increment = (kwargs.get('increment') if kwargs and kwargs.get('increment') else 1)
         if 'histo' == typ:
-            assert data != None, 'Histogram-type stat {}_{}:{} requires "data" field'.format(coreid, svc, name)
-            self.get(coreid).get(svc).get(name).update({data: _increment + self.get(coreid).get(svc).get(name).get(data, 0)})
+            assert data != None, 'Histogram-type stat {}_{}:{} requires "data" field'.format(_coreid, _svc, name)
+            self.get(_coreid).get(_svc).get(name).update({data: _increment + self.get(_coreid).get(_svc).get(name).get(data, 0)})
         elif 'dict' == typ:
             assert isinstance(data, dict)
-            assert data != None, 'Histogram-type stat {}_{}:{} requires "data" field'.format(coreid, svc, name)
-            self.get(coreid).get(svc).update({name: data})
+            assert data != None, 'Histogram-type stat {}_{}:{} requires "data" field'.format(_coreid, _svc, name)
+            self.get(_coreid).get(_svc).update({name: data})
         else:
-            self.get(coreid).get(svc).update({name: _increment + self.get(coreid).get(svc).get(name)})
+            self.get(_coreid).get(_svc).update({name: _increment + self.get(_coreid).get(_svc).get(name)})
+#    def refresh(self, coreid, svc, typ, name, data=None, **kwargs):
+#        if not coreid in self.keys(): self.update({coreid: {}})
+#        if not svc in self.get(coreid).keys(): self.get(coreid).update({svc: {}})
+#        if not name in self.get(coreid).get(svc): self.get(coreid).get(svc).update({name : ({} if 'histo' == typ else 0)})
+#        _increment = (kwargs.get('increment') if kwargs and kwargs.get('increment') else 1)
+#        if 'histo' == typ:
+#            assert data != None, 'Histogram-type stat {}_{}:{} requires "data" field'.format(coreid, svc, name)
+#            self.get(coreid).get(svc).get(name).update({data: _increment + self.get(coreid).get(svc).get(name).get(data, 0)})
+#        elif 'dict' == typ:
+#            assert isinstance(data, dict)
+#            assert data != None, 'Histogram-type stat {}_{}:{} requires "data" field'.format(coreid, svc, name)
+#            self.get(coreid).get(svc).update({name: data})
+#        else:
+#            self.get(coreid).get(svc).update({name: _increment + self.get(coreid).get(svc).get(name)})
 class SimpleStat:
     def __init__(self, name, launcher, s=None, **kwargs):
         self.name = name
@@ -60,9 +84,13 @@ class SimpleStat:
             _d = _stats.get('data')
             _k = _stats.get('kwargs')
             try:
-                self.stats.refresh(_coreid, _s, _t, _n, _d, **{**(_k if _k else {})})
-            except:
-                logging.error('Failed stat refresh! ({:04}: {})'.format(_coreid, _stats))
+                self.stats.refresh(_t, _n, _d, **{
+                    **(_k if _k else {}),
+                    **{'coreid': _coreid},
+                    **{'svc': _s},
+                })
+            except Exception as ex:
+                logging.error('Failed stat refresh! ({:04}: {}, ex : {})'.format(_coreid, _stats, ex))
 
 
 
