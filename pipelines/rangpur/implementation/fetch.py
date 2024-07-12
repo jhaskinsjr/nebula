@@ -8,6 +8,7 @@ import time
 
 import service
 import toolbox
+import toolbox.stats
 import components.simplecache
 import riscv.constants
 
@@ -24,7 +25,8 @@ def fetch_block(service, state, jp):
             'size': _blocksize,
         },
     }})
-    toolbox.report_stats(service, state, 'flat', 'l1ic_misses')
+#    toolbox.report_stats(service, state, 'flat', 'l1ic_misses')
+    state.get('stats').refresh('flat', 'l1ic_misses')
 def do_l1ic(service, state):
     _req = state.get('fetch_buffer')[0]
     logging.debug('_req : {}'.format(_req))
@@ -57,7 +59,8 @@ def do_l1ic(service, state):
         },
     }})
     state.get('fetch_buffer').pop(0)
-    toolbox.report_stats(service, state, 'flat', 'l1ic_accesses')
+#    toolbox.report_stats(service, state, 'flat', 'l1ic_accesses')
+    state.get('stats').refresh('flat', 'l1ic_accesses')
 def do_tick(service, state, results, events):
     for _l2 in map(lambda y: y.get('l2'), filter(lambda x: x.get('l2'), results)):
         _addr = _l2.get('addr')
@@ -65,6 +68,11 @@ def do_tick(service, state, results, events):
         service.tx({'info': '_l2 : {}'.format(_l2)})
         state.get('l1ic').poke(_addr, _l2.get('data'))
         state.get('pending_fetch').remove(_addr)
+    for _perf in map(lambda y: y.get('perf'), filter(lambda x: x.get('perf'), events)):
+        _cmd = _perf.get('cmd')
+        if 'report_stats' == _cmd:
+            _dict = state.get('stats').get(state.get('coreid')).get(state.get('service'))
+            toolbox.report_stats_from_dict(service, state, _dict)
     for _fetch in map(lambda y: y.get('fetch'), filter(lambda x: x.get('fetch'), events)):
         if 'cmd' in _fetch.keys():
             if 'purge' == _fetch.get('cmd'):
@@ -112,6 +120,7 @@ if '__main__' == __name__:
         '%jp': None, # This is the fetch pointer. Why %jp? Who knows?
         '%pc': None,
         'ack': True,
+        'stats': None,
         'config': {
             'l1ic_nsets': 2**4,
             'l1ic_nways': 2**1,
@@ -136,6 +145,7 @@ if '__main__' == __name__:
                 state.update({'active': True})
                 state.update({'fetch_buffer': []})
                 state.update({'%jp': None})
+                state.update({'stats': toolbox.stats.CounterBank(state.get('coreid'), state.get('service'))})
                 _service.tx({'info': 'state.config : {}'.format(state.get('config'))})
                 state.update({'l1ic': components.simplecache.SimpleCache(
                     state.get('config').get('l1ic_nsets'),

@@ -11,6 +11,7 @@ import subprocess
 
 import service
 import toolbox
+import toolbox.stats
 import components.simplebtb
 import riscv.constants
 import riscv.decode
@@ -26,6 +27,11 @@ def do_tick(service, state, results, events):
             state.update({'%pc': _next_pc})
             state.update({'%jp': _next_pc})
             state.update({'drop_until': _next_pc})
+    for _perf in map(lambda y: y.get('perf'), filter(lambda x: x.get('perf'), events)):
+        _cmd = _perf.get('cmd')
+        if 'report_stats' == _cmd:
+            _dict = state.get('stats').get(state.get('coreid')).get(state.get('service'))
+            toolbox.report_stats_from_dict(service, state, _dict)
     for _dec in map(lambda y: y.get('decode'), filter(lambda x: x.get('decode'), events)):
         if state.get('drop_until') and int.from_bytes(state.get('drop_until'), 'little') != _dec.get('addr'): continue
         state.update({'drop_until': None})
@@ -45,7 +51,8 @@ def do_tick(service, state, results, events):
             **{'_pc': _pc},
             **({'function': next(filter(lambda x: _pc >= x[0], sorted(state.get('objmap').items(), reverse=True)))[-1].get('name', '')} if state.get('objmap') else {}),
         })
-        toolbox.report_stats(service, state, 'histo', 'decoded.insn', _insn.get('cmd'))
+#        toolbox.report_stats(service, state, 'histo', 'decoded.insn', _insn.get('cmd'))
+        state.get('stats').refresh('histo', 'decoded_insn', _insn.get('cmd'))
         state.update({'%pc': riscv.constants.integer_to_list_of_bytes(_insn.get('size') + int.from_bytes(state.get('%pc'), 'little'), 64, 'little')})
     for _insn in _decoded:
         service.tx({'event': {
@@ -97,6 +104,7 @@ if '__main__' == __name__:
         'buffer': [],
         'iid': 0,
         'objmap': None,
+        'stats': None,
         'binary': '',
         'config': {
             'buffer_capacity': 16,
@@ -122,6 +130,7 @@ if '__main__' == __name__:
                 state.update({'ack': False})
                 state.update({'drop_until': None})
                 state.update({'buffer': []})
+                state.update({'stats': toolbox.stats.CounterBank(state.get('coreid'), state.get('service'))})
                 _service.tx({'info': 'state.config : {}'.format(state.get('config'))})
                 if state.get('config').get('btb_nentries'): state.update({'btb': components.simplebtb.SimpleBTB(
                     state.get('config').get('btb_nentries'),

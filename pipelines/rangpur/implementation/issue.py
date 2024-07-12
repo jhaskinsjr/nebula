@@ -11,6 +11,7 @@ import subprocess
 
 import service
 import toolbox
+import toolbox.stats
 import components.simplebtb
 import riscv.constants
 import riscv.decode
@@ -94,7 +95,8 @@ def do_issue(service, state):
             }})
             state.update({'recovery_iid': None})
         state.get('issued').append(_insn)
-        toolbox.report_stats(service, state, 'histo', 'issued.insn', _insn.get('cmd'))
+#        toolbox.report_stats(service, state, 'histo', 'issued.insn', _insn.get('cmd'))
+        state.get('stats').refresh('histo', 'issued_insn', _insn.get('cmd'))
         if _insn.get('cmd') in riscv.constants.BRANCHES + riscv.constants.JUMPS and 'prediction' in _insn.keys():
             _prediction = _insn.get('prediction')
             if 'branch' == _prediction.get('type') and _prediction.get('targetpc') != _insn.get('_pc') + _insn.get('size'): break
@@ -140,6 +142,11 @@ def do_tick(service, state, results, events):
             state.get('predictions').clear()
             state.update({'drop_until': _insn.get('next_pc')})
             state.update({'recovery_iid': -1}) # place holder value
+    for _perf in map(lambda y: y.get('perf'), filter(lambda x: x.get('perf'), events)):
+        _cmd = _perf.get('cmd')
+        if 'report_stats' == _cmd:
+            _dict = state.get('stats').get(state.get('coreid')).get(state.get('service'))
+            toolbox.report_stats_from_dict(service, state, _dict)
     service.tx({'info': 'state.issued           : {} ({})'.format(state.get('issued'), len(state.get('issued')))})
 #    service.tx({'info': 'state.decoded          : {}'.format(state.get('decoded'))})
     service.tx({'info': 'state.decoded          : {} ({})'.format(state.get('decoded')[:20], len(state.get('decoded')))})
@@ -184,6 +191,7 @@ if '__main__' == __name__:
         'iid': 0,
         'objmap': None,
         'binary': '',
+        'stats': None,
         'config': {
             'buffer_capacity': 16,
             'btb_nentries': 32,
@@ -212,6 +220,7 @@ if '__main__' == __name__:
                 state.update({'drop_until': None})
                 state.update({'recovery_iid': None})
                 state.update({'predictions': {}})
+                state.update({'stats': toolbox.stats.CounterBank(state.get('coreid'), state.get('service'))})
                 _service.tx({'info': 'state.config : {}'.format(state.get('config'))})
                 if state.get('config').get('btb_nentries'): state.update({'btb': components.simplebtb.SimpleBTB(
                     state.get('config').get('btb_nentries'),

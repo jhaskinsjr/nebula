@@ -10,6 +10,7 @@ import struct
 
 import service
 import toolbox
+import toolbox.stats
 import riscv.constants
 
 def do_commit(service, state):
@@ -37,7 +38,8 @@ def do_commit(service, state):
                     '%pc': _insn.get('%pc'),
                 },
             }})
-            toolbox.report_stats(service, state, 'flat', 'flushes')
+#            toolbox.report_stats(service, state, 'flat', 'flushes')
+            state.get('stats').refresh('flat', 'flushes')
             _commit.append(_insn)
             continue
         state.update({'flush_until': None})
@@ -121,8 +123,20 @@ def do_commit(service, state):
             _insn.update({'operands': {int(k):v for k, v in _insn.get('operands').items()}})
             _x17 = _insn.get('operands').get(17)
             service.tx({'info': 'ECALL {}... graceful shutdown'.format(int.from_bytes(_x17, 'little'))})
-            service.tx({'shutdown': {
+#            service.tx({'shutdown': {
+#                'coreid': state.get('coreid'),
+#            }})
+            service.tx({'event': {
+                'arrival': 1 + state.get('cycle'),
                 'coreid': state.get('coreid'),
+                'perf': {
+                    'cmd': 'report_stats',
+                },
+            }})
+            service.tx({'event': {
+                'arrival': 1 + state.get('cycle'),
+                'coreid': state.get('coreid'),
+                'shutdown': True,
             }})
         service.tx({'result': {
             'arrival': 1 + state.get('cycle'),
@@ -140,10 +154,13 @@ def do_commit(service, state):
             },
         }})
         if _insn.get('speculative_next_pc'):
-            toolbox.report_stats(service, state, 'flat', 'speculative_next_pc')
+#            toolbox.report_stats(service, state, 'flat', 'speculative_next_pc')
+            state.get('stats').refresh('flat', 'speculative_next_pc')
             if _insn.get('speculative_next_pc') == _insn.get('next_pc'):
-                toolbox.report_stats(service, state, 'flat', 'speculative_next_pc_correct')
-        toolbox.report_stats(service, state, 'flat', 'retires')
+#                toolbox.report_stats(service, state, 'flat', 'speculative_next_pc_correct')
+                state.get('stats').refresh('flat', 'speculative_next_pc_correct')
+#        toolbox.report_stats(service, state, 'flat', 'retires')
+        state.get('stats').refresh('flat', 'retires')
         state.update({'ncommits': 1 + state.get('ncommits')})
         _pc = _insn.get('_pc')
         _word = ('{:08x}'.format(_insn.get('word')) if 4 == _insn.get('size') else '    {:04x}'.format(_insn.get('word')))
@@ -195,6 +212,16 @@ def do_tick(service, state, results, events):
                         'result': _result,
                     },
                 }
+    for _perf in map(lambda y: y.get('perf'), filter(lambda x: x.get('perf'), events)):
+        _cmd = _perf.get('cmd')
+        if 'report_stats' == _cmd:
+            _dict = state.get('stats').get(state.get('coreid')).get(state.get('service'))
+            toolbox.report_stats_from_dict(service, state, _dict)
+    for _shutdown in map(lambda y: y.get('shutdown'), filter(lambda x: x.get('shutdown'), events)):
+        assert _shutdown
+        service.tx({'shutdown': {
+            'coreid': state.get('coreid'),
+        }})
     for _commit in map(lambda y: y.get('commit'), filter(lambda x: x.get('commit'), events)):
         state.get('pending_commit').append(_commit.get('insn'))
     state.update({'pending_commit': sorted(state.get('pending_commit'), key=lambda x: x.get('iid'))})
@@ -233,6 +260,7 @@ if '__main__' == __name__:
         'recovery_iid': None,
         'flush_until': None,
         'pending_commit': [],
+        'stats': None,
     }
     _service = service.Service(state.get('service'), state.get('coreid'), _launcher.get('host'), _launcher.get('port'))
     while state.get('active'):
@@ -249,6 +277,7 @@ if '__main__' == __name__:
                 state.update({'ack': False})
                 state.update({'flush_until': None})
                 state.update({'pending_commit': []})
+                state.update({'stats': toolbox.stats.CounterBank(state.get('coreid'), state.get('service'))})
             elif {'text': 'pause'} == {k: v}:
                 state.update({'running': False})
             elif 'tick' == k:
