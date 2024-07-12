@@ -10,6 +10,7 @@ import subprocess
 
 import service
 import toolbox
+import toolbox.stats
 import riscv.constants
 
 
@@ -34,7 +35,8 @@ def do_tick(service, state, results, events):
         }})
         state.update({'pending_fetch': int.from_bytes(state.get('%pc'), 'little')})
         state.update({'pending_pc': False})
-        toolbox.report_stats(service, state, 'flat', 'fetches')
+#        toolbox.report_stats(service, state, 'flat', 'fetches')
+        state.get('stats').refresh('flat', 'fetches')
     for mem in map(lambda y: y.get('mem'), filter(lambda x: x.get('mem'), results)):
         if mem.get('addr') != state.get('pending_fetch'): continue
         state.update({'pending_fetch': None})
@@ -63,6 +65,16 @@ def do_tick(service, state, results, events):
             }
         }})
         state.update({'iid': 1 + state.get('iid')})
+    for _perf in map(lambda y: y.get('perf'), filter(lambda x: x.get('perf'), events)):
+        _cmd = _perf.get('cmd')
+        if 'report_stats' == _cmd:
+            _dict = state.get('stats').get(state.get('coreid')).get(state.get('service'))
+            toolbox.report_stats_from_dict(service, state, _dict)
+    for _shutdown in map(lambda y: y.get('shutdown'), filter(lambda x: x.get('shutdown'), events)):
+        assert _shutdown
+        service.tx({'shutdown': {
+            'coreid': state.get('coreid'),
+        }})
     for complete in map(lambda y: y.get('complete'), filter(lambda x: x.get('complete'), events)):
         _insn = complete.get('insn')
         assert _insn.get('iid') == state.get('pending_execute').get('iid'), '_insn : {} != state.pending_execute : {}'.format(_insn, state.get('pending_execute'))
@@ -88,8 +100,20 @@ def do_tick(service, state, results, events):
             _insn.update({'operands': {int(k):v for k, v in _insn.get('operands').items()}})
             _x17 = _insn.get('operands').get(17)
             service.tx({'info': 'ECALL {}... graceful shutdown'.format(int.from_bytes(_x17, 'little'))})
-            service.tx({'shutdown': {
+#            service.tx({'shutdown': {
+#                'coreid': state.get('coreid'),
+#            }})
+            service.tx({'event': {
+                'arrival': 1 + state.get('cycle'),
                 'coreid': state.get('coreid'),
+                'perf': {
+                    'cmd': 'report_stats',
+                },
+            }})
+            service.tx({'event': {
+                'arrival': 1 + state.get('cycle'),
+                'coreid': state.get('coreid'),
+                'shutdown': True,
             }})
         service.tx({'committed': 1})
         logging.info('retiring : {}'.format(_insn))
@@ -140,6 +164,7 @@ if '__main__' == __name__:
         'pending_fetch': None,
         'pending_decode': False,
         'pending_execute': None,
+        'stats': None,
         'iid': 0,
         '%pc': None,
         'ack': True,
@@ -166,6 +191,7 @@ if '__main__' == __name__:
                 state.update({'pending_fetch': None})
                 state.update({'pending_decode': False})
                 state.update({'pending_execute': None})
+                state.update({'stats': toolbox.stats.CounterBank(state.get('coreid'), state.get('service'))})
                 state.update({'%pc': None})
                 if not state.get('config').get('toolchain'): continue
                 _toolchain = state.get('config').get('toolchain')

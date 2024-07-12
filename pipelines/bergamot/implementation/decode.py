@@ -8,15 +8,22 @@ import time
 
 import service
 import toolbox
+import toolbox.stats
 import riscv.constants
 import riscv.decode
 
 def do_tick(service, state, results, events):
+    for _perf in map(lambda y: y.get('perf'), filter(lambda x: x.get('perf'), events)):
+        _cmd = _perf.get('cmd')
+        if 'report_stats' == _cmd:
+            _dict = state.get('stats').get(state.get('coreid')).get(state.get('service'))
+            toolbox.report_stats_from_dict(service, state, _dict)
     for decode in map(lambda y: y.get('decode'), filter(lambda x: x.get('decode'), events)):
         state.update({'buffer': decode.get('bytes')})
         service.tx({'info': 'state.buffer : {}'.format(state.get('buffer'))})
         for _insn in riscv.decode.do_decode(state.get('buffer'), 1): # HACK: hard-coded max-instructions-to-decode of 1
-            toolbox.report_stats(service, state, 'histo', 'decoded.insn', _insn.get('cmd'))
+#            toolbox.report_stats(service, state, 'histo', 'decoded.insn', _insn.get('cmd'))
+            state.get('stats').refresh('histo', 'decoded_insn', _insn.get('cmd'))
             service.tx({'result': {
                 'arrival': 1 + state.get('cycle'),
                 'coreid': state.get('coreid'),
@@ -52,6 +59,7 @@ if '__main__' == __name__:
         'active': True,
         'running': False,
         'ack': True,
+        'stats': None,
         'buffer': [],
     }
     _service = service.Service(state.get('service'), state.get('coreid'), _launcher.get('host'), _launcher.get('port'))
@@ -67,6 +75,7 @@ if '__main__' == __name__:
             elif {'text': 'run'} == {k: v}:
                 state.update({'running': True})
                 state.update({'ack': False})
+                state.update({'stats': toolbox.stats.CounterBank(state.get('coreid'), state.get('service'))})
                 state.update({'buffer': []})
             elif {'text': 'pause'} == {k: v}:
                 state.update({'running': False})

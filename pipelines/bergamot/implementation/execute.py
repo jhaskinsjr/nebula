@@ -8,6 +8,7 @@ import time
 
 import service
 import toolbox
+import toolbox.stats
 import riscv.execute
 import riscv.syscall.linux
 
@@ -671,7 +672,8 @@ def do_execute(service, state):
         'FENCE': do_fence,
     }.get(_insn.get('cmd'), do_unimplemented)
     _f(service, state, _insn)
-    toolbox.report_stats(service, state, 'histo', 'category', _f.__name__)
+#    toolbox.report_stats(service, state, 'histo', 'category', _f.__name__)
+    state.get('stats').refresh('histo', 'category', _f.__name__)
 def do_complete(service, state, insn): # finished the work of the instruction, but will not necessarily be committed
     service.tx({'event': {
         'arrival': 1 + state.get('cycle'),
@@ -680,7 +682,8 @@ def do_complete(service, state, insn): # finished the work of the instruction, b
             'insn': insn,
         },
     }})
-    toolbox.report_stats(service, state, 'flat', 'number_of_completes')
+#    toolbox.report_stats(service, state, 'flat', 'number_of_completes')
+    state.get('stats').refresh('flat', 'number_of_completes')
 def do_confirm(service, state, insn): # definitely will commit
     service.tx({'event': {
         'arrival': 1 + state.get('cycle'),
@@ -689,7 +692,8 @@ def do_confirm(service, state, insn): # definitely will commit
             'insn': insn,
         },
     }})
-    toolbox.report_stats(service, state, 'flat', 'number_of_confirms')
+#    toolbox.report_stats(service, state, 'flat', 'number_of_confirms')
+    state.get('stats').refresh('flat', 'number_of_confirms')
 def do_commit(service, state, insn):
     service.tx({'event': {
         'arrival': 1 + state.get('cycle'),
@@ -698,7 +702,8 @@ def do_commit(service, state, insn):
             'insn': insn,
         },
     }})
-    toolbox.report_stats(service, state, 'flat', 'number_of_commits')
+#    toolbox.report_stats(service, state, 'flat', 'number_of_commits')
+    state.get('stats').refresh('flat', 'number_of_commits')
 
 def do_tick(service, state, results, events):
     for reg in map(lambda y: y.get('register'), filter(lambda x: x.get('register'), results)):
@@ -723,6 +728,11 @@ def do_tick(service, state, results, events):
     for mem in map(lambda y: y.get('mem'), filter(lambda x: x.get('mem'), results)):
         if mem.get('addr') != state.get('operands').get('mem'): continue
         state.get('operands').update({'mem': mem.get('data')})
+    for _perf in map(lambda y: y.get('perf'), filter(lambda x: x.get('perf'), events)):
+        _cmd = _perf.get('cmd')
+        if 'report_stats' == _cmd:
+            _dict = state.get('stats').get(state.get('coreid')).get(state.get('service'))
+            toolbox.report_stats_from_dict(service, state, _dict)
     for execute in map(lambda y: y.get('execute'), filter(lambda x: x.get('execute'), events)):
         state.update({'pending_execute': execute.get('insn')})
     if state.get('pending_execute'): do_execute(service, state)
@@ -759,6 +769,7 @@ if '__main__' == __name__:
         'pending_execute': None,
         'syscall_kwargs': {},
         'system': riscv.syscall.linux.System(),
+        'stats': None,
         'operands': {},
     }
     _service = service.Service(state.get('service'), state.get('coreid'), _launcher.get('host'), _launcher.get('port'))
@@ -776,6 +787,7 @@ if '__main__' == __name__:
                 state.update({'ack': False})
                 state.update({'pending_execute': None})
                 state.update({'syscall_kwargs': {}})
+                state.update({'stats': toolbox.stats.CounterBank(state.get('coreid'), state.get('service'))})
                 state.update({'operands': {}})
             elif {'text': 'pause'} == {k: v}:
                 state.update({'running': False})
