@@ -138,11 +138,6 @@ def do_tick(service, state, results, events):
             service.tx({'info': '_pr : {}'.format(_pr)})
             state.get('predictions').update({_pr.get('branchpc'): _pr})
         service.tx({'info': 'state.predictions           : {} ({})'.format(state.get('predictions'), len(state.get('predictions').keys()))})
-        for _perf in map(lambda y: y.get('perf'), filter(lambda x: x.get('perf'), events)):
-            _cmd = _perf.get('cmd')
-            if 'report_stats' == _cmd:
-                _dict = state.get('stats').get(state.get('coreid')).get(state.get('service'))
-                toolbox.report_stats_from_dict(service, state, _dict)
         for _iss in map(lambda y: y.get('issue'), filter(lambda x: x.get('issue'), events)):
             if state.get('drop_until') and _iss.get('insn').get('%pc') != state.get('drop_until'): continue
             state.update({'drop_until': None})
@@ -161,6 +156,11 @@ def do_tick(service, state, results, events):
             state.get('decoded').append(_insn)
             logging.debug('{:8x}: {}'.format(_insn.get('_pc'), _insn))
         do_issue(service, state)
+    for _perf in map(lambda y: y.get('perf'), filter(lambda x: x.get('perf'), events)):
+        _cmd = _perf.get('cmd')
+        if 'report_stats' == _cmd:
+            _dict = state.get('stats').get(state.get('coreid')).get(state.get('service'))
+            toolbox.report_stats_from_dict(service, state, _dict)
     service.tx({'info': 'state.issued           : {} ({})'.format(state.get('issued'), len(state.get('issued')))})
     service.tx({'info': 'state.decoded          : {} ({})'.format(state.get('decoded')[:20], len(state.get('decoded')))})
     service.tx({'info': 'state.drop_until       : {}'.format(state.get('drop_until'))})
