@@ -10,6 +10,7 @@ import struct
 
 import service
 import toolbox
+import toolbox.stats
 import riscv.execute
 import riscv.syscall.linux
 
@@ -647,7 +648,8 @@ def do_execute(service, state):
             'FENCE': do_fence,
         }.get(_insn.get('cmd'), do_unimplemented)
         _insn_prime, _done = _f(service, state, _insn)
-        toolbox.report_stats(service, state, 'histo', 'category', _f.__name__)
+#        toolbox.report_stats(service, state, 'histo', 'category', _f.__name__)
+        state.get('stats').refresh('histo', 'category', _f.__name__)
         if _done:
             _remove_from_pending_execute.append(_insn)
         else:
@@ -664,6 +666,11 @@ def do_tick(service, state, results, events):
         _name = _reg.get('name')
         _data = _reg.get('data')
         state.get('operands').update({_name: _data})
+    for _perf in map(lambda y: y.get('perf'), filter(lambda x: x.get('perf'), events)):
+        _cmd = _perf.get('cmd')
+        if 'report_stats' == _cmd:
+            _dict = state.get('stats').get(state.get('coreid')).get(state.get('service'))
+            toolbox.report_stats_from_dict(service, state, _dict)
     for _alu in map(lambda y: y.get('alu'), filter(lambda x: x.get('alu'), events)):
         _insn = _alu.get('insn')
         logging.debug('_insn : {}'.format(_insn))
@@ -723,6 +730,7 @@ if '__main__' == __name__:
         'operands': {
             **{x: riscv.constants.integer_to_list_of_bytes(0, 64, 'little') for x in range(32)},
         },
+        'stats': None,
         'config': {
         },
     }
@@ -744,6 +752,7 @@ if '__main__' == __name__:
                 state.update({'operands': {
                     **{x: riscv.constants.integer_to_list_of_bytes(0, 64, 'little') for x in range(32)},
                 }})
+                state.update({'stats': toolbox.stats.CounterBank(state.get('coreid'), state.get('service'))})
                 _service.tx({'info': 'state.config : {}'.format(state.get('config'))})
             elif {'text': 'pause'} == {k: v}:
                 state.update({'running': False})

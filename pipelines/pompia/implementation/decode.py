@@ -10,6 +10,7 @@ import subprocess
 
 import service
 import toolbox
+import toolbox.stats
 import components.simplebtb
 import riscv.constants
 import riscv.decode
@@ -88,7 +89,8 @@ def do_issue(service, state):
             },
         }})
         state.get('issued').append(_insn)
-        toolbox.report_stats(service, state, 'histo', 'issued.insn', _insn.get('cmd'))
+#        toolbox.report_stats(service, state, 'histo', 'issued.insn', _insn.get('cmd'))
+        state.get('stats').refresh('histo', 'issued_insn', _insn.get('cmd'))
     service.tx({'info': 'state.remove_from_decoded       : {}'.format(state.get('remove_from_decoded'))})
     for _dec in state.get('remove_from_decoded'): state.get('decoded').remove(_dec)
     state.get('remove_from_decoded').clear()
@@ -123,6 +125,11 @@ def do_tick(service, state, results, events):
         _commit = (_flush if _flush else _retire)
         assert _commit.get('iid') == state.get('issued')[0].get('iid')
         state.get('issued').pop(0)
+    for _perf in map(lambda y: y.get('perf'), filter(lambda x: x.get('perf'), events)):
+        _cmd = _perf.get('cmd')
+        if 'report_stats' == _cmd:
+            _dict = state.get('stats').get(state.get('coreid')).get(state.get('service'))
+            toolbox.report_stats_from_dict(service, state, _dict)
     for _dec in map(lambda y: y.get('decode'), filter(lambda x: x.get('decode'), events)):
         if state.get('pending_fetch') and _dec.get('addr') != state.get('pending_fetch').get('fetch').get('addr'): continue
         service.tx({'info': '_dec : {}'.format(_dec)})
@@ -147,7 +154,8 @@ def do_tick(service, state, results, events):
                 'insn': _insn,
                 '%pc': state.get('%pc'),
             })
-            toolbox.report_stats(service, state, 'histo', 'decoded.insn', _insn.get('cmd'))
+#            toolbox.report_stats(service, state, 'histo', 'decoded.insn', _insn.get('cmd'))
+            state.get('stats').refresh('histo', 'decoded_insn', _insn.get('cmd'))
             _insns_to_pop_from_buffer.append(_insn)
             state.update({'%pc': riscv.constants.integer_to_list_of_bytes(_insn.get('size') + int.from_bytes(state.get('%pc'), 'little'), 64, 'little')})
             logging.info('_insns_to_pop_from_buffer : {} ({})'.format(_insns_to_pop_from_buffer, len(_insns_to_pop_from_buffer)))
@@ -199,6 +207,7 @@ if '__main__' == __name__:
         'iid': 0,
         'objmap': None,
         'binary': '',
+        'stats': None,
         'config': {
             'buffer_capacity': 16,
             'btb_nentries': 32,
@@ -227,6 +236,7 @@ if '__main__' == __name__:
                 state.update({'remove_from_decoded': []})
                 state.update({'issued': []})
                 state.update({'pending_fetch': None})
+                state.update({'stats': toolbox.stats.CounterBank(state.get('coreid'), state.get('service'))})
                 _service.tx({'info': 'state.config : {}'.format(state.get('config'))})
                 if state.get('config').get('btb_nentries'): state.update({'btb': components.simplebtb.SimpleBTB(
                     state.get('config').get('btb_nentries'),

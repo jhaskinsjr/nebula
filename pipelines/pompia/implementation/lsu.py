@@ -10,6 +10,7 @@ import struct
 
 import service
 import toolbox
+import toolbox.stats
 import components.simplecache
 import riscv.execute
 import riscv.constants
@@ -29,7 +30,8 @@ def fetch_block(service, state, addr):
             'size': _blocksize,
         },
     }})
-    toolbox.report_stats(service, state, 'flat', 'l1dc_misses')
+#    toolbox.report_stats(service, state, 'flat', 'l1dc_misses')
+    state.get('stats').refresh('flat', 'l1dc_misses')
 def do_l1dc(service, state, insn, data=None):
     _addr = insn.get('operands').get('addr')
     _size = insn.get('nbytes')
@@ -108,7 +110,8 @@ def do_l1dc(service, state, insn, data=None):
         }})
     state.get('executing').pop(0)
     if len(state.get('pending_fetch')): state.get('pending_fetch').pop(0)
-    toolbox.report_stats(service, state, 'flat', 'l1dc_accesses')
+#    toolbox.report_stats(service, state, 'flat', 'l1dc_accesses')
+    state.get('stats').refresh('flat', 'l1dc_misses')
 
 def do_unimplemented(service, state, insn):
     logging.info('Unimplemented: {}'.format(state.get('insn')))
@@ -181,6 +184,11 @@ def do_tick(service, state, results, events):
             service.tx({'info': '_l2 : {}'.format(_l2)})
             state.get('l1dc').poke(_addr, _l2.get('data'))
             state.get('pending_fetch').remove(_addr)
+    for _perf in map(lambda y: y.get('perf'), filter(lambda x: x.get('perf'), events)):
+        _cmd = _perf.get('cmd')
+        if 'report_stats' == _cmd:
+            _dict = state.get('stats').get(state.get('coreid')).get(state.get('service'))
+            toolbox.report_stats_from_dict(service, state, _dict)
     for _lsu in map(lambda y: y.get('lsu'), filter(lambda x: x.get('lsu'), events)):
         if 'insn' in _lsu.keys():
             _insn = _lsu.get('insn')
@@ -232,6 +240,7 @@ if '__main__' == __name__:
         'pending_execute': [],
         'executing': [],
         'operands': {},
+        'stats': None,
         'config': {
             'l1dc_nsets': 2**4,
             'l1dc_nways': 2**1,
@@ -256,6 +265,7 @@ if '__main__' == __name__:
                 state.update({'pending_execute': []})
                 state.update({'executing': []})
                 state.update({'operands': {}})
+                state.update({'stats': toolbox.stats.CounterBank(state.get('coreid'), state.get('service'))})
                 _service.tx({'info': 'state.config : {}'.format(state.get('config'))})
                 state.update({'l1dc': components.simplecache.SimpleCache(
                     state.get('config').get('l1dc_nsets'),
