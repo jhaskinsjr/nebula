@@ -10,6 +10,7 @@ import struct
 
 import service
 import toolbox
+import toolbox.stats
 import riscv.execute
 import riscv.constants
 import riscv.syscall.linux
@@ -541,7 +542,8 @@ def do_fence(service, state, insn):
 
 def do_execute(service, state):
     if not len(state.get('pending_execute')): return
-    toolbox.report_stats(service, state, 'flat', 'pending_execute_not_empty')
+#    toolbox.report_stats(service, state, 'flat', 'pending_execute_not_empty')
+    state.get('stats').refresh('flat', 'pending_execute_not_empty')
     _remove_from_pending_execute = []
     service.tx({'info': 'state.pending_execute : {}'.format(state.get('pending_execute'))})
     for _insn in state.get('pending_execute'):
@@ -556,7 +558,8 @@ def do_execute(service, state):
                     '%pc': _insn.get('%pc'),
                 },
             }})
-            toolbox.report_stats(service, state, 'flat', 'flushes')
+#            toolbox.report_stats(service, state, 'flat', 'flushes')
+            state.get('stats').refresh('flat', 'flushes')
             _remove_from_pending_execute.append(_insn)
             continue
         state.update({'flush_until': None})
@@ -654,7 +657,8 @@ def do_execute(service, state):
             'FENCE': do_fence,
         }.get(_insn.get('cmd'), do_unimplemented)
         _insn_prime, _done = _f(service, state, _insn)
-        toolbox.report_stats(service, state, 'histo', 'category', _f.__name__)
+#        toolbox.report_stats(service, state, 'histo', 'category', _f.__name__)
+        state.get('stats').refresh('histo', 'category', _f.__name__)
         if not _done: break
         if state.get('config').get('result_forwarding') and 'rd' in _insn_prime.keys() and _insn_prime.get('result'):
             service.tx({'result': {
@@ -698,6 +702,11 @@ def do_tick(service, state, results, events):
         _name = _reg.get('name')
         _data = _reg.get('data')
         state.get('operands').update({_name: _data})
+    for _perf in map(lambda y: y.get('perf'), filter(lambda x: x.get('perf'), events)):
+        _cmd = _perf.get('cmd')
+        if 'report_stats' == _cmd:
+            _dict = state.get('stats').get(state.get('coreid')).get(state.get('service'))
+            toolbox.report_stats_from_dict(service, state, _dict)
     for _alu in map(lambda y: y.get('alu'), filter(lambda x: x.get('alu'), events)):
         _insn = _alu.get('insn')
         if state.get('recovery_iid') and _insn.get('iid') != state.get('recovery_iid'): continue
@@ -762,6 +771,7 @@ if '__main__' == __name__:
         'operands': {
             **{x: riscv.constants.integer_to_list_of_bytes(0, 64, 'little') for x in range(32)},
         },
+        'stats': None,
         'config': {
             'result_forwarding': True,
         },
@@ -784,6 +794,7 @@ if '__main__' == __name__:
                 state.update({'operands': {
                     **{x: riscv.constants.integer_to_list_of_bytes(0, 64, 'little') for x in range(32)},
                 }})
+                state.update({'stats': toolbox.stats.CounterBank(state.get('coreid'), state.get('service'))})
                 _service.tx({'info': 'state.config : {}'.format(state.get('config'))})
                 logging.info('state : {}'.format(state))
             elif {'text': 'pause'} == {k: v}:
