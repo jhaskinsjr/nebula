@@ -8,6 +8,7 @@ import time
 
 import service
 import toolbox
+import toolbox.stats
 import simplecache
 
 def fetch_block(service, state, coreid, addr, physical):
@@ -25,7 +26,8 @@ def fetch_block(service, state, coreid, addr, physical):
             **({'physical': True} if physical else {}),
         },
     }})
-    toolbox.report_stats(service, state, 'flat', '{}_misses'.format(state.get('service')))
+#    toolbox.report_stats(service, state, 'flat', '{}_misses'.format(state.get('service')))
+    state.get('stats').refresh('flat', '{}_misses'.format(state.get('service')))
 def do_cache(service, state, coreid, addr, size, physical, data=None):
     service.tx({'info': 'addr : {}'.format(addr)})
     _ante = None
@@ -101,7 +103,8 @@ def do_cache(service, state, coreid, addr, size, physical, data=None):
         }})
     state.get('executing').pop(0)
     if len(state.get('pending_fetch')): state.get('pending_fetch').pop(0)
-    toolbox.report_stats(service, state, 'flat', '{}_accesses'.format(state.get('service')))
+#    toolbox.report_stats(service, state, 'flat', '{}_accesses'.format(state.get('service')))
+    state.get('stats').refresh('flat', '{}_accesses'.format(state.get('service')))
 
 def do_tick(service, state, results, events):
     for _coreid, rs in map(lambda y: (y.get('coreid'), y.get(state.get('next'))), filter(lambda x: x.get(state.get('next')), results)):
@@ -116,6 +119,11 @@ def do_tick(service, state, results, events):
             state.get('cache').poke(_addr, _data)
             state.get('cache').misc(_addr, {'coreid': _coreid})
             state.update({'pending_fetch': list(filter(lambda x: _addr != x.get('blockaddr'), state.get('pending_fetch')))})
+    for _perf in map(lambda y: y.get('perf'), filter(lambda x: x.get('perf'), events)):
+        _cmd = _perf.get('cmd')
+        if 'report_stats' == _cmd:
+            _dict = state.get('stats').get(state.get('coreid', -1)).get(state.get('service'))
+            toolbox.report_stats_from_dict(service, state, _dict)
     for _coreid, ev in map(lambda y: (y.get('coreid'), y.get(state.get('service'))), filter(lambda x: x.get(state.get('service')), events)):
         ev = {**ev, **{'coreid': _coreid}}
         service.tx({'info': 'ev : {} (_coreid : {})'.format(ev, _coreid)})
@@ -187,6 +195,7 @@ if '__main__' == __name__:
         'running': False,
         'ack': True,
         'executing': [],
+        'stats': None,
         'next': args.next,
         'cores': (tuple(range(*(lambda a, b: (a, 1+b))(*map(lambda x: int(x), args.cores.split('-')))))),
         'config': {
@@ -220,6 +229,7 @@ if '__main__' == __name__:
                     state.update({'booted': True})
                     state.update({'pending_fetch': []})
                     state.update({'executing': []})
+                    state.update({'stats': toolbox.stats.CounterBank(state.get('coreid', -1), state.get('service'))})
                     state.update({'cache': simplecache.SimpleCache(
                         state.get('config').get('nsets'),
                         state.get('config').get('nways'),
