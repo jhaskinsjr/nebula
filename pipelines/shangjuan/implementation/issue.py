@@ -227,6 +227,7 @@ if '__main__' == __name__:
                 state.update({'issued': []})
                 state.update({'drop_until': None})
                 state.update({'recovery_iid': None})
+                state.update({'forward': {}})
                 state.update({'predictions': {}})
                 state.update({'stats': toolbox.stats.CounterBank(state.get('coreid'), state.get('service'))})
                 _service.tx({'info': 'state.config : {}'.format(state.get('config'))})

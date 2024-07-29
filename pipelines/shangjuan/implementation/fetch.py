@@ -15,6 +15,7 @@ import riscv.constants
 def fetch_block(service, state, jp):
     _blockaddr = state.get('l1ic').blockaddr(jp)
     _blocksize = state.get('l1ic').nbytesperblock
+    service.tx({'info': 'fetch_block(..., {} ({:08x}))'.format(jp, _blockaddr)})
     state.get('pending_fetch').append(_blockaddr)
     service.tx({'event': {
         'arrival': 1 + state.get('cycle'),
@@ -139,6 +140,7 @@ if '__main__' == __name__:
                 state.update({'active': False})
                 state.update({'running': False})
             elif {'text': 'run'} == {k: v}:
+                logging.info('state.config : {}'.format(state.get('config')))
                 state.update({'running': True})
                 state.update({'ack': False})
                 state.update({'pending_fetch': []})
@@ -157,10 +159,10 @@ if '__main__' == __name__:
                 state.update({'running': False})
             elif 'config' == k:
                 logging.debug('config : {}'.format(v))
-                if state.get('service') != v.get('service'): continue
+                if v.get('service') not in [state.get('name'), 'all']: continue
                 _field = v.get('field')
                 _val = v.get('val')
-                assert _field in state.get('config').keys(), 'No such config field, {}, in service {}!'.format(_field, state.get('service'))
+                assert _field in state.get('config').keys() or 'all' == v.get('service'), 'No such config field, {}, in service {}!'.format(_field, state.get('service'))
                 state.get('config').update({_field: _val})
             elif 'tick' == k:
                 state.update({'cycle': v.get('cycle')})
@@ -179,3 +181,4 @@ if '__main__' == __name__:
                 state.update({'%pc': v.get('data')})
                 logging.info('state : {}'.format(state))
         if state.get('ack') and state.get('running'): _service.tx({'ack': {'cycle': state.get('cycle')}})
+    logging.info('state : {}'.format(state))

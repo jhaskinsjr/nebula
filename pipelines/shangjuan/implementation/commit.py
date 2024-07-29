@@ -102,7 +102,6 @@ def do_commit(service, state):
                 'word': _insn.get('word'),
                 'size': _insn.get('size'),
                 'issued': _insn.get('issued'),
-#                'retired': state.get('cycle'),
                 **({'next_pc': _insn.get('next_pc')} if 'next_pc' in _insn.keys() else {}),
                 **({'ret_pc': _insn.get('ret_pc')} if 'ret_pc' in _insn.keys() else {}),
                 **({'taken': _insn.get('taken')} if 'taken' in _insn.keys() else {}),
@@ -120,7 +119,7 @@ def do_commit(service, state):
     service.tx({'committed': len(_retire)})
     if len(_commit):
 #        toolbox.report_stats(service, state, 'histo', 'retired_per_cycle', len(_retire))
-        state.get('stats').refresh('histo', 'retire_per_cycle', len(_retire))
+        state.get('stats').refresh('histo', 'retired_per_cycle', len(_retire))
     for _insn in _commit: state.get('pending_commit').remove(_insn)
 
 def do_tick(service, state, results, events):

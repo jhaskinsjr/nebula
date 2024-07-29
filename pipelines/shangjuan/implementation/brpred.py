@@ -217,6 +217,10 @@ if '__main__' == __name__:
                 state.update({'running': True})
                 state.update({'ack': False})
                 state.update({'pending_fetch': None})
+                state.update({'fetch_address': [{'fetch': {
+                    'cmd': 'get',
+                    'addr': int.from_bytes(state.get('%pc'), 'little'),
+                }}]})
                 state.update({'active': True})
                 state.update({'btac': {}})
                 state.update({'drop_until': None})
@@ -254,12 +258,12 @@ if '__main__' == __name__:
                 if '%pc' != v.get('name'): continue
                 state.update({'%pc': v.get('data')})
                 logging.info('state : {}'.format(state))
-                state.get('fetch_address').append({
-                    'fetch': {
-                        'cmd': 'get',
-                        'addr': int.from_bytes(state.get('%pc'), 'little'),
-                    }
-                })
+#                state.get('fetch_address').append({
+#                    'fetch': {
+#                        'cmd': 'get',
+#                        'addr': int.from_bytes(state.get('%pc'), 'little'),
+#                    }
+#                })
         if state.get('ack') and state.get('running'): _service.tx({'ack': {'cycle': state.get('cycle')}})
         logging.debug('state : {}'.format(state))
     logging.info('state : {}'.format(state))
