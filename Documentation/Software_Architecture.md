@@ -1,20 +1,26 @@
 # Software Architecture
 
+Nebula is a proof-of-concept project intended to gauge the efficacy of
+modern microservices software architecture as applied to cycle-accurate
+microprocessor simulation. Accordingly, flexibility was prioritized above
+performance. For a more detailed discussion
+of Nebula's performance, see: [Simulation Speed](./Simulation_Speed.md).
+
 ## Philosophy: Simplicity And Flexibility Through Independence
 
 The central design feature of Nebula is that each simulator is
 comprised of an army of microservices... independent processes... that
 transmit what resources that they require, what information they wish
 to communicate, onto the network where all other microservices will
-receive it. If something tarnsmitted onto the network matters to one or
+receive it. If something transmitted onto the network matters to one or
 more peer microservices, those microservices are free to act upon it and
 transmit something back in response.
 
-While it might be faster to do point-to-point communication, where
+It likely would have been faster to do point-to-point communication, where
 microservices connect directly to the microservice(s) that matter to
-them, this architecture would require every microservice to have detailed
+them, but this architecture would require every microservice to have detailed
 information about every other microservice. This rigidity is the antithesis
-of the flexibility that software is supposed to facilitate. In other words,
+of the flexibility that software is meant to facilitate. In other words,
 I considered the tradeoff between speed and flexibility, and wilfully,
 intentionally chose flexibility.
 
@@ -56,6 +62,7 @@ an `event` is sent, e.g.,
 
     service.tx({'event': {
         'arrival': 1 + state.get('cycle'),
+        'coreid': state.get('coreid),
         'register': {
             'cmd': 'get',
             'name': _insn.get('rs1'),
@@ -66,24 +73,27 @@ To report the output of an operation, a `result` is sent, e.g.,
 
     service.tx({'result': {
         'arrival': 1 + state.get('cycle'),
+        'coreid': state.get('coreid),
         'flush': {
             'iid': _insn.get('iid'),
         },
     }})
 
-One general-purpose rule of thumb is that incoming `result` messages should
+One general-purpose rule is that incoming `result` messages should
 be handled _before_ `event` messages, since `result` messages communicate
 information that may be useful in processing `event` messages.
 
-There are other channels as well; two highlights are the `info` channel, used
-to echo debug or informational output, e.g., 
+Two other important channels are the `info`
+channel, used to echo debug or informational output, e.g., 
 
     service.tx({'info': '_insn : {}'.format(_insn)})
 
-and the `shutdown` channel used to cleanly cease all Nebula processes and
-gracefully exit, e.g., 
+and the `shutdown` channel used to cleanly cease all of a core's processes
+and gracefully exit, e.g., 
 
-    service.tx({'shutdown': None})
+    service.tx({'shutdown': {
+        'coreid': state.get('coreid'),
+    }})
 
 For a complete list, see the handler() function in launcher.py.
 
@@ -94,12 +104,14 @@ functional programming style. (Consider: `map`, `functools`, `filter`,
 `any`, `all`, `itertools`.) Indeed, Python's tools allowed me to quickly
 develop the infrastructure that underpins the simulator's design philosophy
 of loosely coupled, largely independent services that communicate over a
-network.
+network in just a couple of weeks, allowing me to rapidly move on to the
+more interesting work of developing the actual framework, as well as the
+sample pipeline implementations themselves.
 
-With Python, I was able to get the infrastructure developed in just a
-couple of weeks, allowing me to rapidly move on to the more interesting work
-of developing the actual toolkit for cycle-accurate simulation as well as
-the sample pipeline implementations themselves.
+In other words, Python allowed
+me to rapidly develop the novel concept of microservices-based
+cycle-accurate simulation without having to worry about many of the
+implementation details I would have had to if I had used C/C++/Rust.
 
 And on top of all that, Python is incredibly **portable**! I do development
 work on my Linux laptop, but have received reports from other users that it
