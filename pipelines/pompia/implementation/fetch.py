@@ -13,6 +13,7 @@ import components.simplecache
 import riscv.constants
 
 def fetch_block(service, state, jp):
+    service.tx({'info': 'fetch_block(..., {})...'.format(jp)})
     _blockaddr = state.get('l1ic').blockaddr(jp)
     _blocksize = state.get('l1ic').nbytesperblock
     state.get('pending_fetch').append(_blockaddr)
@@ -67,6 +68,7 @@ def do_tick(service, state, results, events):
         if 'cmd' in _fetch.keys():
             if 'purge' == _fetch.get('cmd'):
                 state.get('l1ic').purge()
+                state.get('pending_fetch').clear()
             elif 'get' == _fetch.get('cmd'):
                 state.get('fetch_buffer').append({
                     'addr': _fetch.get('addr'),
