@@ -1,0 +1,71 @@
+# Sample Nebula script
+# performance cores (Tangelo)
+service ../../pipelines/shangjuan/implementation/regfile.py:localhost:22:0:31
+service ../../pipelines/shangjuan/implementation/brpred.py:localhost:22:0:31
+service ../../pipelines/shangjuan/implementation/fetch.py:localhost:22:0:31
+service ../../pipelines/shangjuan/implementation/decode.py:localhost:22:0:31
+service ../../pipelines/shangjuan/implementation/issue.py:localhost:22:0:31
+service ../../pipelines/shangjuan/implementation/alu.py:localhost:22:0:31
+service ../../pipelines/shangjuan/implementation/lsu.py:localhost:22:0:31
+service ../../pipelines/shangjuan/implementation/commit.py:localhost:22:0:31
+service ../../pipelines/shangjuan/implementation/l2.py:localhost:22:-1:-1:"--cores 0-0 --next mem"  # NOTE: Shangjuan cannot do shared caches
+service ../../pipelines/shangjuan/implementation/l2.py:localhost:22:-1:-1:"--cores 1-1 --next mem"
+service ../../pipelines/shangjuan/implementation/l2.py:localhost:22:-1:-1:"--cores 2-2 --next mem"
+service ../../pipelines/shangjuan/implementation/l2.py:localhost:22:-1:-1:"--cores 3-3 --next mem"
+service ../../pipelines/shangjuan/implementation/l2.py:localhost:22:-1:-1:"--cores 4-4 --next mem"
+service ../../pipelines/shangjuan/implementation/l2.py:localhost:22:-1:-1:"--cores 5-5 --next mem"
+service ../../pipelines/shangjuan/implementation/l2.py:localhost:22:-1:-1:"--cores 6-6 --next mem"
+service ../../pipelines/shangjuan/implementation/l2.py:localhost:22:-1:-1:"--cores 7-7 --next mem"
+service ../../pipelines/shangjuan/implementation/l2.py:localhost:22:-1:-1:"--cores 8-8 --next mem"
+service ../../pipelines/shangjuan/implementation/l2.py:localhost:22:-1:-1:"--cores 9-9 --next mem"
+service ../../pipelines/shangjuan/implementation/l2.py:localhost:22:-1:-1:"--cores 10-10 --next mem"
+service ../../pipelines/shangjuan/implementation/l2.py:localhost:22:-1:-1:"--cores 11-11 --next mem"
+service ../../pipelines/shangjuan/implementation/l2.py:localhost:22:-1:-1:"--cores 12-12 --next mem"
+service ../../pipelines/shangjuan/implementation/l2.py:localhost:22:-1:-1:"--cores 13-13 --next mem"
+service ../../pipelines/shangjuan/implementation/l2.py:localhost:22:-1:-1:"--cores 14-14 --next mem"
+service ../../pipelines/shangjuan/implementation/l2.py:localhost:22:-1:-1:"--cores 15-15 --next mem"
+service ../../pipelines/shangjuan/implementation/l2.py:localhost:22:-1:-1:"--cores 16-16 --next mem"
+service ../../pipelines/shangjuan/implementation/l2.py:localhost:22:-1:-1:"--cores 17-17 --next mem"
+service ../../pipelines/shangjuan/implementation/l2.py:localhost:22:-1:-1:"--cores 18-18 --next mem"
+service ../../pipelines/shangjuan/implementation/l2.py:localhost:22:-1:-1:"--cores 19-19 --next mem"
+service ../../pipelines/shangjuan/implementation/l2.py:localhost:22:-1:-1:"--cores 20-20 --next mem"
+service ../../pipelines/shangjuan/implementation/l2.py:localhost:22:-1:-1:"--cores 21-21 --next mem"
+service ../../pipelines/shangjuan/implementation/l2.py:localhost:22:-1:-1:"--cores 22-22 --next mem"
+service ../../pipelines/shangjuan/implementation/l2.py:localhost:22:-1:-1:"--cores 23-23 --next mem"
+service ../../pipelines/shangjuan/implementation/l2.py:localhost:22:-1:-1:"--cores 24-24 --next mem"
+service ../../pipelines/shangjuan/implementation/l2.py:localhost:22:-1:-1:"--cores 25-25 --next mem"
+service ../../pipelines/shangjuan/implementation/l2.py:localhost:22:-1:-1:"--cores 26-26 --next mem"
+service ../../pipelines/shangjuan/implementation/l2.py:localhost:22:-1:-1:"--cores 27-27 --next mem"
+service ../../pipelines/shangjuan/implementation/l2.py:localhost:22:-1:-1:"--cores 28-28 --next mem"
+service ../../pipelines/shangjuan/implementation/l2.py:localhost:22:-1:-1:"--cores 29-29 --next mem"
+service ../../pipelines/shangjuan/implementation/l2.py:localhost:22:-1:-1:"--cores 30-30 --next mem"
+service ../../pipelines/shangjuan/implementation/l2.py:localhost:22:-1:-1:"--cores 31-31 --next mem"
+service ../../pipelines/shangjuan/implementation/watchdog.py:localhost:22:0:31
+spawn
+config brpred:btac_entries 32
+config brpred:predictor_type bimodal
+config brpred:predictor_entries 32
+config fetch:l1ic_nsets 32
+config fetch:l1ic_nways 1
+config fetch:l1ic_nbytesperblock 16
+config fetch:l1ic_evictionpolicy lru # random
+config decode:max_bytes_to_decode 16
+config alu:result_forwarding True
+config lsu:l1dc_nsets 16
+config lsu:l1dc_nways 2
+config lsu:l1dc_nbytesperblock 16
+config lsu:l1dc_evictionpolicy lru # random
+config l2:nsets 16
+config l2:nways 8
+config l2:nbytesperblock 16
+config l2:evictionpolicy lru # random
+config l2:hitlatency 5
+config l3:nsets 64
+config l3:nways 8
+config l3:nbytesperblock 32
+config l3:evictionpolicy lru # random
+config l3:hitlatency 25
+config watchdog:result_name retire
+config watchdog:result_cycles 10000
+run
+shutdown

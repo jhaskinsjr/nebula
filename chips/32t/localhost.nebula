@@ -1,0 +1,50 @@
+# Sample Nebula script
+service ../../pipelines/tangelo/implementation/regfile.py:localhost:22:0:31
+service ../../pipelines/tangelo/implementation/brpred.py:localhost:22:0:31
+service ../../pipelines/tangelo/implementation/fetch.py:localhost:22:0:31
+service ../../pipelines/tangelo/implementation/decode.py:localhost:22:0:31
+service ../../pipelines/tangelo/implementation/issue.py:localhost:22:0:31
+service ../../pipelines/tangelo/implementation/alu.py:localhost:22:0:31
+service ../../pipelines/tangelo/implementation/lsu.py:localhost:22:0:31
+service ../../pipelines/tangelo/implementation/commit.py:localhost:22:0:31
+service ../../pipelines/tangelo/implementation/l2.py:localhost:22:-1:-1:"--cores 0-3 --next l3"
+service ../../pipelines/tangelo/implementation/l2.py:localhost:22:-1:-1:"--cores 4-7 --next l3"
+service ../../pipelines/tangelo/implementation/l3.py:localhost:22:-1:-1:"--cores 0-7 --next mem"
+service ../../pipelines/tangelo/implementation/l2.py:localhost:22:-1:-1:"--cores 8-11 --next l3"
+service ../../pipelines/tangelo/implementation/l2.py:localhost:22:-1:-1:"--cores 12-15 --next l3"
+service ../../pipelines/tangelo/implementation/l3.py:localhost:22:-1:-1:"--cores 8-15 --next mem"
+service ../../pipelines/tangelo/implementation/l2.py:localhost:22:-1:-1:"--cores 16-19 --next l3"
+service ../../pipelines/tangelo/implementation/l2.py:localhost:22:-1:-1:"--cores 20-23 --next l3"
+service ../../pipelines/tangelo/implementation/l3.py:localhost:22:-1:-1:"--cores 16-23 --next mem"
+service ../../pipelines/tangelo/implementation/l2.py:localhost:22:-1:-1:"--cores 24-27 --next l3"
+service ../../pipelines/tangelo/implementation/l2.py:localhost:22:-1:-1:"--cores 28-31 --next l3"
+service ../../pipelines/tangelo/implementation/l3.py:localhost:22:-1:-1:"--cores 24-31 --next mem"
+service ../../pipelines/tangelo/implementation/watchdog.py:localhost:22:0:31
+spawn
+config brpred:btac_entries 32
+config brpred:predictor_type bimodal
+config brpred:predictor_entries 32
+config fetch:l1ic_nsets 32
+config fetch:l1ic_nways 1
+config fetch:l1ic_nbytesperblock 16
+config fetch:l1ic_evictionpolicy lru # random
+config decode:max_bytes_to_decode 16
+config alu:result_forwarding True
+config lsu:l1dc_nsets 16
+config lsu:l1dc_nways 2
+config lsu:l1dc_nbytesperblock 16
+config lsu:l1dc_evictionpolicy lru # random
+config l2:nsets 16
+config l2:nways 8
+config l2:nbytesperblock 16
+config l2:evictionpolicy lru # random
+config l2:hitlatency 5
+config l3:nsets 64
+config l3:nways 8
+config l3:nbytesperblock 32
+config l3:evictionpolicy lru # random
+config l3:hitlatency 25
+config watchdog:result_name retire
+config watchdog:result_cycles 10000
+run
+shutdown
