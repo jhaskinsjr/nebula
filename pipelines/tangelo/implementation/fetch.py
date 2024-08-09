@@ -92,6 +92,7 @@ def do_tick(service, state, results, events):
         if 'cmd' in _fetch.keys():
             if 'purge' == _fetch.get('cmd'):
                 state.get('l1ic').purge()
+                state.get('pending_fetch').clear()
             elif 'get' == _fetch.get('cmd'):
                 _vaddr = _fetch.get('addr')
                 state.get('fetch_buffer').append({
