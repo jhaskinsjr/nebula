@@ -52,7 +52,7 @@ def do_tick(service, state, results, events):
         })
 #        toolbox.report_stats(service, state, 'histo', 'decoded.insn', _insn.get('cmd'))
         state.get('stats').refresh('histo', 'decoded_insn', _insn.get('cmd'))
-        state.update({'%pc': riscv.constants.integer_to_list_of_bytes(_insn.get('size') + int.from_bytes(state.get('%pc'), 'little'), 64, 'little')})
+        state.update({'%pc': riscv.constants.integer_to_list_of_bytes(_insn.get('size') + _pc, 64, 'little')})
     for _insn in _decoded:
         service.tx({'event': {
             'arrival': 1 + state.get('cycle'),
@@ -61,7 +61,7 @@ def do_tick(service, state, results, events):
                 'insn': _insn,
             },
         }})
-    for _ in range(sum(map(lambda x: x.get('size'), _decoded))): state.get('buffer').pop(0)
+    state.update({'buffer': state.get('buffer')[sum(map(lambda x: x.get('size'), _decoded)):]})
     service.tx({'info': 'state.buffer           : {} ({})'.format(state.get('buffer'), len(state.get('buffer')))})
     service.tx({'info': 'state.%pc              : {} ({})'.format(state.get('%pc'), ('' if not state.get('%pc') else int.from_bytes(state.get('%pc'), 'little')))})
     service.tx({'info': 'state.%jp              : {} ({})'.format(state.get('%jp'), ('' if not state.get('%jp') else int.from_bytes(state.get('%jp'), 'little')))})
