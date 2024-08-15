@@ -28,24 +28,7 @@ def do_commit(service, state):
 #        if _key: toolbox.report_stats(service, state, 'histo', _key, state.get('cycle') - _insn.get('issued'))
         if _key: state.get('stats').refresh('histo', _key, state.get('cycle') - _insn.get('issued'))
         service.tx({'info': 'retiring {}'.format(_insn)})
-        if _insn.get('next_pc'):
-            service.tx({'result': {
-                'arrival': 1 + state.get('cycle'),
-                'coreid': state.get('coreid'),
-                'register': {
-                    'name': '%pc',
-                    'data': _insn.get('next_pc'),
-                },
-            }})
         if _insn.get('ret_pc'):
-            service.tx({'result': {
-                'arrival': 1 + state.get('cycle'),
-                'coreid': state.get('coreid'),
-                'register': {
-                    'name': _insn.get('rd'),
-                    'data': _insn.get('ret_pc'),
-                },
-            }})
             service.tx({'event': {
                 'arrival': 1 + state.get('cycle'),
                 'coreid': state.get('coreid'),
@@ -56,14 +39,6 @@ def do_commit(service, state):
                 },
             }})
         if _insn.get('result') and _insn.get('rd'):
-            service.tx({'result': {
-                'arrival': 1 + state.get('cycle'),
-                'coreid': state.get('coreid'),
-                'register': {
-                    'name': _insn.get('rd'),
-                    'data': _insn.get('result'),
-                },
-            }})
             service.tx({'event': {
                 'arrival': 1 + state.get('cycle'),
                 'coreid': state.get('coreid'),
