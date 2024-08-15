@@ -23,9 +23,14 @@ class SimpleMMU:
     def translate(self, addr, coreid):
         _k = frame(self.pagesize, addr) | coreid
         self.translations.update({_k: self.translations.get(_k, {
-            'frame': self.BASE + (len(self.translations.keys()) << log2(self.pagesize)),
+#            'frame': self.BASE + (len(self.translations.keys()) << log2(self.pagesize)),
+            'frame': next(filter(
+                lambda x: x not in map(lambda y: y.get('frame'), self.translations.values()),
+                map(lambda z: self.BASE + (z << log2(self.pagesize)), range(len(self.translations.keys())))
+            ), self.BASE + (len(self.translations.keys()) << log2(self.pagesize))),
             'coreid': coreid,
         })})
+        assert len(list(map(lambda x: x.get('frame'), self.translations.values()))) == len(set(map(lambda x: x.get('frame'), self.translations.values()))), 'Shared physical frame! {}'.format(self.translations)
         return self.translations.get(_k).get('frame') | offset(self.pagesize, addr)
     def purge(self, coreid):
         self.translations = {k:v for k, v in self.translations.items() if coreid != v.get('coreid')}
