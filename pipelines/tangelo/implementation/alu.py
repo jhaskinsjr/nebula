@@ -547,8 +547,7 @@ def do_execute(service, state):
     _remove_from_pending_execute = []
     service.tx({'info': 'state.pending_execute : {}'.format(state.get('pending_execute'))})
     for _insn in state.get('pending_execute'):
-        service.tx({'info': '_insn : {}'.format(_insn)})
-        if state.get('flush_until') and _insn.get('%pc') != state.get('flush_until'):
+        if isinstance(state.get('recovery_iid'), int):
             service.tx({'result': {
                 'arrival': 1 + state.get('cycle'),
                 'coreid': state.get('coreid'),
@@ -562,7 +561,7 @@ def do_execute(service, state):
             state.get('stats').refresh('flat', 'flushes')
             _remove_from_pending_execute.append(_insn)
             continue
-        state.update({'flush_until': None})
+        service.tx({'info': '_insn : {}'.format(_insn)})
         _pc = int.from_bytes(_insn.get('%pc'), 'little')
         _word = ('{:08x}'.format(_insn.get('word')) if 4 == _insn.get('size') else '    {:04x}'.format(_insn.get('word')))
         logging.info('do_execute(): {:8x}: {} : {:10} ({:12}, {})'.format(_pc, _word, _insn.get('cmd'), state.get('cycle'), _insn.get('function', '')))
@@ -674,7 +673,6 @@ def do_execute(service, state):
         if _insn.get('cmd') in riscv.constants.BRANCHES + riscv.constants.JUMPS:
             _pr = _insn_prime.get('prediction')
             assert _pr, 'All BRANCH instructions MUST have a prediction field!'
-            state.update({'flush_until': _insn_prime.get('next_pc')})
             if int.from_bytes(_insn_prime.get('next_pc'), 'little') != _pr.get('targetpc'):
                 service.tx({'result': {
                     'arrival': 1 + state.get('cycle'),
@@ -684,8 +682,6 @@ def do_execute(service, state):
                     }
                 }})
                 state.update({'recovery_iid': -1}) # place holder value
-                _remove_from_pending_execute = state.get('pending_execute')[:]
-                break
         _remove_from_pending_execute.append(_insn)
     for _insn in _remove_from_pending_execute: state.get('pending_execute').remove(_insn)
 
@@ -693,6 +689,7 @@ def do_tick(service, state, results, events):
     for k in filter(lambda x: isinstance(x, int), list(state.get('operands').keys())): state.get('operands').pop(k)
     for _riid in map(lambda y: y.get('recovery_iid'), filter(lambda x: x.get('recovery_iid'), results)):
         assert -1 == state.get('recovery_iid')
+        assert 0 == len(state.get('pending_execute'))
         state.update({'recovery_iid': _riid.get('iid')})
     for _mem in filter(lambda x: x, map(lambda y: y.get('mem'), results)):
         _addr = _mem.get('addr')
@@ -732,6 +729,7 @@ def do_tick(service, state, results, events):
             **_insn,
             **_patch,
         })
+    service.tx({'info': 'state.operands : {}'.format(state.get('operands'))})
     do_execute(service, state)
 
 if '__main__' == __name__:
@@ -764,7 +762,6 @@ if '__main__' == __name__:
         'running': False,
         'ack': True,
         'recovery_iid': None,
-        'flush_until': None,
         'pending_execute': [],
         'syscall_kwargs': {},
         'system': riscv.syscall.linux.System(),
@@ -790,7 +787,6 @@ if '__main__' == __name__:
                 state.update({'running': True})
                 state.update({'ack': False})
                 state.update({'recovery_iid': None})
-                state.update({'flush_until': None})
                 state.update({'pending_execute': []})
                 state.update({'syscall_kwargs': {}})
                 state.update({'operands': {
