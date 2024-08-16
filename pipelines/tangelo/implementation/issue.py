@@ -53,8 +53,8 @@ def do_issue(service, state):
                     }
                 }})
         else:
+            if any(map(lambda x: x in _insn.keys(), ['rs1', 'rs2'])): _insn.update({'operands': {}})
             if 'rs1' in _insn.keys():
-                if 'operands' not in _insn.keys(): _insn.update({'operands': {}})
                 if _insn.get('rs1') in state.get('forward').keys():
                     _insn.get('operands').update({'rs1': state.get('forward').get(_insn.get('rs1'))})
                 else:
@@ -67,7 +67,6 @@ def do_issue(service, state):
                         },
                     }})
             if 'rs2' in _insn.keys():
-                if 'operands' not in _insn.keys(): _insn.update({'operands': {}})
                 if _insn.get('rs2') in state.get('forward').keys():
                     _insn.get('operands').update({'rs2': state.get('forward').get(_insn.get('rs2'))})
                 else:
