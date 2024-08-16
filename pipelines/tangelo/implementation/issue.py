@@ -94,15 +94,6 @@ def do_issue(service, state):
                 'insn': _insn,
             },
         }})
-        if state.get('recovery_iid'):
-            service.tx({'result': {
-                'arrival': 1 + state.get('cycle'),
-                'coreid': state.get('coreid'),
-                'recovery_iid': {
-                    'iid': _insn.get('iid'),
-                },
-            }})
-            state.update({'recovery_iid': None})
         state.get('issued').append(_insn)
 #        toolbox.report_stats(service, state, 'histo', 'issued.insn', _insn.get('cmd'))
         state.get('stats').refresh('histo', 'issued_insn', _insn.get('cmd'))
@@ -127,7 +118,13 @@ def do_tick(service, state, results, events):
             state.get('decoded').clear()
             state.get('predictions').clear()
             state.update({'drop_until': _insn.get('next_pc')})
-            state.update({'recovery_iid': -1}) # place holder value
+            service.tx({'result': {
+                'arrival': 1 + state.get('cycle'),
+                'coreid': state.get('coreid'),
+                'recovery_iid': {
+                    'iid': state.get('iid'),
+                },
+            }})
             state.update({'issued': list(filter(lambda x: x.get('iid') <= _insn.get('iid'), state.get('issued')))})
     else:
         for _fwd in map(lambda x: x.get('forward'), filter(lambda y: y.get('forward'), results)):
@@ -152,6 +149,7 @@ def do_tick(service, state, results, events):
                         'targetpc': (_pr.get('targetpc') if _pr else _insn.get('_pc') + _insn.get('size')),
                     },
                 })
+                state.update({'drop_until': riscv.constants.integer_to_list_of_bytes(_insn.get('prediction').get('targetpc'), 64, 'little')})
             _insn.update({'cycle': state.get('cycle')})
             state.get('decoded').append(_insn)
             logging.debug('{:8x}: {}'.format(_insn.get('_pc'), _insn))
@@ -200,7 +198,6 @@ if '__main__' == __name__:
         'decoded': [],
         'issued': [],
         'drop_until': None,
-        'recovery_iid': None,
         'forward': {},
         'predictions': {},
         'iid': 0,
@@ -226,7 +223,6 @@ if '__main__' == __name__:
                 state.update({'decoded': []})
                 state.update({'issued': []})
                 state.update({'drop_until': None})
-                state.update({'recovery_iid': None})
                 state.update({'forward': {}})
                 state.update({'predictions': {}})
                 state.update({'stats': toolbox.stats.CounterBank(state.get('coreid'), state.get('service'))})
