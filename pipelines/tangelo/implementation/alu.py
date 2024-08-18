@@ -722,6 +722,8 @@ def do_tick(service, state, results, events):
             }}
         else:
             _patch = ({'operands': {k:v for k, v in _insn.get('operands').items()}} if 'operands' in _insn.keys() else {})
+            assert (True if 'rs1' not in _insn.keys() or 'rs1' not in state.get('operands').keys() or 'rs1' not in _insn.get('operands').keys() else _insn.get('operands').get(_insn.get('rs1')) == state.get('operands').get(_insn.get('rs1')))
+            assert (True if 'rs2' not in _insn.keys() or 'rs2' not in state.get('operands').keys() or 'rs2' not in _insn.get('operands').keys() else _insn.get('operands').get(_insn.get('rs2')) == state.get('operands').get(_insn.get('rs2')))
             if len(_patch.keys()) and 'rs1' in _insn.keys() and 'rs1' not in _insn.get('operands').keys(): _patch.get('operands').update({'rs1': state.get('operands').get(_insn.get('rs1'))})
             if len(_patch.keys()) and 'rs2' in _insn.keys() and 'rs2' not in _insn.get('operands').keys(): _patch.get('operands').update({'rs2': state.get('operands').get(_insn.get('rs2'))})
         logging.debug('_insn : {}'.format({**_insn, **_patch}))
