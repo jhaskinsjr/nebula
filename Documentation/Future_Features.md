@@ -4,6 +4,9 @@ Presented in no particular order, below are some additional features that will
 extend and enhance the simulator. (Once-future features that have already been
 implemented have been struck through.)
 
+1. per-core cycle count
+1. cache snooping
+1. "component'ized" Bergamot implementation (code name: Etrog)
 1. pipeline implementation with value prediction
 1. pipeline implementation with out-of-order execution
 1. perfect branch predictor
