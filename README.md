@@ -126,6 +126,12 @@ about these topics and much more are covered in the links below.
 
 # Recent Revision History
 
+Git tag `v1.4.0` (20240819):
+* BUG FIX: Tangelo now executes correctly when `alu:forward_results` is `False`
+* BUG FIX: MMU page reclamation
+* shared cache module (see: [components/sharedcache/__init__.py](components/sharedcache/__init__.py)) now handles multiple concurrent operations
+* significant performance improvement by deferred stat reporting
+
 Git tag `v1.3.1` (20240625):
 * Dhrystone benchmark
 * gzip benchmark
