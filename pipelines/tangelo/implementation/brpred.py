@@ -86,60 +86,62 @@ def do_tick(service, state, results, events):
             if not _flush.get('cmd') in riscv.constants.BRANCHES + riscv.constants.JUMPS: continue
             service.tx({'info': 'flushing : {}'.format(_retire)})
             if _btac: _btac.pop(int.from_bytes(_flush.get('%pc'), 'little'), None)
-    for _l1ic in map(lambda y: y.get('l1ic'), filter(lambda x: x.get('l1ic'), results)):
-        assert _l1ic.get('addr') == state.get('pending_fetch').get('fetch').get('addr')
-        state.update({'pending_fetch': None})
-        if next(filter(lambda x: x.get('mispredict'), results), None): continue
-        if state.get('drop_until') and _l1ic.get('addr') != state.get('drop_until'): continue
-        state.update({'drop_until': None})
-        _br = (next(filter(lambda x: contains(_l1ic.get('addr'), _l1ic.get('size'), x[0], x[1].get('size')), _btac.items()), None) if _btac else None)
-        _br = (dict([_br]) if _br else None)
-        _brpc, _pr = (next(iter(_br.items())) if _br else (None, None))
-#        if _br:
-#            _brpc, _pr = next(iter(_br.items()))
-        if _br and (state.get('predictor').istaken(_brpc) if state.get('predictor') else True):
-            service.tx({'info': '_br : {}'.format(_br)})
-            service.tx({'result': {
-                'arrival': 1 + state.get('cycle'),
-                'coreid': state.get('coreid'),
-                'prediction': {
-                    'type': 'branch',
-                    'branchpc': _brpc,
-                    **_pr,
-                }
-            }})
-            if _pr.get('targetpc') != _brpc + _pr.get('size') and not contains(_l1ic.get('addr'), _l1ic.get('size'), _pr.get('targetpc'), 0): # i.e., if the branch is predicted taken and no portion of _br \in _l1ic
+    if next(filter(lambda x: x.get('mispredict'), results), None):
+        for _mispr in map(lambda y: y.get('mispredict'), filter(lambda x: x.get('mispredict'), results)):
+            service.tx({'info': '_mispr : {}'.format(_mispr)})
+            _insn = _mispr.get('insn')
+            if 'branch' == _insn.get('prediction').get('type'):
+                state.get('fetch_address').clear()
                 state.get('fetch_address').append({
                     'fetch': {
                         'cmd': 'get',
-                        'addr': _pr.get('targetpc'),
+                        'addr': int.from_bytes(_insn.get('next_pc'), 'little')
                     }
                 })
-#                toolbox.report_stats(service, state, 'flat', 'predict_taken')
-                state.get('stats').refresh('flat', 'predict_taken')
-#        toolbox.report_stats(service, state, 'flat', 'predictions')
-        state.get('stats').refresh('flat', 'predictions')
-        if not len(state.get('fetch_address')):
-            state.get('fetch_address').append({
-                'fetch': {
-                    'cmd': 'get',
-                    'addr': _l1ic.get('addr') + _l1ic.get('size'),
-                }
-            })
-    for _mispr in map(lambda y: y.get('mispredict'), filter(lambda x: x.get('mispredict'), results)):
-        service.tx({'info': '_mispr : {}'.format(_mispr)})
-        _insn = _mispr.get('insn')
-        if 'branch' == _insn.get('prediction').get('type'):
-            state.get('fetch_address').clear()
-            state.get('fetch_address').append({
-                'fetch': {
-                    'cmd': 'get',
-                    'addr': int.from_bytes(_insn.get('next_pc'), 'little')
-                }
-            })
-            state.update({'drop_until': int.from_bytes(_insn.get('next_pc'), 'little')})
-#            toolbox.report_stats(service, state, 'flat', 'mispredictions')
-            state.get('stats').refresh('flat', 'mispredictions')
+                state.update({'drop_until': int.from_bytes(_insn.get('next_pc'), 'little')})
+#                toolbox.report_stats(service, state, 'flat', 'mispredictions')
+                state.get('stats').refresh('flat', 'mispredictions')
+            state.update({'pending_fetch': None})
+    else:
+        for _l1ic in map(lambda y: y.get('l1ic'), filter(lambda x: x.get('l1ic'), results)):
+            assert _l1ic.get('addr') == state.get('pending_fetch').get('fetch').get('addr'), '_l1ic : {} ; state.pending_fetch : {}'.format(_l1ic, state.get('pending_fetch'))
+            state.update({'pending_fetch': None})
+            if state.get('drop_until') and _l1ic.get('addr') != state.get('drop_until'): continue
+            state.update({'drop_until': None})
+            _br = (next(filter(lambda x: contains(_l1ic.get('addr'), _l1ic.get('size'), x[0], x[1].get('size')), _btac.items()), None) if _btac else None)
+            _br = (dict([_br]) if _br else None)
+            _brpc, _pr = (next(iter(_br.items())) if _br else (None, None))
+#            if _br:
+#                _brpc, _pr = next(iter(_br.items()))
+            if _br and (state.get('predictor').istaken(_brpc) if state.get('predictor') else True):
+                service.tx({'info': '_br : {}'.format(_br)})
+                service.tx({'result': {
+                    'arrival': 1 + state.get('cycle'),
+                    'coreid': state.get('coreid'),
+                    'prediction': {
+                        'type': 'branch',
+                        'branchpc': _brpc,
+                        **_pr,
+                    }
+                }})
+                if _pr.get('targetpc') != _brpc + _pr.get('size') and not contains(_l1ic.get('addr'), _l1ic.get('size'), _pr.get('targetpc'), 0): # i.e., if the branch is predicted taken and no portion of _br \in _l1ic
+                    state.get('fetch_address').append({
+                        'fetch': {
+                            'cmd': 'get',
+                            'addr': _pr.get('targetpc'),
+                        }
+                    })
+#                    toolbox.report_stats(service, state, 'flat', 'predict_taken')
+                    state.get('stats').refresh('flat', 'predict_taken')
+#           toolbox.report_stats(service, state, 'flat', 'predictions')
+            state.get('stats').refresh('flat', 'predictions')
+            if not len(state.get('fetch_address')):
+                state.get('fetch_address').append({
+                    'fetch': {
+                        'cmd': 'get',
+                        'addr': _l1ic.get('addr') + _l1ic.get('size'),
+                    }
+                })
     for _perf in map(lambda y: y.get('perf'), filter(lambda x: x.get('perf'), events)):
         _cmd = _perf.get('cmd')
         if 'report_stats' == _cmd:

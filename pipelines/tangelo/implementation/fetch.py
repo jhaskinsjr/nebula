@@ -70,6 +70,13 @@ def do_l1ic(service, state):
 #    toolbox.report_stats(service, state, 'flat', 'l1ic_accesses')
     state.get('stats').refresh('flat', 'l1ic_accesses')
 def do_tick(service, state, results, events):
+    state.update({'mispredict': None})
+    for _mispr in map(lambda y: y.get('mispredict'), filter(lambda x: x.get('mispredict'), results)):
+        service.tx({'info': '_mispr : {}'.format(_mispr)})
+        logging.info('_mispr : {}'.format(_mispr))
+        state.get('pending_fetch').clear()
+        state.get('fetch_buffer').clear()
+        state.update({'mispredict': _mispr})
     for _l2 in map(lambda y: y.get('l2'), filter(lambda x: x.get('l2'), results)):
         _addr = _l2.get('addr')
         if _addr not in state.get('pending_fetch'): continue
@@ -94,6 +101,7 @@ def do_tick(service, state, results, events):
                 state.get('l1ic').purge()
                 state.get('pending_fetch').clear()
             elif 'get' == _fetch.get('cmd'):
+                if state.get('mispredict'): continue
                 _vaddr = _fetch.get('addr')
                 state.get('fetch_buffer').append({
                     'addr': _vaddr,
@@ -110,8 +118,8 @@ def do_tick(service, state, results, events):
                             'vaddr': _vaddr,
                         }
                     }})
+    service.tx({'info': 'state.fetch_buffer : {}'.format(state.get('fetch_buffer'))})
     if not len(state.get('fetch_buffer')): return
-    service.tx({'info': 'fetch_buffer : {}'.format(state.get('fetch_buffer'))})
     do_l1ic(service, state)
     
 
@@ -148,6 +156,7 @@ if '__main__' == __name__:
         'active': True,
         'running': False,
         'fetch_buffer': [],
+        'mispredict': None,
         'stats': None,
         '%jp': None, # This is the fetch pointer. Why %jp? Who knows?
         '%pc': None,
@@ -177,6 +186,7 @@ if '__main__' == __name__:
                 state.update({'tlb': {}})
                 state.update({'pending_v2p': []})
                 state.update({'pending_fetch': []})
+                state.update({'mispredict': None})
                 state.update({'active': True})
                 state.update({'fetch_buffer': []})
                 state.update({'%jp': None})
