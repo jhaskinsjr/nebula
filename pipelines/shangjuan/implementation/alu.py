@@ -660,7 +660,7 @@ def do_execute(service, state):
 #        toolbox.report_stats(service, state, 'histo', 'category', _f.__name__)
         state.get('stats').refresh('histo', 'category', _f.__name__)
         if not _done: break
-        if state.get('config').get('result_forwarding') and 'rd' in _insn_prime.keys() and _insn_prime.get('result'):
+        if 'rd' in _insn_prime.keys() and _insn_prime.get('result'):
             service.tx({'result': {
                 'arrival': 1 + state.get('cycle'),
                 'coreid': state.get('coreid'),
@@ -773,7 +773,6 @@ if '__main__' == __name__:
         },
         'stats': None,
         'config': {
-            'result_forwarding': True,
         },
     }
     _service = service.Service(state.get('service'), state.get('coreid'), _launcher.get('host'), _launcher.get('port'))

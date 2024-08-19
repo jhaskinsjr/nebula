@@ -62,8 +62,7 @@
             "mainmem:capacity": [4294967296],
             "brpred:btac_entries": [1, 64],
             "brpred:predictor_type": ["bimodal", "gshare"],
-            "brpred:predictor_entries": [1, 64],
-            "alu:result_forwarding": [true, false]
+            "brpred:predictor_entries": [1, 64]
         },
         "max_cycles": 500000,
         "script": "localhost.nebula",
