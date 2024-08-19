@@ -19,6 +19,7 @@ def do_tick(service, state, results, events):
     logging.debug('do_tick(): results : {}'.format(results))
     for _mispr in map(lambda y: y.get('mispredict'), filter(lambda x: x.get('mispredict'), results)):
         service.tx({'info': '_mispr : {}'.format(_mispr)})
+        logging.info('_mispr : {}'.format(_mispr))
         _insn = _mispr.get('insn')
         if 'branch' == _insn.get('prediction').get('type'):
             state.get('buffer').clear()
@@ -50,6 +51,7 @@ def do_tick(service, state, results, events):
             **{'_pc': _pc},
             **({'function': next(filter(lambda x: _pc >= x[0], sorted(state.get('objmap').items(), reverse=True)))[-1].get('name', '')} if state.get('objmap') else {}),
         })
+        logging.info('{:8x} : {}'.format(_pc, _decoded[-1]))
 #        toolbox.report_stats(service, state, 'histo', 'decoded.insn', _insn.get('cmd'))
         state.get('stats').refresh('histo', 'decoded_insn', _insn.get('cmd'))
         state.update({'%pc': riscv.constants.integer_to_list_of_bytes(_insn.get('size') + _pc, 64, 'little')})

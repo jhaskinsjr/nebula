@@ -85,6 +85,7 @@ def do_issue(service, state):
             **{'iid': state.get('iid')},
             **{'issued': state.get('cycle')},
         }
+        logging.info('{:8x} : {}'.format(_insn.get('_pc'), {'cmd': _insn.get('cmd'), 'iid': _insn.get('iid')}))
         state.update({'iid': 1 + state.get('iid')})
         service.tx({'event': {
             'arrival': 2 + state.get('cycle'),
@@ -113,6 +114,7 @@ def do_tick(service, state, results, events):
     if next(filter(lambda x: x.get('mispredict'), results), None):
         for _mispr in map(lambda y: y.get('mispredict'), filter(lambda x: x.get('mispredict'), results)):
             service.tx({'info': '_mispr : {}'.format(_mispr)})
+            logging.info('_mispr : {}'.format(_mispr))
             _insn = _mispr.get('insn')
             state.get('decoded').clear()
             state.get('predictions').clear()
