@@ -684,6 +684,7 @@ def do_execute(service, state):
                 state.update({'recovery_iid': -1}) # place holder value
         _remove_from_pending_execute.append(_insn)
     for _insn in _remove_from_pending_execute: state.get('pending_execute').remove(_insn)
+    assert (True if not isinstance(state.get('recover_iid'), int) else 0 == len(state.get('pending_execute')))
 
 def do_tick(service, state, results, events):
     for k in filter(lambda x: isinstance(x, int), list(state.get('operands').keys())): state.get('operands').pop(k)
