@@ -79,6 +79,7 @@
             "watchdog:result_cycles": [10000],
             "l2:hitlatency": [1, 5],
             "l3:hitlatency": [1, 25],
+            "mmu:v2p_latency_in_cycles": [1, 10],
             "mainmem:peek_latency_in_cycles": [1, 125],
             "mainmem:capacity": [4294967296],
             "brpred:btac_entries": [1, 64],
