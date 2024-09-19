@@ -9,30 +9,65 @@ import service
 
 import json
 
-def do_tick(service, state, results, events):
-    if state.get('violation'): return
-    _event_name = state.get('config').get('event_name')
-    _result_name = state.get('config').get('result_name')
-    if _event_name and next(filter(lambda x: x.get(_event_name), events), None): state.get('last').update({_event_name: state.get('cycle')})
-    if _result_name and next(filter(lambda x: x.get(_result_name), results), None): state.get('last').update({_result_name: state.get('cycle')})
-    _watchdog_violation  = False
-    _watchdog_violation |= isinstance(_event_name, str) and state.get('cycle') - state.get('last').get(_event_name, state.get('cycle')) > state.get('config').get('event_cycles')
-    _watchdog_violation |= isinstance(_result_name, str) and state.get('cycle') - state.get('last').get(_result_name, state.get('cycle')) > state.get('config').get('result_cycles')
-    if _watchdog_violation:
-        service.tx({'info': 'Watchdog violation! state.config : {}'.format(state.get('config'))})
-        logging.info('Watchdog violation!')
-        logging.info('\tstate.coreid               : {}'.format(state.get('coreid')))
-        logging.info('\tstate.cycle                : {}'.format(state.get('cycle')))
-        logging.info('\tstate.config.event_name    : {}'.format(_event_name))
-        logging.info('\tstate.config.event_cycles  : {}'.format(state.get('config').get('event_cycles')))
-        logging.info('\tstate.config.result_name   : {}'.format(_result_name))
-        logging.info('\tstate.config.result_cycles : {}'.format(state.get('config').get('result_cycles')))
-        logging.info('\tstate.last                 : {}'.format(state.get('last')))
-        state.update({'violation': True})
-        service.tx({'shutdown': {
-            'coreid': state.get('coreid'),
-        }})
-    service.tx({'info': 'state.last : {}'.format(state.get('last'))})
+class Watchdog:
+    def __init__(self, name, coreid, launcher, s=None, **kwargs):
+        self.name = name
+        self.coreid = coreid
+        self.service = (service.Service(self.get('name'), self.get('coreid', -1), launcher.get('host'), launcher.get('port')) if None == s else s)
+        self.config = {
+            'event_name': None,
+            'event_cycles': None,
+            'result_name': None,
+            'result_cycles': None,
+        }
+        self.cycle = 0
+        self.active = True
+        self.running = False
+        self.booted = False
+        self.ack = True
+        self.violation = False
+        self.last = {}
+    def state(self):
+        return {
+            'cycle': self.get('cycle'),
+            'service': self.get('name'),
+            'coreid': self.get('coreid', -1),
+        }
+    def get(self, attribute, alternative=None):
+        return (self.__dict__[attribute] if attribute in dir(self) else alternative)
+    def update(self, d):
+        self.__dict__.update(d)
+    def do_tick(self, results, events, **kwargs):
+        self.update({'cycle': kwargs.get('cycle', self.cycle)})
+        logging.debug('Watchdog.do_tick(): {} {}'.format(results, events))
+        if self.get('violation'): return
+        _event_name = self.get('config').get('event_name')
+        _result_name = self.get('config').get('result_name')
+        if _event_name and next(filter(lambda x: x.get(_event_name), events), None): self.get('last').update({_event_name: self.get('cycle')})
+        if _result_name and next(filter(lambda x: x.get(_result_name), results), None): self.get('last').update({_result_name: self.get('cycle')})
+        _watchdog_violation  = False
+        _watchdog_violation |= isinstance(_event_name, str) and self.get('cycle') - self.get('last').get(_event_name, self.get('cycle')) > self.get('config').get('event_cycles')
+        _watchdog_violation |= isinstance(_result_name, str) and self.get('cycle') - self.get('last').get(_result_name, self.get('cycle')) > self.get('config').get('result_cycles')
+        if _watchdog_violation:
+            self.service.tx({'info': 'Watchdog violation! state.config : {}'.format(self.get('config'))})
+            logging.info('Watchdog violation!')
+            logging.info('\tstate.coreid               : {}'.format(self.get('coreid')))
+            logging.info('\tstate.cycle                : {}'.format(self.get('cycle')))
+            logging.info('\tstate.config.event_name    : {}'.format(_event_name))
+            logging.info('\tstate.config.event_cycles  : {}'.format(self.get('config').get('event_cycles')))
+            logging.info('\tstate.config.result_name   : {}'.format(_result_name))
+            logging.info('\tstate.config.result_cycles : {}'.format(self.get('config').get('result_cycles')))
+            logging.info('\tstate.last                 : {}'.format(self.get('last')))
+            self.update({'violation': True})
+#            self.service.tx({'shutdown': {
+#                'coreid': self.get('coreid'),
+#            }})
+            self.service.tx({'event': {
+                'arrival': 1 + self.get('cycle'),
+                'coreid': self.get('coreid'),
+                'shutdown': True,
+            }})
+#        self.service.tx({'info': 'state.last : {}'.format(self.get('last'))})
 
 if '__main__' == __name__:
     parser = argparse.ArgumentParser(description='Nebula: Watchdog')
@@ -50,23 +85,8 @@ if '__main__' == __name__:
     _launcher = {x:y for x, y in zip(['host', 'port'], args.launcher.split(':'))}
     _launcher['port'] = int(_launcher['port'])
     logging.debug('_launcher : {}'.format(_launcher))
-    state = {
-        'service': 'watchdog',
-        'cycle': 0,
-        'coreid': args.coreid,
-        'active': True,
-        'running': False,
-        'violation': False,
-        'last': {},
-        'ack': True,
-        'config': {
-            'event_name': None,
-            'event_cycles': None,
-            'result_name': None,
-            'result_cycles': None,
-        },
-    }
-    _service = service.Service(state.get('service'), state.get('coreid', -1), _launcher.get('host'), _launcher.get('port'))
+    state = Watchdog('watchdog', args.coreid, _launcher)
+    _service = state.get('service')
     while state.get('active'):
         state.update({'ack': True})
         msg = _service.rx()
@@ -82,12 +102,12 @@ if '__main__' == __name__:
                 state.update({'ack': False})
                 state.update({'violation': False})
                 state.update({'last': {}})
-                _service.tx({'info': 'state.config : {}'.format(state.get('config'))})
+                logging.info('state.config : {}'.format(state.get('config')))
             elif {'text': 'pause'} == {k: v}:
                 state.update({'running': False})
             elif 'config' == k:
                 logging.info('config : {}'.format(v))
-                if state.get('service') != v.get('service'): continue
+                if state.get('name') != v.get('service'): continue
                 _field = v.get('field')
                 _val = v.get('val')
                 assert _field in state.get('config').keys(), 'No such config field, {}, in service {}!'.format(_field, state.get('service'))
@@ -96,7 +116,8 @@ if '__main__' == __name__:
                 state.update({'cycle': v.get('cycle')})
                 _results = tuple(filter(lambda x: state.get('coreid') == x.get('coreid'), v.get('results')))
                 _events = tuple(filter(lambda x: state.get('coreid') == x.get('coreid'), v.get('events')))
-                if state.get('running'): do_tick(_service, state, _results, _events)
+#                if state.get('running'): do_tick(_service, state, _results, _events)
+                if state.get('running'): state.do_tick(_results, _events)
             elif 'restore' == k:
                 assert not state.get('running'), 'Attempted restore while running!'
                 state.update({'cycle': v.get('cycle')})
