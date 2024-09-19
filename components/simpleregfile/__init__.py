@@ -15,7 +15,7 @@ class SimpleRegisterFile:
     def __init__(self, name, coreid, launcher, s=None):
         self.name = name
         self.coreid = coreid
-        self.service = (service.Service(self.get('name'), self.get('coreid'), launcher.get('host'), launcher.get('port')) if not s else s)
+        self.service = (service.Service(self.get('name'), self.get('coreid'), launcher.get('host'), launcher.get('port')) if None == s else s)
         self.cycle = 0
         self.active = True
         self.running = False
@@ -36,7 +36,9 @@ class SimpleRegisterFile:
         return (self.__dict__[attribute] if attribute in dir(self) else alternative)
     def update(self, d):
         self.__dict__.update(d)
-    def do_tick(self, results, events):
+    def do_tick(self, results, events, **kwargs):
+        self.update({'cycle': kwargs.get('cycle', self.cycle)})
+        logging.debug('SimpleRegisterFile.do_tick(): {} {}'.format(results, events))
         for _perf in map(lambda y: y.get('perf'), filter(lambda x: x.get('perf'), events)):
             _cmd = _perf.get('cmd')
             if 'report_stats' == _cmd:
@@ -56,7 +58,7 @@ class SimpleRegisterFile:
                 assert _name in self.get('registers').keys()
                 self.service.tx({'result': {
                     'arrival': 1 + self.get('cycle'),
-                    'coreid': state.get('coreid'), # FIXME: Should this be self.get('coreid')?
+                    'coreid': self.get('coreid'),
                     'register': {
                         'name': _name,
                         'data': self.getregister(self.get('registers'), _name),

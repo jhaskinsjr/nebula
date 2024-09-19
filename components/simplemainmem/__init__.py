@@ -35,7 +35,7 @@ class SimpleMainMemory:
     }
     def __init__(self, name, launcher, s=None, **kwargs):
         self.name = name
-        self.service = (service.Service(self.get('name'), self.get('coreid', -1), launcher.get('host'), launcher.get('port')) if not s else s)
+        self.service = (service.Service(self.get('name'), self.get('coreid', -1), launcher.get('host'), launcher.get('port')) if None == s else s)
         self.config = {
             'pagesize': kwargs.get('pagesize', self.DEFAULT.get('pagesize')),
             'filename': kwargs.get('filename', self.DEFAULT.get('filename')),
