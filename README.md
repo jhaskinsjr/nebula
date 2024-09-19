@@ -126,6 +126,9 @@ about these topics and much more are covered in the links below.
 
 # Recent Revision History
 
+Git tag `v1.5.0` (20240919):
+* *new* [Etrog](pipelines/etrog/README.md) pipeline model: faster reimplementation of [Bergamot](pipelines/bergamot/README.md)
+
 Git tag `v1.4.0` (20240819):
 * BUG FIX: Tangelo now executes correctly when `alu:forward_results` is `False`
 * BUG FIX: MMU page reclamation
@@ -144,22 +147,6 @@ Git tag `v1.3.0` (20240608):
 * arbitrarily deep cache hierarchy
 * heterogenous cores simulations (e.g.: [chips/4t4b/localhost.nebula](chips/4t4b/localhost.nebula); 4 Tangelo cores + 4 Bergamot cores)
 * massively multicore simulations (e.g.: [chips/128b/localhost.nebula](chips/128b/localhost.nebula); 128 Bergamot cores)
-
-Git tag `v1.2.0` (20240428):
-* easier multicore specification (see: [Multicore Simulation](Documentation/Multicore_Simulation.md))
-* `zlib`-compressed messages
-* more modular messaging: `service.rx()`, `service.tx()`, `service.Service.rx()`, etc.
-* significant cycle-accurate simulation performance increase
-
-Git tag `v1.1.0` (20240205):
-
-* *new* [Jabara](pipelines/jabara/README.md) functional execution model
-* faster [Amanatsu](pipelines/amanatsu/README.md) functional execution model
-* faster `SimpleRegisterFile` (see: [components/simpleregfile/__init__.py](components/simpleregfile/__init__.py))
-* faster `SimpleMainMemory` (see: [components/simplemainmem/__init__.py](components/simplemainmem/__init__.py))
-* faster LOAD/STORE instruction execution in [Shangjuan](pipelines/shangjuan/README.md) cycle-accurate model
-* documentation updates and clarifications
-* updated Jupyter Notebook example
 
 
 # Contact
