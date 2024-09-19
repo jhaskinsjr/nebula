@@ -219,7 +219,7 @@ class Core(dict):
                     'coreid': self.get('coreid'),
                     'shutdown': True,
                 }})
-#            self.service.tx({'committed': 1}) # FIXME: _service.tx()
+            self.service.tx({'committed': 1}) # FIXME: _service.tx()
             logging.info('SimpleCore.do_events(): retiring : {}'.format(_insn))
     def do_tick(self, results, events):
         logging.info('SimpleCore.do_tick(): {} {}'.format(results, events))
