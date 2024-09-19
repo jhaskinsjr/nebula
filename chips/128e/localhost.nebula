@@ -1,0 +1,9 @@
+# Sample Nebula script
+service ../../pipelines/etrog/implementation/simplecore.py:localhost:22:0:127
+spawn
+config watchdog:event_name commit
+config watchdog:event_cycles 10000
+run
+shutdown
+run
+shutdown

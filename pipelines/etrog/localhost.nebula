@@ -1,0 +1,8 @@
+# Sample Nebula script
+# single-core
+service implementation/simplecore.py:localhost:22:0:0
+spawn
+config watchdog:event_name commit
+config watchdog:event_cycles 10000
+run
+shutdown

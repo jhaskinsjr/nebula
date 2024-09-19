@@ -16,6 +16,7 @@ For a brief overview of each pipeline implmentation, follow the links below:
 
 * [Amanatsu](../pipelines/amanatsu/README.md)
 * [Bergamot](../pipelines/bergamot/README.md)
+* [Etrog](../pipelines/etrog/README.md)
 * [Jabara](../pipelines/jabara/README.md)
 * [Pompia](../pipelines/pompia/README.md)
 * [Rangpur](../pipelines/rangpur/README.md)
@@ -35,5 +36,5 @@ configurations (e.g., cache dimensions, branch predictor).
 ### Why citrus fruits?
 
 Shortly after I began work on Nebula, I took a fierce interest in
-citrus tree care and maintenance when I endeavored to grow lemons
+citrus tree care and maintenance as I endeavored to grow lemons
 and limes in [Zone 7](https://planthardiness.ars.usda.gov/).
