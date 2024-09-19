@@ -44,7 +44,7 @@ class Decode:
                 toolbox.report_stats_from_dict(self.service, self.state(), _dict)
         for decode in map(lambda y: y.get('decode'), filter(lambda x: x.get('decode'), events)):
             self.update({'buffer': decode.get('bytes')})
-#            self.service.tx({'info': 'state.buffer : {}'.format(self.get('buffer'))})
+            self.service.tx({'info': 'state.buffer : {}'.format(self.get('buffer'))})
             for _insn in riscv.decode.do_decode(self.get('buffer'), 1): # HACK: hard-coded max-instructions-to-decode of 1
 #                toolbox.report_stats(service, state, 'histo', 'decoded.insn', _insn.get('cmd'))
                 self.get('stats').refresh('histo', 'decoded_insn', _insn.get('cmd'))

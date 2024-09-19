@@ -23,7 +23,7 @@ class InternalService:
         self.fifo = []
     def tx(self, msg): self.fifo.append(msg)
     def rx(self): pass
-    def reset(self): self.fifo = []
+    def clear(self): self.fifo = []
     def __iter__(self): return iter(self.fifo)
     def __len__(self): return len(self.fifo)
     def pop(self, x): return self.fifo.pop(x)
@@ -84,20 +84,24 @@ class Core(dict):
         self.__dict__.update(d)
     def handle(self):
         _service = self.internal.get('service')
+        logging.info('_service.fifo : {}'.format(_service.fifo))
         _fifo = []
         while len(self.internal.get('service')):
             _msg = self.internal.get('service').pop(0)
+            logging.info('SimpleCore.handle(): _msg : {}'.format(_msg))
             _channel, _payload = next(iter(_msg.items()))
-            logging.debug('SimpleCore.handle(): {} {}'.format(_channel, _payload))
-            if not isinstance(_payload, dict):
+            logging.info('SimpleCore.handle(): {} {}'.format(_channel, _payload))
+#            if not isinstance(_payload, dict):
+            if _channel not in ['result', 'event']:
                 _fifo.append(_msg)
                 continue
-            assert 'arrival' in _payload.keys(), '_channel : {}, _payload : {}'.format(_channel, _payload)
+            assert 'arrival' in _payload.keys(), '_msg : {} => _channel : {}, _payload : {}'.format(_msg, _channel, _payload)
+            assert 'coreid' in _payload.keys(), '_msg : {} => _channel : {}, _payload : {}'.format(_msg, _channel, _payload)
             _arr = _payload.pop('arrival')
             _coreid = _payload.pop('coreid')
-            logging.debug('SimpleCore.handle(): {} {} {}'.format(_arr, _coreid, _payload))
-            logging.debug('SimpleCore.handle(): {}'.format(next(iter(_payload.keys())) in self.internal.get('result_names')))
-            logging.debug('SimpleCore.handle(): futures : {}'.format(self.futures))
+            logging.info('SimpleCore.handle(): {} {} {}'.format(_arr, _coreid, _payload))
+            logging.info('SimpleCore.handle(): {}'.format(next(iter(_payload.keys())) in self.internal.get('result_names')))
+            logging.info('SimpleCore.handle(): futures : {}'.format(self.futures))
             assert _arr > self.cycle, 'Attempting to schedule arrival in the past ({} vs. {})'.format(self.cycle, _arr)
             if 'result' == _channel and next(iter(_payload.keys())) in self.internal.get('result_names'):
                 _res_evt = self.futures.get(_arr, {'results': [], 'events': []})
@@ -109,8 +113,9 @@ class Core(dict):
                 self.futures.update({_arr: _res_evt})
             else:
                 _fifo.append({_channel: {**{'arrival': _arr, 'coreid': _coreid}, **_payload}})
-            logging.debug('SimpleCore.handle(): futures : {}'.format(self.futures))
+            logging.info('SimpleCore.handle(): futures : {}'.format(self.futures))
         _service.fifo = _fifo
+        logging.info('_service.fifo : {}'.format(_service.fifo))
     def do_results(self, results):
         logging.debug('SimpleCore.do_results(self, {}): ...'.format(results))
         _service = self.internal.get('service')
@@ -119,7 +124,7 @@ class Core(dict):
             self.update({'%pc': reg.get('data')})
 #            service.tx({'info': 'state.%pc : {}'.format(state.get('%pc'))})
             if 0 == int.from_bytes(self.get('%pc'), 'little'):
-                self.service.tx({'info': 'Jump to @0x00000000... graceful shutdown'})
+                _service.tx({'info': 'Jump to @0x00000000... graceful shutdown'})
 #                self.service.tx({'shutdown': {
 #                    'coreid': self.get('coreid'),
 #                }})
@@ -128,7 +133,7 @@ class Core(dict):
                     'coreid': self.get('coreid'),
                     'shutdown': True,
                 }})
-            self.service.tx({'event': { # FIXME: _service.tx() even though 'mem' is handled OUTSIDE of SimpleCore
+            _service.tx({'event': {
                 'arrival': 1 + self.get('cycle'),
                 'coreid': self.get('coreid'),
                 'mem': {
@@ -179,7 +184,7 @@ class Core(dict):
                 toolbox.report_stats_from_dict(self.service, self.state(), _dict)
         for _shutdown in map(lambda y: y.get('shutdown'), filter(lambda x: x.get('shutdown'), events)):
             assert _shutdown
-            self.service.tx({'shutdown': {
+            _service.tx({'shutdown': {
                 'coreid': self.get('coreid'),
             }})
         for complete in map(lambda y: y.get('complete'), filter(lambda x: x.get('complete'), events)):
@@ -219,7 +224,7 @@ class Core(dict):
                     'coreid': self.get('coreid'),
                     'shutdown': True,
                 }})
-            self.service.tx({'committed': 1}) # FIXME: _service.tx()
+            _service.tx({'committed': 1})
             logging.info('SimpleCore.do_events(): retiring : {}'.format(_insn))
     def do_tick(self, results, events):
         logging.info('SimpleCore.do_tick(): {} {}'.format(results, events))
@@ -251,17 +256,14 @@ class Core(dict):
             self.handle()
             logging.debug('SimpleCore.futures : {}'.format(self.futures))
             logging.debug('SimpleCore.service.fifo [post] : {}'.format(_service.fifo))
-            if len(_service):
-                # FIXME: properly handle remaining _service.fifo items (e.g., {'info': XXX})
-                for x in _service.fifo: self.service.tx(x)
-                break
+            while len(_service.fifo): self.service.tx(_service.fifo.pop(0))
             if 0 == len(self.futures.keys()): break
             self.cycle = min(self.futures.keys())
         self.service.tx({'info': 'state.pending_pc      : {} ({})'.format(self.pending_pc, self.get('pending_pc'))})
         self.service.tx({'info': 'state.pending_fetch   : {} ({})'.format(self.pending_fetch, self.get('pending_fetch'))})
         self.service.tx({'info': 'state.pending_decode  : {} ({})'.format(self.pending_decode, self.get('pending_decode'))})
         self.service.tx({'info': 'state.pending_execute : {} ({})'.format(self.pending_execute, self.get('pending_execute'))})
-        self.internal.get('service').reset()
+        _service.clear()
 
         
 
