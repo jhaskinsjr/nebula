@@ -84,13 +84,13 @@ class Core(dict):
         self.__dict__.update(d)
     def handle(self):
         _service = self.internal.get('service')
-        logging.info('_service.fifo : {}'.format(_service.fifo))
+        logging.debug('_service.fifo : {}'.format(_service.fifo))
         _fifo = []
         while len(self.internal.get('service')):
             _msg = self.internal.get('service').pop(0)
-            logging.info('SimpleCore.handle(): _msg : {}'.format(_msg))
+            logging.debug('SimpleCore.handle(): _msg : {}'.format(_msg))
             _channel, _payload = next(iter(_msg.items()))
-            logging.info('SimpleCore.handle(): {} {}'.format(_channel, _payload))
+            logging.debug('SimpleCore.handle(): {} {}'.format(_channel, _payload))
 #            if not isinstance(_payload, dict):
             if _channel not in ['result', 'event']:
                 _fifo.append(_msg)
@@ -99,9 +99,9 @@ class Core(dict):
             assert 'coreid' in _payload.keys(), '_msg : {} => _channel : {}, _payload : {}'.format(_msg, _channel, _payload)
             _arr = _payload.pop('arrival')
             _coreid = _payload.pop('coreid')
-            logging.info('SimpleCore.handle(): {} {} {}'.format(_arr, _coreid, _payload))
-            logging.info('SimpleCore.handle(): {}'.format(next(iter(_payload.keys())) in self.internal.get('result_names')))
-            logging.info('SimpleCore.handle(): futures : {}'.format(self.futures))
+            logging.debug('SimpleCore.handle(): {} {} {}'.format(_arr, _coreid, _payload))
+            logging.debug('SimpleCore.handle(): {}'.format(next(iter(_payload.keys())) in self.internal.get('result_names')))
+            logging.debug('SimpleCore.handle(): futures : {}'.format(self.futures))
             assert _arr > self.cycle, 'Attempting to schedule arrival in the past ({} vs. {})'.format(self.cycle, _arr)
             if 'result' == _channel and next(iter(_payload.keys())) in self.internal.get('result_names'):
                 _res_evt = self.futures.get(_arr, {'results': [], 'events': []})
@@ -113,9 +113,9 @@ class Core(dict):
                 self.futures.update({_arr: _res_evt})
             else:
                 _fifo.append({_channel: {**{'arrival': _arr, 'coreid': _coreid}, **_payload}})
-            logging.info('SimpleCore.handle(): futures : {}'.format(self.futures))
+            logging.debug('SimpleCore.handle(): futures : {}'.format(self.futures))
         _service.fifo = _fifo
-        logging.info('_service.fifo : {}'.format(_service.fifo))
+        logging.debug('_service.fifo : {}'.format(_service.fifo))
     def do_results(self, results):
         logging.debug('SimpleCore.do_results(self, {}): ...'.format(results))
         _service = self.internal.get('service')
@@ -225,17 +225,17 @@ class Core(dict):
                     'shutdown': True,
                 }})
             _service.tx({'committed': 1})
-            logging.info('SimpleCore.do_events(): retiring : {}'.format(_insn))
+            logging.debug('SimpleCore.do_events(): retiring : {}'.format(_insn))
     def do_tick(self, results, events):
-        logging.info('SimpleCore.do_tick(): {} {}'.format(results, events))
+        logging.debug('SimpleCore.do_tick(): {} {}'.format(results, events))
         _futures = self.futures.get(self.cycle, {'results': [], 'events': []})
         _futures.update({'results': _futures.get('results') + list(results)})
         _futures.update({'events': _futures.get('events') + list(events)})
         self.futures.update({self.cycle: _futures})
         _service = self.internal.get('service')
         while True:
-            logging.info('@{:15}'.format(self.cycle))
-            logging.info('SimpleCore.futures : {}'.format(self.futures))
+            logging.debug('@{:15}'.format(self.cycle))
+            logging.debug('SimpleCore.futures : {}'.format(self.futures))
             _res_evt = self.futures.pop(self.cycle, {'results': [], 'events': []})
             for c in self.components.values(): c.do_tick(_res_evt.get('results'), _res_evt.get('events'), cycle=self.cycle)
             self.do_results(_res_evt.get('results'))
