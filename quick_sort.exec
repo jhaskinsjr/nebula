@@ -19,6 +19,18 @@
         "service": ["../../components/simplemainmem/mainmem.py:localhost:22:-1:-1"],
         "command": "../../examples/bin/sort 2 -3 5"
     },
+    "pipelines/etrog": {
+        "config": {
+            "watchdog:event_name": ["commit"],
+            "watchdog:event_cycles": [10000],
+            "mainmem:peek_latency_in_cycles": [1, 25],
+            "mainmem:capacity": [4297967296]
+        },
+        "max_cycles": 500000,
+        "script": "localhost.nebula",
+        "service": ["../../components/simplemainmem/mainmem.py:localhost:22:-1:-1"],
+        "command": "../../examples/bin/sort 2 -3 5"
+    },
     "pipelines/jabara": {
         "config": {
             "mainmem:capacity": [4297967296]
