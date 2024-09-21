@@ -12,43 +12,24 @@ import service
 import toolbox
 import toolbox.stats
 import riscv.constants
+import components.simplecore
 import decode
 import regfile
 import execute
 import watchdog
 
 
-class InternalService:
-    def __init__(self):
-        self.fifo = []
-    def tx(self, msg): self.fifo.append(msg)
-    def rx(self): pass
-    def clear(self): self.fifo = []
-    def __iter__(self): return iter(self.fifo)
-    def __len__(self): return len(self.fifo)
-    def pop(self, x): return self.fifo.pop(x)
-class Core(dict):
+class Core(components.simplecore.SimpleCore):
     def __init__(self, name, coreid, launcher, s=None):
-        self.name = name
-        self.coreid = coreid
-        self.service = (service.Service(self.get('name'), self.get('coreid'), launcher.get('host'), launcher.get('port')) if not s else s)
-        self.cycle = 0
-        self.active = True
-        self.running = False
-        self.ack = True
+        super().__init__(name, coreid, launcher, s)
         self.stats = toolbox.stats.CounterBank(coreid, name)
         self.pending_pc = False
         self.pending_fetch = None
         self.pending_decode = False
         self.pending_execute = None
         self.iid = 0
-        self.internal = {
-            'service': InternalService(),
-            'event_names': ['perf', 'shutdown', 'decode', 'register', 'execute', 'complete', 'confirm', 'commit'],
-            'result_names': ['register', 'insn'],
-        }
-        logging.info('core.service  : {}'.format(self.service))
-        logging.info('Core.internal : {}'.format(self.internal))
+        self.internal.update({'event_names': ['perf', 'shutdown', 'decode', 'register', 'execute', 'complete', 'confirm', 'commit']})
+        self.internal.update({'result_names': ['register', 'insn']})
         self.components = {
             'decode': decode.Decode('decode', self.coreid, launcher, self.internal.get('service')),
             'regfile': regfile.SimpleRegisterFile('regfile', self.coreid, launcher, self.internal.get('service')),
@@ -59,7 +40,6 @@ class Core(dict):
         logging.info('Core.components.regfile.service : {}'.format(self.components.get('regfile').get('service')))
         logging.info('Core.components.execute.service : {}'.format(self.components.get('execute').get('service')))
         logging.info('Core.components.watchdog.service : {}'.format(self.components.get('watchdog').get('service')))
-        self.futures = {}
         self.objmap = None
         self.config = {
             'toolchain': '',
@@ -72,62 +52,14 @@ class Core(dict):
             'active', 'running', 'ack',
             'objmap', 'config',
         ])))
-    def state(self):
-        return {
-            'service': self.get('name'),
-            'cycle': self.get('cycle'),
-            'coreid': self.get('coreid'),
-        }
-    def get(self, attribute, alternative=None):
-        return (self.__dict__[attribute] if attribute in dir(self) else alternative)
-    def update(self, d):
-        self.__dict__.update(d)
-    def handle(self):
-        _service = self.internal.get('service')
-        logging.debug('_service.fifo : {}'.format(_service.fifo))
-        _fifo = []
-        while len(self.internal.get('service')):
-            _msg = self.internal.get('service').pop(0)
-            logging.debug('SimpleCore.handle(): _msg : {}'.format(_msg))
-            _channel, _payload = next(iter(_msg.items()))
-            logging.debug('SimpleCore.handle(): {} {}'.format(_channel, _payload))
-#            if not isinstance(_payload, dict):
-            if _channel not in ['result', 'event']:
-                _fifo.append(_msg)
-                continue
-            assert 'arrival' in _payload.keys(), '_msg : {} => _channel : {}, _payload : {}'.format(_msg, _channel, _payload)
-            assert 'coreid' in _payload.keys(), '_msg : {} => _channel : {}, _payload : {}'.format(_msg, _channel, _payload)
-            _arr = _payload.pop('arrival')
-            _coreid = _payload.pop('coreid')
-            logging.debug('SimpleCore.handle(): {} {} {}'.format(_arr, _coreid, _payload))
-            logging.debug('SimpleCore.handle(): {}'.format(next(iter(_payload.keys())) in self.internal.get('result_names')))
-            logging.debug('SimpleCore.handle(): futures : {}'.format(self.futures))
-            assert _arr > self.cycle, 'Attempting to schedule arrival in the past ({} vs. {})'.format(self.cycle, _arr)
-            if 'result' == _channel and next(iter(_payload.keys())) in self.internal.get('result_names'):
-                _res_evt = self.futures.get(_arr, {'results': [], 'events': []})
-                _res_evt.get('results').append(_payload)
-                self.futures.update({_arr: _res_evt})
-            elif 'event' == _channel and next(iter(_payload.keys())) in self.internal.get('event_names'):
-                _res_evt = self.futures.get(_arr, {'results': [], 'events': []})
-                _res_evt.get('events').append(_payload)
-                self.futures.update({_arr: _res_evt})
-            else:
-                _fifo.append({_channel: {**{'arrival': _arr, 'coreid': _coreid}, **_payload}})
-            logging.debug('SimpleCore.handle(): futures : {}'.format(self.futures))
-        _service.fifo = _fifo
-        logging.debug('_service.fifo : {}'.format(_service.fifo))
     def do_results(self, results):
         logging.debug('SimpleCore.do_results(self, {}): ...'.format(results))
         _service = self.internal.get('service')
         for reg in map(lambda y: y.get('register'), filter(lambda x: x.get('register'), results)):
             if '%pc' != reg.get('name'): continue
             self.update({'%pc': reg.get('data')})
-#            service.tx({'info': 'state.%pc : {}'.format(state.get('%pc'))})
             if 0 == int.from_bytes(self.get('%pc'), 'little'):
                 _service.tx({'info': 'Jump to @0x00000000... graceful shutdown'})
-#                self.service.tx({'shutdown': {
-#                    'coreid': self.get('coreid'),
-#                }})
                 _service.tx({'event': {
                     'arrival': 1 + self.get('cycle'),
                     'coreid': self.get('coreid'),
@@ -264,7 +196,6 @@ class Core(dict):
         self.service.tx({'info': 'state.pending_decode  : {} ({})'.format(self.pending_decode, self.get('pending_decode'))})
         self.service.tx({'info': 'state.pending_execute : {} ({})'.format(self.pending_execute, self.get('pending_execute'))})
         _service.clear()
-
         
 
 if '__main__' == __name__:
@@ -289,30 +220,7 @@ if '__main__' == __name__:
     _launcher = {x:y for x, y in zip(['host', 'port'], args.launcher.split(':'))}
     _launcher['port'] = int(_launcher['port'])
     logging.debug('_launcher : {}'.format(_launcher))
-#    state = {
-#        'service': 'simplecore',
-#        'cycle': 0,
-#        'coreid': args.coreid,
-#        'active': True,
-#        'running': False,
-#        'pending_pc': False,
-#        'pending_fetch': None,
-#        'pending_decode': False,
-#        'pending_execute': None,
-#        'stats': None,
-#        'iid': 0,
-#        '%pc': None,
-#        'ack': True,
-#        'objmap': None,
-#        'core': Core('simplecore', args.coreid, _launcher),
-#        'config': {
-#            'toolchain': '',
-#            'binary': '',
-#        },
-#    }
-#    _service = service.Service(state.get('service'), state.get('coreid'), _launcher.get('host'), _launcher.get('port'))
-#    state.update({'core': Core('simplecore', args.coreid, _launcher)})
-    state = Core('simplecore', args.coreid, _launcher)
+    state = Core('etrog', args.coreid, _launcher)
     _service = state.service
     logging.info('state : {}'.format(state))
     while state.get('active'):
@@ -370,17 +278,11 @@ if '__main__' == __name__:
                 _val = v.get('val')
                 assert _field in _target.get('config').keys(), 'No such config field, {}, in service {}!'.format(_field, v.get('service'))
                 _target.get('config').update({_field: _val})
-#                if state.get('service') != v.get('service'): continue
-#                _field = v.get('field')
-#                _val = v.get('val')
-#                assert _field in state.get('config').keys(), 'No such config field, {}, in service {}!'.format(_field, state.get('service'))
-#                state.get('config').update({_field: _val})
             elif 'tick' == k:
                 state.update({'cycle': v.get('cycle')})
                 _results = tuple(filter(lambda x: state.get('coreid') == x.get('coreid'), v.get('results')))
                 _events = tuple(filter(lambda x: state.get('coreid') == x.get('coreid'), v.get('events')))
                 state.do_tick(_results, _events)
-#                do_tick(_service, state, _results, _events)
             elif 'restore' == k:
                 assert not state.get('running'), 'Attempted restore while running!'
                 state.update({'cycle': v.get('cycle')})
