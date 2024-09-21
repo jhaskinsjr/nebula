@@ -16,7 +16,6 @@ class Decode:
     def __init__(self, name, coreid, launcher, s=None):
         self.name = name
         self.coreid = coreid
-        logging.debug('=== s : {}'.format(s))
         self.service = (service.Service(self.get('name'), self.get('coreid'), launcher.get('host'), launcher.get('port')) if None == s else s)
         self.cycle = 0
         self.active = True
