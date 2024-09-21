@@ -126,6 +126,11 @@ about these topics and much more are covered in the links below.
 
 # Recent Revision History
 
+Git tag `v1.5.1` (20240921):
+* BUG FIX: [128e/localhost.nebula](chips/128e/localhost.nebula) now correctly points to core.py (instead of simplecore.py)
+* *new* [SimpleCore](components/simplecore/__init__.py) class
+* [Etrpg](pipelines/etrog/implementation/core.py) creates `Core` class that inherits from `SimpleCore`
+
 Git tag `v1.5.0` (20240919):
 * *new* [Etrog](pipelines/etrog/README.md) pipeline model: faster reimplementation of [Bergamot](pipelines/bergamot/README.md)
 
