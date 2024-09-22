@@ -4,9 +4,10 @@ Presented in no particular order, below are some additional features that will
 extend and enhance the simulator. (Once-future features that have already been
 implemented have been struck through.)
 
+1. "component'ized" Tangelo reimplementation (code name: Hyuganatsu)
+1. superscalar out-of-order pipeline implementation (code name: yuzu)
 1. per-core cycle count
 1. cache snooping
-1. "component'ized" Bergamot implementation (code name: Etrog)
 1. pipeline implementation with value prediction
 1. pipeline implementation with out-of-order execution
 1. perfect branch predictor
@@ -18,6 +19,7 @@ implemented have been struck through.)
 1. MIPS instruction set support
 1. x86_64 instruction set support
 1. SPARC v9 instruction set support
+1. ~~"component'ized" Bergamot reimplementation (code name: Etrog)~~
 1. ~~MMU service~~
 1. ~~shared caches~~
 1. ~~accelerated `mmap`-based main memory implementation~~
