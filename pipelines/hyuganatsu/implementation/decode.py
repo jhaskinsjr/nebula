@@ -72,8 +72,8 @@ class Decode:
         logging.debug('Decode.do_tick(): results : {}'.format(results))
         logging.debug('Decode.do_tick(): events  : {}'.format(events))
         for _mispr in map(lambda y: y.get('mispredict'), filter(lambda x: x.get('mispredict'), results)):
-            self.service.tx({'info': '_mispr : {}'.format(_mispr)})
-            logging.info('Decode.do_tick(): _mispr : {}'.format(_mispr))
+#            self.service.tx({'info': '_mispr : {}'.format(_mispr)})
+            logging.info(os.path.basename(__file__) + ': _mispr : {}'.format(_mispr))
             _insn = _mispr.get('insn')
             if 'branch' == _insn.get('prediction').get('type'):
                 self.get('buffer').clear()
@@ -93,7 +93,8 @@ class Decode:
                 self.get('buffer').clear()
                 self.update({'%pc': riscv.constants.integer_to_list_of_bytes(_dec.get('addr'), 64, 'little')})
                 self.update({'%jp': riscv.constants.integer_to_list_of_bytes(_dec.get('addr'), 64, 'little')})
-            self.service.tx({'info': '_dec : {}'.format(_dec)})
+#            self.service.tx({'info': '_dec : {}'.format(_dec)})
+            logging.info(os.path.basename(__file__) + ': _dec : {}'.format(_dec))
             self.get('buffer').extend(_dec.get('data'))
             self.update({'%jp': riscv.constants.integer_to_list_of_bytes(_dec.get('addr') + len(_dec.get('data')), 64, 'little')})
         _decoded = []
@@ -105,7 +106,7 @@ class Decode:
                 **{'_pc': _pc},
                 **({'function': next(filter(lambda x: _pc >= x[0], sorted(self.get('objmap').items(), reverse=True)))[-1].get('name', '')} if self.get('objmap') else {}),
             })
-            logging.info('Decode.do_tick(): {:8x} : {}'.format(_pc, _decoded[-1]))
+            logging.debug('Decode.do_tick(): {:8x} : {}'.format(_pc, _decoded[-1]))
 #            toolbox.report_stats(service, state, 'histo', 'decoded.insn', _insn.get('cmd'))
             self.get('stats').refresh('histo', 'decoded_insn', _insn.get('cmd'))
             self.update({'%pc': riscv.constants.integer_to_list_of_bytes(_insn.get('size') + _pc, 64, 'little')})
@@ -118,10 +119,14 @@ class Decode:
                 },
             }})
         self.update({'buffer': self.get('buffer')[sum(map(lambda x: x.get('size'), _decoded)):]})
-        self.service.tx({'info': 'state.buffer           : {} ({})'.format(self.get('buffer'), len(self.get('buffer')))})
-        self.service.tx({'info': 'state.%pc              : {} ({})'.format(self.get('%pc'), ('' if not self.get('%pc') else int.from_bytes(self.get('%pc'), 'little')))})
-        self.service.tx({'info': 'state.%jp              : {} ({})'.format(self.get('%jp'), ('' if not self.get('%jp') else int.from_bytes(self.get('%jp'), 'little')))})
-        self.service.tx({'info': 'state.drop_until       : {} ({})'.format(self.get('drop_until'), ('' if not self.get('drop_until') else int.from_bytes(self.get('drop_until'), 'little')))})
+#        self.service.tx({'info': 'state.buffer           : {} ({})'.format(self.get('buffer'), len(self.get('buffer')))})
+#        self.service.tx({'info': 'state.%pc              : {} ({})'.format(self.get('%pc'), ('' if not self.get('%pc') else int.from_bytes(self.get('%pc'), 'little')))})
+#        self.service.tx({'info': 'state.%jp              : {} ({})'.format(self.get('%jp'), ('' if not self.get('%jp') else int.from_bytes(self.get('%jp'), 'little')))})
+#        self.service.tx({'info': 'state.drop_until       : {} ({})'.format(self.get('drop_until'), ('' if not self.get('drop_until') else int.from_bytes(self.get('drop_until'), 'little')))})
+        logging.info(os.path.basename(__file__) + ': state.buffer           : {} ({})'.format(self.get('buffer'), len(self.get('buffer'))))
+        logging.info(os.path.basename(__file__) + ': state.%pc              : {} ({})'.format(self.get('%pc'), ('' if not self.get('%pc') else int.from_bytes(self.get('%pc'), 'little'))))
+        logging.info(os.path.basename(__file__) + ': state.%jp              : {} ({})'.format(self.get('%jp'), ('' if not self.get('%jp') else int.from_bytes(self.get('%jp'), 'little'))))
+        logging.info(os.path.basename(__file__) + ': state.drop_until       : {} ({})'.format(self.get('drop_until'), ('' if not self.get('drop_until') else int.from_bytes(self.get('drop_until'), 'little'))))
 
 if '__main__' == __name__:
     parser = argparse.ArgumentParser(description='Nebula: Instruction Decode')

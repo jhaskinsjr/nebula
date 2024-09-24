@@ -19,7 +19,7 @@ import riscv.syscall.linux
 
 
 def do_unimplemented(service, state, insn):
-    logging.info('Unimplemented: {}'.format(state.get('insn')))
+    logging.info(os.path.basename(__file__) + ': Unimplemented: {}'.format(state.get('insn')))
     service.tx({'undefined': insn})
 def do_load(service, state, insn):
     if insn.get('peeked'):
@@ -32,7 +32,8 @@ def do_store(service, state, insn):
 def fetch_block(service, state, addr, physical):
     _blockaddr = state.get('l1dc').blockaddr(addr)
     _blocksize = state.get('l1dc').nbytesperblock
-    service.tx({'info': 'fetch_block(..., {} ({:08x}))'.format(addr, _blockaddr)})
+#    service.tx({'info': 'fetch_block(..., {} ({:08x}))'.format(addr, _blockaddr)})
+    logging.info(os.path.basename(__file__) + ': fetch_block(..., {} ({:08x}))'.format(addr, _blockaddr))
     state.get('pending_fetch').append(_blockaddr)
     service.tx({'event': {
         'arrival': 1 + state.get('cycle'),
@@ -55,7 +56,8 @@ def do_l1dc(service, state):
         _addr = state.get('tlb').get(_frame) | components.simplemmu.offset(_pagesize, _vaddr)
         _physical = True
         _size = _insn.get('nbytes')
-        service.tx({'info': '_addr : {} ({})'.format(_addr, _vaddr)})
+#        service.tx({'info': '_addr : {} ({})'.format(_addr, _vaddr)})
+        logging.info(os.path.basename(__file__) + ': _addr : {} ({})'.format(_addr, _vaddr))
         _ante = None
         _post = None
         if state.get('l1dc').fits(_addr, _size):
@@ -64,7 +66,8 @@ def do_l1dc(service, state):
                 if len(state.get('pending_fetch')): continue # only 1 pending fetch at a time is primitive, but good enough for now
                 fetch_block(service, state, _addr, _physical)
                 continue
-            service.tx({'info': '_data : @{} {}'.format(_addr, _data)})
+#            service.tx({'info': '_data : @{} {}'.format(_addr, _data)})
+            logging.info(os.path.basename(__file__) + ': _data : @{} {}'.format(_addr, _data))
         else:
             _blockaddr = state.get('l1dc').blockaddr(_addr)
             _blocksize = state.get('l1dc').nbytesperblock
@@ -79,8 +82,10 @@ def do_l1dc(service, state):
                 if len(state.get('pending_fetch')): continue # only 1 pending fetch at a time is primitive, but good enough for now
                 fetch_block(service, state, _addr + len(_ante), _physical)
                 continue
-            service.tx({'info': '_ante : @{} {}'.format(_addr, _ante)})
-            service.tx({'info': '_post : @{} {}'.format(_addr + len(_ante), _post)})
+#            service.tx({'info': '_ante : @{} {}'.format(_addr, _ante)})
+#            service.tx({'info': '_post : @{} {}'.format(_addr + len(_ante), _post)})
+            logging.info(os.path.basename(__file__) + ': _ante : @{} {}'.format(_addr, _ante))
+            logging.info(os.path.basename(__file__) + ': _post : @{} {}'.format(_addr + len(_ante), _post))
             # NOTE: In an L1DC with only a single block, an incoming _post would
             #       always displace _ante, and an incoming _ante would always displace
             #       _post... but an L1DC with only a single block would not be very
@@ -92,8 +97,10 @@ def do_l1dc(service, state):
             # STORE
             if _ante:
                 assert _post
-                service.tx({'info': '_ante : @{} {}'.format(_addr, _ante)})
-                service.tx({'info': '_post : @{} {}'.format(_addr + len(_ante), _post)})
+#                service.tx({'info': '_ante : @{} {}'.format(_addr, _ante)})
+#                service.tx({'info': '_post : @{} {}'.format(_addr + len(_ante), _post)})
+                logging.info(os.path.basename(__file__) + ': _ante : @{} {}'.format(_addr, _ante))
+                logging.info(os.path.basename(__file__) + ': _post : @{} {}'.format(_addr + len(_ante), _post))
                 state.get('l1dc').poke(_addr, _ante)
                 state.get('l1dc').poke(_addr + len(_ante), _post)
             else:
@@ -128,7 +135,8 @@ def do_l1dc(service, state):
         state.get('stats').refresh('flat', 'l1dc_accesses')
 def do_execute(service, state):
     for _insn in state.get('pending_execute'):
-        service.tx({'info': '_insn : {}'.format(_insn)})
+#        service.tx({'info': '_insn : {}'.format(_insn)})
+        logging.info(os.path.basename(__file__) + ': _insn : {}'.format(_insn))
         state.get('executing').append(_insn)
         {
             'LD': do_load,
@@ -224,14 +232,15 @@ class LSU:
             if _retire:
                 _ndx = next(filter(lambda x: _retire.get('iid') == self.get('pending_execute')[x].get('iid'), range(len(self.get('pending_execute')))), None)
                 if not isinstance(_ndx, int): continue
-                logging.info('LSU.do_tick(): _retire : {}'.format(_retire))
-                self.service.tx({'info': 'retiring : {}'.format(_retire)})
+#                self.service.tx({'info': 'retiring : {}'.format(_retire)})
+                logging.info(os.path.basename(__file__) + ': _retire : {}'.format(_retire))
                 self.get('pending_execute')[_ndx].update({'retired': True})
         for _l2 in filter(lambda x: x, map(lambda y: y.get('l2'), results)):
             _addr = _l2.get('addr')
             if _addr not in self.get('pending_fetch'): continue
             if not 'data' in _l2.keys(): continue # b/c lower levels in the cache hierarchy report POKE oeprations
-            self.service.tx({'info': '_l2 : {}'.format(_l2)})
+#            self.service.tx({'info': '_l2 : {}'.format(_l2)})
+            logging.info(os.path.basename(__file__) + ': _l2 : {}'.format(_l2))
             self.get('l1dc').poke(_addr, _l2.get('data'))
             self.get('pending_fetch').remove(_addr)
         for _mmu in map(lambda y: y.get('mmu'), filter(lambda x: x.get('mmu'), results)):
@@ -293,8 +302,10 @@ class LSU:
                 self.get('pending_execute').append(_insn)
             elif 'cmd' in _lsu.keys() and 'purge' == _lsu.get('cmd'):
                 self.get('l1dc').purge()
-        self.service.tx({'info': 'state.executing       : {} ({})'.format(list(map(lambda x: [x.get('cmd'), x.get('iid'), x.get('operands').get('addr')], self.get('executing'))), len(self.get('executing')))})
-        self.service.tx({'info': 'state.pending_execute : {} ({})'.format(list(map(lambda x: [x.get('cmd'), x.get('iid'), x.get('operands').get('addr')], self.get('pending_execute'))), len(self.get('pending_execute')))})
+#        self.service.tx({'info': 'state.executing       : {} ({})'.format(list(map(lambda x: [x.get('cmd'), x.get('iid'), x.get('operands').get('addr')], self.get('executing'))), len(self.get('executing')))})
+#        self.service.tx({'info': 'state.pending_execute : {} ({})'.format(list(map(lambda x: [x.get('cmd'), x.get('iid'), x.get('operands').get('addr')], self.get('pending_execute'))), len(self.get('pending_execute')))})
+        logging.info(os.path.basename(__file__) + ': state.executing       : {} ({})'.format(list(map(lambda x: [x.get('cmd'), x.get('iid'), x.get('operands').get('addr')], self.get('executing'))), len(self.get('executing'))))
+        logging.info(os.path.basename(__file__) + ': state.pending_execute : {} ({})'.format(list(map(lambda x: [x.get('cmd'), x.get('iid'), x.get('operands').get('addr')], self.get('pending_execute'))), len(self.get('pending_execute'))))
         do_execute(self.service, self)
 
 if '__main__' == __name__:

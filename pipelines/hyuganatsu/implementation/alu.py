@@ -16,7 +16,7 @@ import riscv.constants
 import riscv.syscall.linux
 
 def do_unimplemented(service, state, insn):
-    logging.info('Unimplemented: {}'.format(state.get('pending_execute')))
+    logging.info(os.path.basename(__file__) + ': Unimplemented: {}'.format(state.get('pending_execute')))
     insn = {
         **insn,
         **{
@@ -257,7 +257,8 @@ def do_store(service, state, insn):
     }})
     return insn, True
 def do_atomic(service, state, insn):
-    service.tx({'info': 'state.operands.mem : {} ({})'.format(state.get('operands').get('mem'), insn.get('cmd'))})
+#    service.tx({'info': 'state.operands.mem : {} ({})'.format(state.get('operands').get('mem'), insn.get('cmd'))})
+    logging.info(os.path.basename(__file__) + ': state.operands.mem : {} ({})'.format(state.get('operands').get('mem'), insn.get('cmd')))
     if insn.get('cmd') in ['LR.W', 'LR.D', 'SC.W', 'SC.D']:
         insn = {
             **insn,
@@ -412,12 +413,14 @@ def do_ecall(service, state, insn):
         if 'arg' not in state.get('syscall_kwargs').keys(): state.get('syscall_kwargs').update({'arg': []})
         state.get('syscall_kwargs').get('arg').append(bytes(state.get('operands').get('mem')))
         state.get('operands').pop('mem')
-    service.tx({'info': 'state.syscall_kwargs : {}'.format(state.get('syscall_kwargs'))})
+#    service.tx({'info': 'state.syscall_kwargs : {}'.format(state.get('syscall_kwargs'))})
+    logging.info(os.path.basename(__file__) + ': state.syscall_kwargs : {}'.format(state.get('syscall_kwargs')))
     _side_effect = state.get('system').do_syscall(_x17, _x10, _x11, _x12, _x13, _x14, _x15, **{
         **state.get('syscall_kwargs'),
         **{'cycle': state.get('cycle')},
     })
-    service.tx({'info': '_side_effect         : {}'.format(_side_effect)})
+#    service.tx({'info': '_side_effect         : {}'.format(_side_effect)})
+    logging.info(os.path.basename(__file__) + ': _side_effect         : {}'.format(_side_effect))
     _done = _side_effect.get('done')
     if 'poke' in _side_effect.keys():
         _addr = int.from_bytes(_side_effect.get('poke').get('addr'), 'little')
@@ -545,7 +548,8 @@ def do_execute(service, state):
 #    toolbox.report_stats(service, state, 'flat', 'pending_execute_not_empty')
     state.get('stats').refresh('flat', 'pending_execute_not_empty')
     _remove_from_pending_execute = []
-    service.tx({'info': 'state.pending_execute : {}'.format(state.get('pending_execute'))})
+#    service.tx({'info': 'state.pending_execute : {}'.format(state.get('pending_execute'))})
+    logging.info(os.path.basename(__file__) + ': state.pending_execute : {}'.format(state.get('pending_execute')))
     for _insn in state.get('pending_execute'):
         if isinstance(state.get('recovery_iid'), int):
             service.tx({'result': {
@@ -561,7 +565,8 @@ def do_execute(service, state):
             state.get('stats').refresh('flat', 'flushes')
             _remove_from_pending_execute.append(_insn)
             continue
-        service.tx({'info': '_insn : {}'.format(_insn)})
+#        service.tx({'info': '_insn : {}'.format(_insn)})
+        logging.info(os.path.basename(__file__) + ': _insn : {}'.format(_insn))
         _pc = int.from_bytes(_insn.get('%pc'), 'little')
         _word = ('{:08x}'.format(_insn.get('word')) if 4 == _insn.get('size') else '    {:04x}'.format(_insn.get('word')))
         logging.info('do_execute(): {:8x}: {} : {:10} (iid : {}, {:12}, {})'.format(_pc, _word, _insn.get('cmd'), _insn.get('iid'), state.get('cycle'), _insn.get('function', '')))
@@ -764,7 +769,8 @@ class ALU:
                 **_insn,
                 **_patch,
             })
-        self.service.tx({'info': 'state.operands : {}'.format(self.get('operands'))})
+#        self.service.tx({'info': 'state.operands : {}'.format(self.get('operands'))})
+        logging.info(os.path.basename(__file__) + ': state.operands : {}'.format(self.get('operands')))
         do_execute(self.service, self)
 
 if '__main__' == __name__:

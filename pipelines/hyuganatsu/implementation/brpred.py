@@ -124,7 +124,8 @@ class BranchPredictor:
         for _flush, _retire in map(lambda y: (y.get('flush'), y.get('retire')), filter(lambda x: x.get('flush') or x.get('retire'), results)):
             if _retire:
                 if not _retire.get('cmd') in riscv.constants.BRANCHES + riscv.constants.JUMPS: continue
-                self.service.tx({'info': 'retiring : {}'.format(_retire)})
+#                self.service.tx({'info': 'retiring : {}'.format(_retire)})
+                logging.info(os.path.basename(__file__) + ': retiring : {}'.format(_retire))
                 _pc = int.from_bytes(_retire.get('%pc'), 'little')
                 if isinstance(_btac, BranchTargetAddressCache):
                     if not _pc in _btac.keys(): _btac.update({_pc: {'size': _retire.get('size'), 'targetpc': _pc + _retire.get('size')}})
@@ -132,12 +133,14 @@ class BranchPredictor:
                 if self.get('predictor'): self.get('predictor').update(_pc, _retire.get('taken'))
             if _flush:
                 if not _flush.get('cmd') in riscv.constants.BRANCHES + riscv.constants.JUMPS: continue
-                self.service.tx({'info': 'flushing : {}'.format(_retire)})
+#                self.service.tx({'info': 'flushing : {}'.format(_retire)})
+                logging.info(os.path.basename(__file__) + ': flushing : {}'.format(_flush))
                 if _btac: _btac.pop(int.from_bytes(_flush.get('%pc'), 'little'), None)
         if next(filter(lambda x: x.get('mispredict'), results), None):
             for _mispr in map(lambda y: y.get('mispredict'), filter(lambda x: x.get('mispredict'), results)):
                 logging.debug('BranchPredictor.do_tick(): _mispr : {}'.format(_mispr))
-                self.service.tx({'info': '_mispr : {}'.format(_mispr)})
+#                self.service.tx({'info': '_mispr : {}'.format(_mispr)})
+                logging.info(os.path.basename(__file__) + ': _mispr : {}'.format(_mispr))
                 _insn = _mispr.get('insn')
                 if 'branch' == _insn.get('prediction').get('type'):
                     self.get('fetch_address').clear()
@@ -164,7 +167,8 @@ class BranchPredictor:
 #                if _br:
 #                    _brpc, _pr = next(iter(_br.items()))
                 if _br and (self.get('predictor').istaken(_brpc) if self.get('predictor') else True):
-                    self.service.tx({'info': '_br : {}'.format(_br)})
+#                    self.service.tx({'info': '_br : {}'.format(_br)})
+                    logging.info(os.path.basename(__file__) + ': _br : {}'.format(_br))
                     self.service.tx({'result': {
                         'arrival': 1 + self.get('cycle'),
                         'coreid': self.get('coreid'),
@@ -206,12 +210,18 @@ class BranchPredictor:
                 'coreid': self.get('coreid'),
                 **self.get('pending_fetch'),
             }})
-        self.service.tx({'info': 'state.pending_fetch : {}'.format(self.get('pending_fetch'))})
-        self.service.tx({'info': 'state.fetch_address : {} ({})'.format(self.get('fetch_address'), len(self.get('fetch_address')))})
-        self.service.tx({'info': 'state.predictor     : {}'.format(self.get('predictor'))})
-        self.service.tx({'info': 'state.btac          : {}'.format(self.get('btac'))})
-        self.service.tx({'info': 'state.drop_until    : {} ({})'.format('' if not self.get('drop_until') else list(self.get('drop_until').to_bytes(8, 'little')), self.get('drop_until'))})
-        self.service.tx({'info': 'filter(mispredict, results) : {}'.format(len(list(filter(lambda x: x.get('mispredict'), results))))})
+#        self.service.tx({'info': 'state.pending_fetch : {}'.format(self.get('pending_fetch'))})
+#        self.service.tx({'info': 'state.fetch_address : {} ({})'.format(self.get('fetch_address'), len(self.get('fetch_address')))})
+#        self.service.tx({'info': 'state.predictor     : {}'.format(self.get('predictor'))})
+#        self.service.tx({'info': 'state.btac          : {}'.format(self.get('btac'))})
+#        self.service.tx({'info': 'state.drop_until    : {} ({})'.format('' if not self.get('drop_until') else list(self.get('drop_until').to_bytes(8, 'little')), self.get('drop_until'))})
+#        self.service.tx({'info': 'filter(mispredict, results) : {}'.format(len(list(filter(lambda x: x.get('mispredict'), results))))})
+        logging.info(os.path.basename(__file__) + ': state.pending_fetch       : {}'.format(self.get('pending_fetch')))
+        logging.info(os.path.basename(__file__) + ': state.fetch_address         : {} ({})'.format(self.get('fetch_address'), len(self.get('fetch_address'))))
+        logging.info(os.path.basename(__file__) + ': state.predictor             : {}'.format(self.get('predictor')))
+        logging.info(os.path.basename(__file__) + ': state.btac                  : {}'.format(self.get('btac')))
+        logging.info(os.path.basename(__file__) + ': state.drop_until            : {}'.format('' if not self.get('drop_until') else list(self.get('drop_until').to_bytes(8, 'little')), self.get('drop_until')))
+        logging.info(os.path.basename(__file__) + ':  filter(mispredict, results) : {}'.format(len(list(filter(lambda x: x.get('mispredict'), results)))))
     
 
 if '__main__' == __name__:

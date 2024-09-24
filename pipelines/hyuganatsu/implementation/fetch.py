@@ -62,7 +62,8 @@ class Fetch:
     def fetch_block(self, jp, physical):
         _blockaddr = self.get('l1ic').blockaddr(jp)
         _blocksize = self.get('l1ic').nbytesperblock
-        self.service.tx({'info': 'fetch_block(..., {} ({:08x}))'.format(jp, _blockaddr)})
+#        self.service.tx({'info': 'fetch_block(..., {} ({:08x}))'.format(jp, _blockaddr)})
+        logging.info(os.path.basename(__file__) + ': fetch_block(..., {} ({:08x}))'.format(jp, _blockaddr))
         self.get('pending_fetch').append(_blockaddr)
         self.service.tx({'event': {
             'arrival': 1 + self.get('cycle'),
@@ -85,11 +86,13 @@ class Fetch:
         if _frame not in self.get('tlb').keys(): return
         _jp = self.get('tlb').get(_frame) | components.simplemmu.offset(_pagesize, _vaddr)
         _physical = True
-        self.service.tx({'info': '_jp : {} ({})'.format(list(_jp.to_bytes(8, 'little')), _jp)})
+#        self.service.tx({'info': '_jp : {} ({})'.format(list(_jp.to_bytes(8, 'little')), _jp)})
+        logging.info(os.path.basename(__file__) + ': _jp : {} ({})'.format(list(_jp.to_bytes(8, 'little')), _jp))
         _blockaddr = self.get('l1ic').blockaddr(_jp)
         _blocksize = self.get('l1ic').nbytesperblock
         _data = self.get('l1ic').peek(_blockaddr, _blocksize)
-        self.service.tx({'info': '_data : {}'.format(_data)})
+#        self.service.tx({'info': '_data : {}'.format(_data)})
+        logging.info(os.path.basename(__file__) + ': _data : {}'.format(_data))
         if not _data:
             if len(self.get('pending_fetch')): return # only 1 pending fetch at a time is primitive, but good enough for now
             self.fetch_block(_jp, _physical)
@@ -117,15 +120,16 @@ class Fetch:
         self.get('stats').refresh('flat', 'l1ic_accesses')
     def do_results(self, results):
         for _mispr in map(lambda y: y.get('mispredict'), filter(lambda x: x.get('mispredict'), results)):
-            self.service.tx({'info': '_mispr : {}'.format(_mispr)})
-            logging.info('Fetch.do_results(): _mispr : {}'.format(_mispr))
+#            self.service.tx({'info': '_mispr : {}'.format(_mispr)})
+            logging.info(os.path.basename(__file__) + ': _mispr : {}'.format(_mispr))
             self.get('pending_fetch').clear()
             self.get('fetch_buffer').clear()
             self.update({'mispredict': _mispr})
         for _l2 in map(lambda y: y.get('l2'), filter(lambda x: x.get('l2'), results)):
             _addr = _l2.get('addr')
             if _addr not in self.get('pending_fetch'): continue
-            self.service.tx({'info': '_l2 : {}'.format(_l2)})
+#            self.service.tx({'info': '_l2 : {}'.format(_l2)})
+            logging.info(os.path.basename(__file__) + ': _l2 : {}'.format(_l2))
             self.get('l1ic').poke(_addr, _l2.get('data'))
             self.get('pending_fetch').remove(_addr)
         for _mmu in map(lambda y: y.get('mmu'), filter(lambda x: x.get('mmu'), results)):
@@ -169,7 +173,8 @@ class Fetch:
         self.update({'mispredict': None})
         self.do_results(results)
         self.do_events(events)
-        self.service.tx({'info': 'state.fetch_buffer : {}'.format(self.get('fetch_buffer'))})
+#        self.service.tx({'info': 'state.fetch_buffer : {}'.format(self.get('fetch_buffer'))})
+        logging.info(os.path.basename(__file__) + ': state.fetch_buffer : {}'.format(self.get('fetch_buffer')))
         if not len(self.get('fetch_buffer')): return
         self.do_l1ic()
     

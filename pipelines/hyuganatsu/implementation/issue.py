@@ -61,7 +61,8 @@ class Issue:
             if len(self.get('issued')) and self.get('issued')[-1].get('cmd') in ['ECALL', 'FENCE']: break
             _hazards = sum(map(lambda x: hazard(x, _insn), self.get('issued')), [])
             _hazards = list(filter(lambda x: x not in self.get('forward').keys(), _hazards)) + [x for x in self.get('forward').keys() if _hazards.count(x) > 1]
-            self.service.tx({'info': '_hazards : {} ({})'.format(_hazards, len(_hazards))})
+#            self.service.tx({'info': '_hazards : {} ({})'.format(_hazards, len(_hazards))})
+            logging.info(os.path.basename(__file__) + ': _hazards : {} ({})'.format(_hazards, len(_hazards)))
             if len(_hazards): break
             if _insn.get('cmd') in ['ECALL', 'FENCE']:
                 if len(self.get('issued')): break
@@ -135,16 +136,18 @@ class Issue:
         logging.debug('do_tick(): results : {}'.format(results))
         for _flush, _retire in map(lambda y: (y.get('flush'), y.get('retire')), filter(lambda x: x.get('flush') or x.get('retire'), results)):
             if _flush:
-                self.service.tx({'info': 'flushing : {}'.format(_flush)})
+#                self.service.tx({'info': 'flushing : {}'.format(_flush)})
+                logging.info(os.path.basename(__file__) + ': flushing : {}'.format(_flush))
                 self.update({'issued': list(filter(lambda x: x.get('iid') != _flush.get('iid'), self.get('issued')))})
             if _retire:
-                self.service.tx({'info': 'retiring : {}'.format(_retire)})
+#                self.service.tx({'info': 'retiring : {}'.format(_retire)})
+                logging.info(os.path.basename(__file__) + ': retiring : {}'.format(_retire))
                 assert _retire.get('iid') == self.get('issued')[0].get('iid'), '[@{}] _retire : {} (vs {})'.format(self.get('cycle'), _retire, self.get('issued')[0])
                 self.get('issued').pop(0)
         if next(filter(lambda x: x.get('mispredict'), results), None):
             for _mispr in map(lambda y: y.get('mispredict'), filter(lambda x: x.get('mispredict'), results)):
-                self.service.tx({'info': '_mispr : {}'.format(_mispr)})
-                logging.info('do_issue(): _mispr : {}'.format(_mispr))
+#                self.service.tx({'info': '_mispr : {}'.format(_mispr)})
+                logging.info(os.path.basename(__file__) + ': _mispr : {}'.format(_mispr))
                 _insn = _mispr.get('insn')
                 self.get('decoded').clear()
                 self.get('predictions').clear()
@@ -163,9 +166,11 @@ class Issue:
             self.get('forward').update({0: riscv.constants.integer_to_list_of_bytes(0, 64, 'little')})
             for _pr in map(lambda x: x.get('prediction'), filter(lambda y: y.get('prediction'), results)):
                 if 'branch' != _pr.get('type'): continue
-                self.service.tx({'info': '_pr : {}'.format(_pr)})
+#                self.service.tx({'info': '_pr : {}'.format(_pr)})
+                logging.info(os.path.basename(__file__) + ': _pr : {}'.format(_pr))
                 self.get('predictions').update({_pr.get('branchpc'): _pr})
-            self.service.tx({'info': 'state.predictions           : {} ({})'.format(self.get('predictions'), len(self.get('predictions').keys()))})
+#            self.service.tx({'info': 'state.predictions           : {} ({})'.format(self.get('predictions'), len(self.get('predictions').keys()))})
+            logging.info(os.path.basename(__file__) + ': state.predictions           : {} ({})'.format(self.get('predictions'), len(self.get('predictions').keys())))
             for _iss in map(lambda y: y.get('issue'), filter(lambda x: x.get('issue'), events)):
                 if self.get('drop_until') and _iss.get('insn').get('%pc') != self.get('drop_until'): continue
                 self.update({'drop_until': None})
@@ -190,10 +195,14 @@ class Issue:
             if 'report_stats' == _cmd:
                 _dict = self.get('stats').get(self.get('coreid')).get(self.get('name'))
                 toolbox.report_stats_from_dict(self.service, self.state(), _dict)
-        self.service.tx({'info': 'state.issued           : {} ({})'.format(self.get('issued'), len(self.get('issued')))})
-        self.service.tx({'info': 'state.decoded          : {} ({})'.format(self.get('decoded')[:20], len(self.get('decoded')))})
-        self.service.tx({'info': 'state.drop_until       : {}'.format(self.get('drop_until'))})
-        self.service.tx({'info': 'state.forward          : {} ({})'.format(self.get('forward'), len(self.get('forward')))})
+#        self.service.tx({'info': 'state.issued           : {} ({})'.format(self.get('issued'), len(self.get('issued')))})
+#        self.service.tx({'info': 'state.decoded          : {} ({})'.format(self.get('decoded')[:20], len(self.get('decoded')))})
+#        self.service.tx({'info': 'state.drop_until       : {}'.format(self.get('drop_until'))})
+#        self.service.tx({'info': 'state.forward          : {} ({})'.format(self.get('forward'), len(self.get('forward')))})
+        logging.info(os.path.basename(__file__) + ': state.issued           : {} ({})'.format(self.get('issued'), len(self.get('issued'))))
+        logging.info(os.path.basename(__file__) + ': state.decoded          : {} ({})'.format(self.get('decoded')[:20], len(self.get('decoded'))))
+        logging.info(os.path.basename(__file__) + ': state.drop_until       : {}'.format(self.get('drop_until')))
+        logging.info(os.path.basename(__file__) + ': state.forward          : {} ({})'.format(self.get('forward'), len(self.get('forward'))))
         self.get('forward').clear()
 
 if '__main__' == __name__:

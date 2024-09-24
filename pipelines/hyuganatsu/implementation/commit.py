@@ -51,7 +51,8 @@ class Commit:
             if _insn.get('cmd') in riscv.constants.LOADS: _key = 'cycles_per_LOAD'
     #        if _key: toolbox.report_stats(service, state, 'histo', _key, state.get('cycle') - _insn.get('issued'))
             if _key: self.get('stats').refresh('histo', _key, self.get('cycle') - _insn.get('issued'))
-            self.service.tx({'info': 'retiring {}'.format(_insn)})
+#            self.service.tx({'info': 'retiring {}'.format(_insn)})
+            logging.info(os.path.basename(__file__) + ': retiring {}'.format(_insn))
             if _insn.get('ret_pc'):
                 self.service.tx({'event': {
                     'arrival': 1 + self.get('cycle'),
@@ -75,7 +76,8 @@ class Commit:
             if _insn.get('shutdown'):
                 _insn.update({'operands': {int(k):v for k, v in _insn.get('operands').items()}})
                 _x17 = _insn.get('operands').get(17)
-                self.service.tx({'info': 'ECALL {}... graceful shutdown'.format(int.from_bytes(_x17, 'little'))})
+#                self.service.tx({'info': 'ECALL {}... graceful shutdown'.format(int.from_bytes(_x17, 'little'))})
+                logging.info(os.path.basename(__file__) + ': ECALL {}... graceful shutdown'.format(int.from_bytes(_x17, 'little')))
                 self.service.tx({'event': {
                     'arrival': 1 + self.get('cycle'),
                     'coreid': self.get('coreid'),
@@ -120,11 +122,13 @@ class Commit:
     def do_tick(self, results, events, **kwargs):
         self.update({'cycle': kwargs.get('cycle', self.cycle)})
         for _l1dc in map(lambda y: y.get('l1dc'), filter(lambda x: x.get('l1dc'), results)):
-            self.service.tx({'info': '_l1dc : {}'.format(_l1dc)})
+#            self.service.tx({'info': '_l1dc : {}'.format(_l1dc)})
+            logging.info(os.path.basename(__file__) + ': _l1dc : {}'.format(_l1dc))
             for _insn in filter(lambda a: a.get('cmd') in riscv.constants.LOADS, self.get('pending_commit')):
                 if _insn.get('operands').get('addr') != _l1dc.get('addr'): continue
                 assert 'data' in _l1dc.keys()
-                self.service.tx({'info': '_insn : {}'.format(_insn)})
+#                self.service.tx({'info': '_insn : {}'.format(_insn)})
+                logging.info(os.path.basename(__file__) + ': _insn : {}'.format(_insn))
                 _peeked  = _l1dc.get('data')
                 _peeked += [-1] * (8 - len(_peeked))
                 _result = { # HACK: This is 100% little-endian-specific
@@ -160,7 +164,17 @@ class Commit:
             self.get('pending_commit').append(_insn)
         self.update({'pending_commit': sorted(self.get('pending_commit'), key=lambda x: x.get('iid'))})
         if len(self.get('pending_commit')): self.do_commit()
-        self.service.tx({'info': 'pending_commit : [{}]'.format(', '.join(map(
+        self.service.tx({'info': 'jhjr'}) # FIXME: something goes awry when NO self.service.tx({'info': ...}) are performed; don't know why yet
+#        self.service.tx({'info': 'pending_commit : [{}]'.format(', '.join(map(
+#            lambda x: '({}{}, {}, {})'.format(
+#                x.get('cmd'),
+#                (' @{}'.format(x.get('operands').get('addr')) if x.get('cmd') in riscv.constants.LOADS + riscv.constants.STORES else ''),
+#                x.get('%pc'),
+#                x.get('iid')
+#            ),
+#            self.get('pending_commit')
+#        )))})
+        logging.info(os.path.basename(__file__) + ': pending_commit : [{}]'.format(', '.join(map(
             lambda x: '({}{}, {}, {})'.format(
                 x.get('cmd'),
                 (' @{}'.format(x.get('operands').get('addr')) if x.get('cmd') in riscv.constants.LOADS + riscv.constants.STORES else ''),
@@ -168,7 +182,7 @@ class Commit:
                 x.get('iid')
             ),
             self.get('pending_commit')
-        )))})
+        ))))
 
 if '__main__' == __name__:
     parser = argparse.ArgumentParser(description='Nebula: Commit')
