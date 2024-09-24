@@ -46,8 +46,10 @@ class SimpleCore(dict):
         self.__dict__.update(d)
     def handle(self):
         _service = self.internal.get('service')
-        logging.debug('_service.fifo : {}'.format(_service.fifo))
         _fifo = []
+        logging.debug('@{:15}'.format(self.cycle))
+        logging.debug('SimpleCore.handle(): futures : {}'.format(self.futures))
+        logging.debug('_service.fifo : {}'.format(_service.fifo))
         while len(self.internal.get('service')):
             _msg = self.internal.get('service').pop(0)
             logging.debug('SimpleCore.handle(): _msg : {}'.format(_msg))
@@ -61,8 +63,8 @@ class SimpleCore(dict):
             _arr = _payload.pop('arrival')
             _coreid = _payload.pop('coreid')
             logging.debug('SimpleCore.handle(): {} {} {}'.format(_arr, _coreid, _payload))
-            logging.debug('SimpleCore.handle(): {}'.format(next(iter(_payload.keys())) in self.internal.get('result_names')))
-            logging.debug('SimpleCore.handle(): futures : {}'.format(self.futures))
+            logging.debug('SimpleCore.handle(): {} in self.internal.result_names : {}'.format(next(iter(_payload.keys())), next(iter(_payload.keys())) in self.internal.get('result_names')))
+            logging.debug('SimpleCore.handle(): {} in self.internal.event_names  : {}'.format(next(iter(_payload.keys())), next(iter(_payload.keys())) in self.internal.get('event_names')))
             assert _arr > self.cycle, 'Attempting to schedule arrival in the past ({} vs. {})'.format(self.cycle, _arr)
             if 'result' == _channel and next(iter(_payload.keys())) in self.internal.get('result_names'):
                 _res_evt = self.futures.get(_arr, {'results': [], 'events': []})
