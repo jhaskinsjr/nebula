@@ -1,17 +1,17 @@
 # Sample Nebula script
 # single-core
-#service implementation/core.py:localhost:22:0:0
-service implementation/regfile.py:localhost:22:0:0
-service implementation/brpred.py:localhost:22:0:0
-service implementation/fetch.py:localhost:22:0:0
-service implementation/decode.py:localhost:22:0:0
-service implementation/issue.py:localhost:22:0:0
-service implementation/alu.py:localhost:22:0:0
-service implementation/lsu.py:localhost:22:0:0
-service implementation/commit.py:localhost:22:0:0
+service implementation/core.py:localhost:22:0:0
+#service implementation/regfile.py:localhost:22:0:0
+#service implementation/brpred.py:localhost:22:0:0
+#service implementation/fetch.py:localhost:22:0:0
+#service implementation/decode.py:localhost:22:0:0
+#service implementation/issue.py:localhost:22:0:0
+#service implementation/alu.py:localhost:22:0:0
+#service implementation/lsu.py:localhost:22:0:0
+#service implementation/commit.py:localhost:22:0:0
 service implementation/l2.py:localhost:22:-1:-1:"--cores 0-0 --next l3"
 service implementation/l3.py:localhost:22:-1:-1:"--cores 0-0 --next mem"
-service implementation/watchdog.py:localhost:22:0:0
+#service implementation/watchdog.py:localhost:22:0:0
 spawn
 config brpred:btac_entries 32
 config brpred:predictor_type bimodal

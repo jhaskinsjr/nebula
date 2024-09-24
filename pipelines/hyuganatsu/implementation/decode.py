@@ -46,6 +46,7 @@ class Decode:
     def update(self, d):
         self.__dict__.update(d)
     def boot(self):
+        self.update({'%jp': self.get('%pc')})
         self.update({'drop_until': None})
         self.update({'buffer': []})
         if not self.get('config').get('toolchain'): return
@@ -68,10 +69,11 @@ class Decode:
         }})
     def do_tick(self, results, events, **kwargs):
         self.update({'cycle': kwargs.get('cycle', self.cycle)})
-        logging.debug('do_tick(): results : {}'.format(results))
+        logging.debug('Decode.do_tick(): results : {}'.format(results))
+        logging.debug('Decode.do_tick(): events  : {}'.format(events))
         for _mispr in map(lambda y: y.get('mispredict'), filter(lambda x: x.get('mispredict'), results)):
             self.service.tx({'info': '_mispr : {}'.format(_mispr)})
-            logging.info('_mispr : {}'.format(_mispr))
+            logging.info('Decode.do_tick(): _mispr : {}'.format(_mispr))
             _insn = _mispr.get('insn')
             if 'branch' == _insn.get('prediction').get('type'):
                 self.get('buffer').clear()
@@ -103,12 +105,12 @@ class Decode:
                 **{'_pc': _pc},
                 **({'function': next(filter(lambda x: _pc >= x[0], sorted(self.get('objmap').items(), reverse=True)))[-1].get('name', '')} if self.get('objmap') else {}),
             })
-            logging.info('{:8x} : {}'.format(_pc, _decoded[-1]))
+            logging.info('Decode.do_tick(): {:8x} : {}'.format(_pc, _decoded[-1]))
 #            toolbox.report_stats(service, state, 'histo', 'decoded.insn', _insn.get('cmd'))
             self.get('stats').refresh('histo', 'decoded_insn', _insn.get('cmd'))
             self.update({'%pc': riscv.constants.integer_to_list_of_bytes(_insn.get('size') + _pc, 64, 'little')})
         for _insn in _decoded:
-           self. service.tx({'event': {
+           self.service.tx({'event': {
                 'arrival': 1 + self.get('cycle'),
                 'coreid': self.get('coreid'),
                 'issue': {
@@ -143,28 +145,6 @@ if '__main__' == __name__:
     _launcher = {x:y for x, y in zip(['host', 'port'], args.launcher.split(':'))}
     _launcher['port'] = int(_launcher['port'])
     logging.debug('_launcher : {}'.format(_launcher))
-#    state = {
-#        'service': 'decode',
-#        'cycle': 0,
-#        'coreid': args.coreid,
-#        'active': True,
-#        'running': False,
-#        '%pc': None,
-#        '%jp': None, # address of the first byte beyond the end of state.buffer
-#        'drop_until': None,
-#        'ack': True,
-#        'buffer': [],
-#        'iid': 0,
-#        'objmap': None,
-#        'stats': None,
-#        'binary': '',
-#        'config': {
-#            'buffer_capacity': 16,
-#            'max_bytes_to_decode': 16,
-#            'toolchain': '',
-#        },
-#    }
-#    _service = service.Service(state.get('service'), state.get('coreid'), _launcher.get('host'), _launcher.get('port'))
     state = Decode('decode', args.coreid, _launcher)
     _service = state.service
     while state.get('active'):
@@ -179,28 +159,7 @@ if '__main__' == __name__:
             elif {'text': 'run'} == {k: v}:
                 state.update({'running': True})
                 state.update({'ack': False})
-#                state.update({'drop_until': None})
-#                state.update({'buffer': []})
-#                state.update({'stats': toolbox.stats.CounterBank(state.get('coreid'), state.get('service'))})
                 _service.tx({'info': 'state.config : {}'.format(state.get('config'))})
-#                if not state.get('config').get('toolchain'): continue
-#                if not state.get('binary'): continue
-#                _toolchain = state.get('config').get('toolchain')
-#                _binary = state.get('binary')
-#                _files = next(iter(list(os.walk(_toolchain))))[-1]
-#                _objdump = next(filter(lambda x: 'objdump' in x, _files))
-#                _x = subprocess.run('{} -t {}'.format(os.path.join(_toolchain, _objdump), _binary).split(), capture_output=True)
-#                if len(_x.stderr): continue
-#                _objdump = _x.stdout.decode('ascii').split('\n')
-#                _objdump = sorted(filter(lambda x: len(x), _objdump))
-#                _objdump = filter(lambda x: re.search('^0', x), _objdump)
-#                _objdump = map(lambda x: x.split(), _objdump)
-#                state.update({'objmap': {
-#                    int(x[0], 16): {
-#                        'flags': x[1:-1],
-#                        'name': x[-1]
-#                    } for x in _objdump
-#                }})
                 state.boot()
             elif {'text': 'pause'} == {k: v}:
                 state.update({'running': False})

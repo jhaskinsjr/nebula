@@ -394,7 +394,7 @@ def do_shift(service, state, insn):
         }
     }})
     return insn, True
-def do_ecall(service, stats, insn):
+def do_ecall(service, state, insn):
     _x17 = insn.get('operands').get(17)
     _x10 = insn.get('operands').get(10)
     _x11 = insn.get('operands').get(11)
@@ -564,7 +564,7 @@ def do_execute(service, state):
         service.tx({'info': '_insn : {}'.format(_insn)})
         _pc = int.from_bytes(_insn.get('%pc'), 'little')
         _word = ('{:08x}'.format(_insn.get('word')) if 4 == _insn.get('size') else '    {:04x}'.format(_insn.get('word')))
-        logging.info('do_execute(): {:8x}: {} : {:10} ({:12}, {})'.format(_pc, _word, _insn.get('cmd'), state.get('cycle'), _insn.get('function', '')))
+        logging.info('do_execute(): {:8x}: {} : {:10} (iid : {}, {:12}, {})'.format(_pc, _word, _insn.get('cmd'), _insn.get('iid'), state.get('cycle'), _insn.get('function', '')))
         _f = {
             'LUI': do_lui,
             'AUIPC': do_auipc,
@@ -735,12 +735,12 @@ class ALU:
         for _perf in map(lambda y: y.get('perf'), filter(lambda x: x.get('perf'), events)):
             _cmd = _perf.get('cmd')
             if 'report_stats' == _cmd:
-                _dict = self.get('stats').get(self.get('coreid')).get(state.get('name'))
+                _dict = self.get('stats').get(self.get('coreid')).get(self.get('name'))
                 toolbox.report_stats_from_dict(self.service, self.state(), _dict)
         for _alu in map(lambda y: y.get('alu'), filter(lambda x: x.get('alu'), events)):
             _insn = _alu.get('insn')
             if self.get('recovery_iid') and _insn.get('iid') != self.get('recovery_iid'): continue
-            state.update({'recovery_iid': None})
+            self.update({'recovery_iid': None})
             logging.debug('_insn : {}'.format(_insn))
             assert _insn.get('cmd') not in riscv.constants.BRANCHES + riscv.constants.JUMPS or _insn.get('prediction'), '{} without prediction field!'.format(_insn)
             if 'ECALL' == _insn.get('cmd'):
@@ -789,26 +789,6 @@ if '__main__' == __name__:
     _launcher = {x:y for x, y in zip(['host', 'port'], args.launcher.split(':'))}
     _launcher['port'] = int(_launcher['port'])
     logging.debug('_launcher : {}'.format(_launcher))
-#    state = {
-#        'service': 'alu',
-#        'cycle': 0,
-#        'coreid': args.coreid,
-#        'active': True,
-#        'running': False,
-#        'ack': True,
-#        'recovery_iid': None,
-#        'pending_execute': [],
-#        'syscall_kwargs': {},
-#        'system': riscv.syscall.linux.System(),
-#        'operands': {
-#            **{x: riscv.constants.integer_to_list_of_bytes(0, 64, 'little') for x in range(32)},
-#        },
-#        'stats': None,
-#        'config': {
-#            'result_forwarding': True,
-#        },
-#    }
-#    _service = service.Service(state.get('service'), state.get('coreid'), _launcher.get('host'), _launcher.get('port'))
     state = ALU('alu', args.coreid, _launcher)
     _service = state.service
     while state.get('active'):
@@ -823,13 +803,6 @@ if '__main__' == __name__:
             elif {'text': 'run'} == {k: v}:
                 state.update({'running': True})
                 state.update({'ack': False})
-#                state.update({'recovery_iid': None})
-#                state.update({'pending_execute': []})
-#                state.update({'syscall_kwargs': {}})
-#                state.update({'operands': {
-#                    **{x: riscv.constants.integer_to_list_of_bytes(0, 64, 'little') for x in range(32)},
-#                }})
-#                state.update({'stats': toolbox.stats.CounterBank(state.get('coreid'), state.get('service'))})
                 state.boot()
                 _service.tx({'info': 'state.config : {}'.format(state.get('config'))})
                 logging.info('state : {}'.format(state))

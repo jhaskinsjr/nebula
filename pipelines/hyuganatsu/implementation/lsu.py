@@ -224,7 +224,7 @@ class LSU:
             if _retire:
                 _ndx = next(filter(lambda x: _retire.get('iid') == self.get('pending_execute')[x].get('iid'), range(len(self.get('pending_execute')))), None)
                 if not isinstance(_ndx, int): continue
-                logging.info('_retire : {}'.format(_retire))
+                logging.info('LSU.do_tick(): _retire : {}'.format(_retire))
                 self.service.tx({'info': 'retiring : {}'.format(_retire)})
                 self.get('pending_execute')[_ndx].update({'retired': True})
         for _l2 in filter(lambda x: x, map(lambda y: y.get('l2'), results)):
@@ -277,7 +277,7 @@ class LSU:
                 else:
                     _pending_stores = list(filter(lambda y: y.get('cmd') in riscv.constants.STORES, self.get('pending_execute')))
                     _store = next(filter(lambda s: contains_load_data(_insn, s), reversed(_pending_stores)), None)
-                    logging.info('{} ?<- _pending_stores : {} ({}){}'.format(
+                    logging.info('LSU.do_tick(): {} ?<- _pending_stores : {} ({}){}'.format(
                         [_insn.get('cmd'), _insn.get('iid'), _insn.get('operands').get('addr')],
                         list(map(lambda x: [x.get('cmd'), x.get('iid'), x.get('operands').get('addr')], _pending_stores)), len(_pending_stores),
                         (' -> {}'.format([_store.get('cmd'), _store.get('iid'), _store.get('operands').get('addr')]) if _store else '')
@@ -319,29 +319,6 @@ if '__main__' == __name__:
     _launcher = {x:y for x, y in zip(['host', 'port'], args.launcher.split(':'))}
     _launcher['port'] = int(_launcher['port'])
     logging.debug('_launcher : {}'.format(_launcher))
-#    state = {
-#        'service': 'lsu',
-#        'cycle': 0,
-#        'coreid': args.coreid,
-#        'l1dc': None,
-#        'tlb': {},
-#        'pending_v2p': [],
-#        'pending_fetch': [],
-#        'active': True,
-#        'running': False,
-#        'ack': True,
-#        'pending_execute': [],
-#        'executing': [],
-#        'stats': None,
-#        'config': {
-#            'l1dc_nsets': 2**4,
-#            'l1dc_nways': 2**1,
-#            'l1dc_nbytesperblock': 2**4,
-#            'l1dc_evictionpolicy': 'lru',
-#            'pagesize': 2**16,
-#        },
-#    }
-#    _service = service.Service(state.get('service'), state.get('coreid'), _launcher.get('host'), _launcher.get('port'))
     state = LSU('lsu', args.coreid, _launcher)
     _service = state.service
     while state.get('active'):
@@ -357,19 +334,6 @@ if '__main__' == __name__:
                 logging.info('state.config : {}'.format(state.get('config')))
                 state.update({'running': True})
                 state.update({'ack': False})
-#                state.update({'tlb': {}})
-#                state.update({'pending_v2p': []})
-#                state.update({'pending_fetch': []})
-#                state.update({'pending_execute': []})
-#                state.update({'executing': []})
-#                _service.tx({'info': 'state.config : {}'.format(state.get('config'))})
-#                state.update({'l1dc': components.simplecache.SimpleCache(
-#                    state.get('config').get('l1dc_nsets'),
-#                    state.get('config').get('l1dc_nways'),
-#                    state.get('config').get('l1dc_nbytesperblock'),
-#                    state.get('config').get('l1dc_evictionpolicy'),
-#                )})
-#                state.update({'stats': toolbox.stats.CounterBank(state.get('coreid'), state.get('service'))})
                 state.boot()
             elif {'text': 'pause'} == {k: v}:
                 state.update({'running': False})

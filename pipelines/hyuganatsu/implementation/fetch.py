@@ -118,7 +118,7 @@ class Fetch:
     def do_results(self, results):
         for _mispr in map(lambda y: y.get('mispredict'), filter(lambda x: x.get('mispredict'), results)):
             self.service.tx({'info': '_mispr : {}'.format(_mispr)})
-            logging.info('_mispr : {}'.format(_mispr))
+            logging.info('Fetch.do_results(): _mispr : {}'.format(_mispr))
             self.get('pending_fetch').clear()
             self.get('fetch_buffer').clear()
             self.update({'mispredict': _mispr})
@@ -139,8 +139,6 @@ class Fetch:
         for _perf in map(lambda y: y.get('perf'), filter(lambda x: x.get('perf'), events)):
             _cmd = _perf.get('cmd')
             if 'report_stats' == _cmd:
-                logging.info('self.stats : {}'.format(self.get('stats')))
-                logging.info('self.stats[{}] : {}'.format(self.coreid, self.get('stats').get(self.get('coreid'))))
                 _dict = self.get('stats').get(self.get('coreid')).get(self.get('name'))
                 toolbox.report_stats_from_dict(self.service, self.state(), _dict)
         for _fetch in map(lambda y: y.get('fetch'), filter(lambda x: x.get('fetch'), events)):
@@ -198,31 +196,6 @@ if '__main__' == __name__:
     _launcher = {x:y for x, y in zip(['host', 'port'], args.launcher.split(':'))}
     _launcher['port'] = int(_launcher['port'])
     logging.debug('_launcher : {}'.format(_launcher))
-#    state = {
-#        'service': 'fetch',
-#        'cycle': 0,
-#        'coreid': args.coreid,
-#        'l1ic': None,
-#        'tlb': {},
-#        'pending_v2p': [],
-#        'pending_fetch': [],
-#        'active': True,
-#        'running': False,
-#        'fetch_buffer': [],
-#        'mispredict': None,
-#        'stats': None,
-#        '%jp': None, # This is the fetch pointer. Why %jp? Who knows?
-#        '%pc': None,
-#        'ack': True,
-#        'config': {
-#            'l1ic_nsets': 2**4,
-#            'l1ic_nways': 2**1,
-#            'l1ic_nbytesperblock': 2**4,
-#            'l1ic_evictionpolicy': 'lru',
-#            'pagesize': 2**16,
-#        },
-#    }
-#    _service = service.Service(state.get('service'), state.get('coreid'), _launcher.get('host'), _launcher.get('port'))
     state = Fetch('fetch', args.coreid, _launcher)
     _service = state.service
     while state.get('active'):
@@ -238,22 +211,9 @@ if '__main__' == __name__:
                 logging.info('state.config : {}'.format(state.get('config')))
                 state.update({'running': True})
                 state.update({'ack': False})
-#                state.update({'tlb': {}})
-#                state.update({'pending_v2p': []})
-#                state.update({'pending_fetch': []})
-#                state.update({'mispredict': None})
                 state.update({'active': True})
-#                state.update({'fetch_buffer': []})
-#                state.update({'%jp': None})
-#                state.update({'stats': toolbox.stats.CounterBank(state.get('coreid'), state.get('service'))})
                 state.boot()
                 _service.tx({'info': 'state.config : {}'.format(state.get('config'))})
-#                state.update({'l1ic': components.simplecache.SimpleCache(
-#                    state.get('config').get('l1ic_nsets'),
-#                    state.get('config').get('l1ic_nways'),
-#                    state.get('config').get('l1ic_nbytesperblock'),
-#                    state.get('config').get('l1ic_evictionpolicy'),
-#                )})
             elif {'text': 'pause'} == {k: v}:
                 state.update({'running': False})
             elif 'config' == k:

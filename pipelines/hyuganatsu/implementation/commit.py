@@ -76,9 +76,6 @@ class Commit:
                 _insn.update({'operands': {int(k):v for k, v in _insn.get('operands').items()}})
                 _x17 = _insn.get('operands').get(17)
                 self.service.tx({'info': 'ECALL {}... graceful shutdown'.format(int.from_bytes(_x17, 'little'))})
-    #            service.tx({'shutdown': {
-    #                'coreid': state.get('coreid'),
-    #            }})
                 self.service.tx({'event': {
                     'arrival': 1 + self.get('cycle'),
                     'coreid': self.get('coreid'),
@@ -114,7 +111,7 @@ class Commit:
             self.update({'ncommits': 1 + self.get('ncommits')})
             _pc = _insn.get('_pc')
             _word = ('{:08x}'.format(_insn.get('word')) if 4 == _insn.get('size') else '    {:04x}'.format(_insn.get('word')))
-            logging.info('do_commit(): {:8x}: {} : {:10} ({:12}, {})'.format(_pc, _word, _insn.get('cmd'), self.get('cycle'), _insn.get('function', '')))
+            logging.info('do_commit(): {:8x}: {} : {:10} (iid : {}, {:12}, {})'.format(_pc, _word, _insn.get('cmd'), _insn.get('iid'), self.get('cycle'), _insn.get('function', '')))
         self.service.tx({'committed': len(_retire)})
         if len(_commit):
     #        toolbox.report_stats(service, state, 'histo', 'retired_per_cycle', len(_retire))
@@ -195,18 +192,6 @@ if '__main__' == __name__:
     _launcher = {x:y for x, y in zip(['host', 'port'], args.launcher.split(':'))}
     _launcher['port'] = int(_launcher['port'])
     logging.debug('_launcher : {}'.format(_launcher))
-#    state = {
-#        'service': 'commit',
-#        'cycle': 0,
-#        'coreid': args.coreid,
-#        'ncommits': 0,
-#        'active': True,
-#        'running': False,
-#        'ack': True,
-#        'pending_commit': [],
-#        'stats': None,
-#    }
-#    _service = service.Service(state.get('service'), state.get('coreid'), _launcher.get('host'), _launcher.get('port'))
     state = Commit('commit', args.coreid, _launcher)
     _service = state.service
     while state.get('active'):
@@ -221,8 +206,6 @@ if '__main__' == __name__:
             elif {'text': 'run'} == {k: v}:
                 state.update({'running': True})
                 state.update({'ack': False})
-#                state.update({'pending_commit': []})
-#                state.update({'stats': toolbox.stats.CounterBank(state.get('coreid'), state.get('service'))})
                 state.boot()
             elif {'text': 'pause'} == {k: v}:
                 state.update({'running': False})

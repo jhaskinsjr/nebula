@@ -116,10 +116,10 @@ class BranchPredictor:
         def contains(a0, s0, a1, s1):
             return (False if not isinstance(a1, int) else all(map(lambda x: x in range(*itertools.accumulate((a0, s0))), [a1, a1+s1-1])))
         self.update({'cycle': kwargs.get('cycle', self.cycle)})
-        logging.info('@{:15}'.format(self.cycle))
-        logging.info('BranchPredictor.do_tick({}, {}, {})'.format(results, events, kwargs))
-        logging.info('BranchPredictor.do_tick(): self.pending_fetch : {}'.format(self.pending_fetch))
-        logging.info('BranchPredictor.do_tick(): self.fetch_address : {}'.format(self.fetch_address))
+        logging.debug('@{:15}'.format(self.cycle))
+        logging.debug('BranchPredictor.do_tick({}, {}, {})'.format(results, events, kwargs))
+        logging.debug('BranchPredictor.do_tick(): self.pending_fetch : {}'.format(self.pending_fetch))
+        logging.debug('BranchPredictor.do_tick(): self.fetch_address : {}'.format(self.fetch_address))
         _btac = self.get('btac')
         for _flush, _retire in map(lambda y: (y.get('flush'), y.get('retire')), filter(lambda x: x.get('flush') or x.get('retire'), results)):
             if _retire:
@@ -136,7 +136,7 @@ class BranchPredictor:
                 if _btac: _btac.pop(int.from_bytes(_flush.get('%pc'), 'little'), None)
         if next(filter(lambda x: x.get('mispredict'), results), None):
             for _mispr in map(lambda y: y.get('mispredict'), filter(lambda x: x.get('mispredict'), results)):
-                logging.info('BranchPredictor.do_tick(): _mispr : {}'.format(_mispr))
+                logging.debug('BranchPredictor.do_tick(): _mispr : {}'.format(_mispr))
                 self.service.tx({'info': '_mispr : {}'.format(_mispr)})
                 _insn = _mispr.get('insn')
                 if 'branch' == _insn.get('prediction').get('type'):
@@ -153,7 +153,7 @@ class BranchPredictor:
                 self.update({'pending_fetch': None})
         else:
             for _l1ic in map(lambda y: y.get('l1ic'), filter(lambda x: x.get('l1ic'), results)):
-                logging.info('BranchPredictor.do_tick(): _l1ic : {}'.format(_l1ic))
+                logging.debug('BranchPredictor.do_tick(): _l1ic : {}'.format(_l1ic))
                 assert _l1ic.get('addr') == self.get('pending_fetch').get('fetch').get('addr'), '_l1ic : {} ; self.pending_fetch : {}'.format(_l1ic, self.get('pending_fetch'))
                 self.update({'pending_fetch': None})
                 if self.get('drop_until') and _l1ic.get('addr') != self.get('drop_until'): continue
@@ -192,13 +192,11 @@ class BranchPredictor:
                             'addr': _l1ic.get('addr') + _l1ic.get('size'),
                         }
                     })
-        logging.info('BranchPredictor.do_tick(): self.pending_fetch : {}'.format(self.pending_fetch))
-        logging.info('BranchPredictor.do_tick(): self.fetch_address : {}'.format(self.fetch_address))
+        logging.debug('BranchPredictor.do_tick(): self.pending_fetch : {}'.format(self.pending_fetch))
+        logging.debug('BranchPredictor.do_tick(): self.fetch_address : {}'.format(self.fetch_address))
         for _perf in map(lambda y: y.get('perf'), filter(lambda x: x.get('perf'), events)):
             _cmd = _perf.get('cmd')
             if 'report_stats' == _cmd:
-#                logging.info('self.stats : {}'.format(self.get('stats')))
-#                logging.info('self.stats[{}] : {}'.format(self.coreid, self.get('stats').get(self.get('coreid'))))
                 _dict = self.get('stats').get(self.get('coreid')).get(self.get('name'))
                 toolbox.report_stats_from_dict(self.service, self.state(), _dict)
         if not self.get('pending_fetch') and len(self.get('fetch_address')):
@@ -238,28 +236,6 @@ if '__main__' == __name__:
     _launcher = {x:y for x, y in zip(['host', 'port'], args.launcher.split(':'))}
     _launcher['port'] = int(_launcher['port'])
     logging.debug('_launcher : {}'.format(_launcher))
-#    state = {
-#        'service': 'brpred',
-#        'cycle': 0,
-#        'coreid': args.coreid,
-#        'pending_fetch': None,
-#        'fetch_address': [],
-#        'active': True,
-#        'running': False,
-#        'predictor': None, # CounterTablePredictor('bimodal', 2**2),
-#        'btac': None, # BranchTargetAddressCache(4), # {},
-#        'drop_until': None,
-#        '%jp': None, # This is the fetch pointer. Why %jp? Who knows?
-#        '%pc': None,
-#        'ack': True,
-#        'stats': None,
-#        'config': {
-#            'btac_entries': None,
-#            'predictor_type': None, # 'bimodal', 'gshare'
-#            'predictor_entries': None,
-#        },
-#    }
-#    _service = service.Service(state.get('service'), state.get('coreid'), _launcher.get('host'), _launcher.get('port'))
     state = BranchPredictor('brpred', args.coreid, _launcher)
     _service = state.service
     while state.get('active'):
@@ -274,24 +250,10 @@ if '__main__' == __name__:
             elif {'text': 'run'} == {k: v}:
                 state.update({'running': True})
                 state.update({'ack': False})
-#                state.update({'pending_fetch': None})
-#                state.update({'fetch_address': [{'fetch': {
-#                    'cmd': 'get',
-#                    'addr': int.from_bytes(state.get('%pc'), 'little'),
-#                }}]})
                 state.update({'active': True})
-#                state.update({'btac': {}})
-#                state.update({'drop_until': None})
-#                state.update({'%jp': None})
                 state.update({'stats': toolbox.stats.CounterBank(state.get('coreid'), state.get('name'))})
-                state.boot()
                 _service.tx({'info': 'state.config : {}'.format(state.get('config'))})
-#                if state.get('config').get('btac_entries'): state.update({'btac': BranchTargetAddressCache(state.get('config').get('btac_entries'))})
-#                if state.get('config').get('predictor_type') and state.get('config').get('predictor_entries'): state.update({'predictor': CounterTablePredictor(
-#                    state.get('config').get('predictor_type'),
-#                    state.get('config').get('predictor_entries'),
-#                )})
-                logging.info('state : {}'.format(state))
+                state.boot()
             elif {'text': 'pause'} == {k: v}:
                 state.update({'running': False})
             elif 'config' == k:

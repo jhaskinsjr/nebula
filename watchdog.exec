@@ -25,6 +25,20 @@
         "service": ["../../components/simplemainmem/mainmem.py:localhost:-1:-1"],
         "command": "../../examples/bin/negate 2"
     },
+    "pipelines/hyuganatsu": {
+        "config": {
+            "watchdog:result_name": ["retire"],
+            "watchdog:result_cycles": [10],
+            "l2:hitlatency": [1, 10],
+            "l3:hitlatency": [1, 100],
+            "mainmem:peek_latency_in_cycles": [1, 1000],
+            "mainmem:capacity": [4294967296]
+        },
+        "max_cycles": 100000,
+        "script": "localhost.nebula",
+        "service": ["../../components/simplemainmem/mainmem.py:localhost:-1:-1"],
+        "command": "../../examples/bin/negate 2"
+    },
     "pipelines/pompia": {
         "config": {
             "watchdog:result_name": ["retire"],

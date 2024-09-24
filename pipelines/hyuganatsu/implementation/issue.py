@@ -114,7 +114,7 @@ class Issue:
                 **{'iid': self.get('iid')},
                 **{'issued': self.get('cycle')},
             }
-            logging.info('{:8x} : {}'.format(_insn.get('_pc'), {'cmd': _insn.get('cmd'), 'iid': _insn.get('iid')}))
+            logging.info('do_issue(): {:8x} : {}'.format(_insn.get('_pc'), {'cmd': _insn.get('cmd'), 'iid': _insn.get('iid')}))
             self.update({'iid': 1 + self.get('iid')})
             self.service.tx({'event': {
                 'arrival': 2 + self.get('cycle'),
@@ -144,7 +144,7 @@ class Issue:
         if next(filter(lambda x: x.get('mispredict'), results), None):
             for _mispr in map(lambda y: y.get('mispredict'), filter(lambda x: x.get('mispredict'), results)):
                 self.service.tx({'info': '_mispr : {}'.format(_mispr)})
-                logging.info('_mispr : {}'.format(_mispr))
+                logging.info('do_issue(): _mispr : {}'.format(_mispr))
                 _insn = _mispr.get('insn')
                 self.get('decoded').clear()
                 self.get('predictions').clear()
@@ -218,26 +218,6 @@ if '__main__' == __name__:
     _launcher = {x:y for x, y in zip(['host', 'port'], args.launcher.split(':'))}
     _launcher['port'] = int(_launcher['port'])
     logging.debug('_launcher : {}'.format(_launcher))
-#    state = {
-#        'service': 'issue',
-#        'cycle': 0,
-#        'coreid': args.coreid,
-#        'active': True,
-#        'running': False,
-#        'ack': True,
-#        'buffer': [],
-#        'decoded': [],
-#        'issued': [],
-#        'drop_until': None,
-#        'forward': {},
-#        'predictions': {},
-#        'iid': 0,
-#        'objmap': None,
-#        'stats': None,
-#        'config': {
-#        },
-#    }
-#    _service = service.Service(state.get('service'), state.get('coreid'), _launcher.get('host'), _launcher.get('port'))
     state = Issue('issue', args.coreid, _launcher)
     _service = state.service
     while state.get('active'):
@@ -252,13 +232,6 @@ if '__main__' == __name__:
             elif {'text': 'run'} == {k: v}:
                 state.update({'running': True})
                 state.update({'ack': False})
-#                state.update({'buffer': []})
-#                state.update({'decoded': []})
-#                state.update({'issued': []})
-#                state.update({'drop_until': None})
-#                state.update({'forward': {}})
-#                state.update({'predictions': {}})
-#                state.update({'stats': toolbox.stats.CounterBank(state.get('coreid'), state.get('service'))})
                 state.boot()
                 _service.tx({'info': 'state.config : {}'.format(state.get('config'))})
                 logging.info('state : {}'.format(state))

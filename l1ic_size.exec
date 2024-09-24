@@ -1,4 +1,23 @@
 {
+    "pipelines/hyuganatsu": {
+        "config": {
+            "watchdog:result_name": ["retire"],
+            "watchdog:result_cycles": [10000],
+            "fetch:l1ic_nsets": [16, 64],
+            "fetch:l1ic_nways": [2, 4],
+            "fetch:l1ic_nbytesperblock": [16, 32],
+            "fetch:l1ic_evictionpolicy": ["random", "lru"],
+            "decode:max_bytes_to_decode": [32],
+            "l2:nbytesperblock": [32],
+            "l3:nbytesperblock": [64],
+            "mainmem:capacity": [4294967296]
+        },
+        "max_cycles": 100000,
+        "script": "localhost.nebula",
+        "service": ["../../components/simplemainmem/mainmem.py:localhost:-1:-1"],
+        "command": "../../examples/bin/sum 2 3 -5 7",
+        "_comment": "decode:max_bytes_to_decode must be >= fetch:l1ic_nbytesperblock"
+    },
     "pipelines/pompia": {
         "config": {
             "watchdog:result_name": ["retire"],

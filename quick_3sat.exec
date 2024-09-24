@@ -31,6 +31,26 @@
         "service": ["../../components/simplemainmem/mainmem.py:localhost:22:-1:-1"],
         "restore": "../../snapshots/3sat/expr0/mainmem.raw.000000000480000.snapshot"
     },
+    "pipelines/hyuganatsu": {
+        "config": {
+            "watchdog:result_name": ["retire"],
+            "watchdog:result_cycles": [10000],
+            "l2:hitlatency": [1, 5],
+            "l3:hitlatency": [1, 25],
+            "mmu:v2p_latency_in_cycles": [1, 10],
+            "mainmem:peek_latency_in_cycles": [1, 125],
+            "mainmem:capacity": [4294967296],
+            "brpred:btac_entries": [1, 64],
+            "brpred:predictor_type": ["bimodal", "gshare"],
+            "brpred:predictor_entries": [1, 64],
+            "alu:result_forwarding": [true, false]
+        },
+        "max_cycles": 1000000,
+        "max_instructions": 10000,
+        "script": "localhost.nebula",
+        "service": ["../../components/simplemainmem/mainmem.py:localhost:22:-1:-1"],
+        "restore": "../../snapshots/3sat/expr0/mainmem.raw.000000000480000.snapshot"
+    },
     "pipelines/jabara": {
         "config": {
             "mainmem:capacity": [4294967296]
