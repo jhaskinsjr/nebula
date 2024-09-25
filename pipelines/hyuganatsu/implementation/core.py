@@ -169,7 +169,8 @@ if '__main__' == __name__:
             elif {'text': 'pause'} == {k: v}:
                 state.update({'running': False})
             elif 'binary' == k:
-                state.update({'binary': v})
+#                state.update({'binary': v})
+                state.components.get('decode').update({'binary': v})
             elif 'config' == k:
                 logging.info('config : {}'.format(v))
 #                _components = {
