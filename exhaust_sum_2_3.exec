@@ -31,41 +31,6 @@
         "service": ["../../components/simplemainmem/mainmem.py:localhost:-1:-1"],
         "command": "../../examples/bin/sum 2 3"
     },
-    "pipelines/hyuganatsu": {
-        "config": {
-            "watchdog:result_name": ["retire"],
-            "watchdog:result_cycles": [10000],
-            "mainmem:peek_latency_in_cycles": [1, 100],
-            "mainmem:capacity": [4294967296],
-            "brpred:btac_entries": [1, 64],
-            "brpred:predictor_type": ["bimodal", "gshare"],
-            "brpred:predictor_entries": [1, 64],
-            "fetch:l1ic_nsets": [16, 64],
-            "fetch:l1ic_nways": [1, 4],
-            "fetch:l1ic_nbytesperblock": [16, 32],
-            "fetch:l1ic_evictionpolicy": ["random", "lru"],
-            "decode:max_bytes_to_decode": [32],
-            "lsu:l1dc_nsets": [16, 64],
-            "lsu:l1dc_nways": [1, 4],
-            "lsu:l1dc_nbytesperblock": [16, 32],
-            "lsu:l1dc_evictionpolicy": ["random", "lru"],
-            "l2:nsets": [16, 64],
-            "l2:nways": [1, 8],
-            "l2:nbytesperblock": [32, 64],
-            "l2:evictionpolicy": ["random", "lru"],
-            "l2:hitlatency": [1, 10],
-            "l3:nsets": [16, 64],
-            "l3:nways": [1, 8],
-            "l3:nbytesperblock": [64, 128],
-            "l3:evictionpolicy": ["random", "lru"],
-            "l3:hitlatency": [1, 100]
-        },
-        "max_cycles": 200000,
-        "script": "localhost.nebula",
-        "service": ["../../components/simplemainmem/mainmem.py:localhost:-1:-1"],
-        "command": "../../examples/bin/sum 2 3",
-        "_comment": "decode:max_bytes_to_decode must be >= fetch:l1ic_nbytesperblock"
-    },
     "pipelines/jabara": {
         "config": {
             "mainmem:capacity": [4294967296]
@@ -158,6 +123,41 @@
         "_comment": "decode:max_bytes_to_decode must be >= fetch:l1ic_nbytesperblock"
     },
     "pipelines/tangelo": {
+        "config": {
+            "watchdog:result_name": ["retire"],
+            "watchdog:result_cycles": [10000],
+            "mainmem:peek_latency_in_cycles": [1, 100],
+            "mainmem:capacity": [4294967296],
+            "brpred:btac_entries": [1, 64],
+            "brpred:predictor_type": ["bimodal", "gshare"],
+            "brpred:predictor_entries": [1, 64],
+            "fetch:l1ic_nsets": [16, 64],
+            "fetch:l1ic_nways": [1, 4],
+            "fetch:l1ic_nbytesperblock": [16, 32],
+            "fetch:l1ic_evictionpolicy": ["random", "lru"],
+            "decode:max_bytes_to_decode": [32],
+            "lsu:l1dc_nsets": [16, 64],
+            "lsu:l1dc_nways": [1, 4],
+            "lsu:l1dc_nbytesperblock": [16, 32],
+            "lsu:l1dc_evictionpolicy": ["random", "lru"],
+            "l2:nsets": [16, 64],
+            "l2:nways": [1, 8],
+            "l2:nbytesperblock": [32, 64],
+            "l2:evictionpolicy": ["random", "lru"],
+            "l2:hitlatency": [1, 10],
+            "l3:nsets": [16, 64],
+            "l3:nways": [1, 8],
+            "l3:nbytesperblock": [64, 128],
+            "l3:evictionpolicy": ["random", "lru"],
+            "l3:hitlatency": [1, 100]
+        },
+        "max_cycles": 200000,
+        "script": "localhost.nebula",
+        "service": ["../../components/simplemainmem/mainmem.py:localhost:-1:-1"],
+        "command": "../../examples/bin/sum 2 3",
+        "_comment": "decode:max_bytes_to_decode must be >= fetch:l1ic_nbytesperblock"
+    },
+    "pipelines/tangerine": {
         "config": {
             "watchdog:result_name": ["retire"],
             "watchdog:result_cycles": [10000],

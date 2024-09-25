@@ -1,6 +1,6 @@
-# Hyuganatsu Pipeline Overview
+# Tangerine Pipeline Overview
 
-Hyuganatsu is a reimplementation of the
+Tangerine is a reimplementation of the
 [Tangelo](../tangelo/README.md) pipeline model, but which places all of
 the pipeline components... branch predictor, fetcher, decoder, issue,
 ALU, LSU, and commit... inside a single process, rather than spread among
@@ -10,6 +10,6 @@ multiple cores. (This is similar to the work done to create
 [Etrog](../etrog/README.md), which is a reimplementation of
 [Bergamot](../bergamot/README.md).)
 
-### What Is A Hyuganatsu?
+### What Is A Tangerine?
 
-See: https://en.wikipedia.org/wiki/Hyuganatsu.
+See: https://en.wikipedia.org/wiki/Tangerine.

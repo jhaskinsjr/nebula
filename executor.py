@@ -69,7 +69,7 @@ def conclude(pr, purge, sha, branch, now):
 #      until I have a workaround
             'log': {
                 f: open(os.path.join(pr.get('runpath'), 'log', f)).read()
-                for f in filter(lambda a: 'launcher.py' not in a, {x:y for x, y, in zip(['root', 'directories', 'files'], *os.walk(os.path.join(pr.get('runpath'), 'log')))}.get('files'))
+                for f in filter(lambda a: 'launcher.py' not in a and '0000_core.py' not in a, {x:y for x, y, in zip(['root', 'directories', 'files'], *os.walk(os.path.join(pr.get('runpath'), 'log')))}.get('files'))
             },
             'config': pr.get('config'),
             'runpath': pr.get('runpath'),

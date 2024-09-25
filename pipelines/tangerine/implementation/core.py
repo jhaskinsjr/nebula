@@ -129,7 +129,7 @@ if '__main__' == __name__:
     _launcher = {x:y for x, y in zip(['host', 'port'], args.launcher.split(':'))}
     _launcher['port'] = int(_launcher['port'])
     logging.debug('_launcher : {}'.format(_launcher))
-    state = Core('hyuganatsu', args.coreid, _launcher)
+    state = Core('tangerine', args.coreid, _launcher)
     _service = state.service
     logging.info('state : {}'.format(state))
     while state.get('active'):
