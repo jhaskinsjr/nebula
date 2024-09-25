@@ -52,7 +52,7 @@ class Fetch:
         self.update({'pending_fetch': []})
         self.update({'mispredict': None})
         self.update({'fetch_buffer': []})
-        self.update({'%jp': None})
+#        self.update({'%jp': None})
         self.update({'l1ic': components.simplecache.SimpleCache(
                     self.get('config').get('l1ic_nsets'),
                     self.get('config').get('l1ic_nways'),
@@ -238,12 +238,12 @@ if '__main__' == __name__:
                 assert not state.get('running'), 'Attempted restore while running!'
                 state.update({'cycle': v.get('cycle')})
                 _service.tx({'ack': {'cycle': state.get('cycle')}})
-            elif 'register' == k:
-                logging.info('register : {}'.format(v))
-                if state.get('coreid') != v.get('coreid'): continue
-                if 'set' != v.get('cmd'): continue
-                if '%pc' != v.get('name'): continue
-                state.update({'%pc': v.get('data')})
-                logging.info('state : {}'.format(state))
+#            elif 'register' == k:
+#                logging.info('register : {}'.format(v))
+#                if state.get('coreid') != v.get('coreid'): continue
+#                if 'set' != v.get('cmd'): continue
+#                if '%pc' != v.get('name'): continue
+#                state.update({'%pc': v.get('data')})
+#                logging.info('state : {}'.format(state))
         if state.get('ack') and state.get('running'): _service.tx({'ack': {'cycle': state.get('cycle')}})
     logging.info('state : {}'.format(state))
