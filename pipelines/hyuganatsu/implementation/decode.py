@@ -164,8 +164,8 @@ if '__main__' == __name__:
             elif {'text': 'run'} == {k: v}:
                 state.update({'running': True})
                 state.update({'ack': False})
-                _service.tx({'info': 'state.config : {}'.format(state.get('config'))})
                 state.boot()
+                _service.tx({'info': 'state.config : {}'.format(state.get('config'))})
             elif {'text': 'pause'} == {k: v}:
                 state.update({'running': False})
             elif 'binary' == k:

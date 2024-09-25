@@ -216,7 +216,6 @@ if '__main__' == __name__:
                 logging.info('state.config : {}'.format(state.get('config')))
                 state.update({'running': True})
                 state.update({'ack': False})
-                state.update({'active': True})
                 state.boot()
                 _service.tx({'info': 'state.config : {}'.format(state.get('config'))})
             elif {'text': 'pause'} == {k: v}:
