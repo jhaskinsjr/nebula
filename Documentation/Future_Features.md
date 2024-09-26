@@ -4,8 +4,8 @@ Presented in no particular order, below are some additional features that will
 extend and enhance the simulator. (Once-future features that have already been
 implemented have been struck through.)
 
-1. "component'ized" Tangelo reimplementation (code name: Hyuganatsu)
-1. superscalar out-of-order pipeline implementation (code name: yuzu)
+1. "component'ized" Tangelo reimplementation (code name: Tangerine)
+1. superscalar out-of-order pipeline implementation (code name: Yuzu)
 1. per-core cycle count
 1. cache snooping
 1. pipeline implementation with value prediction
