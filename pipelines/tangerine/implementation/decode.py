@@ -87,6 +87,7 @@ class Decode:
                 _dict = self.get('stats').get(self.get('coreid')).get(self.get('name'))
                 toolbox.report_stats_from_dict(self.service, self.state(), _dict)
         for _dec in map(lambda y: y.get('decode'), filter(lambda x: x.get('decode'), events)):
+            if next(filter(lambda x: x.get('mispredict'), results), None): continue
             if self.get('drop_until') and int.from_bytes(self.get('drop_until'), 'little') != _dec.get('addr'): continue
             self.update({'drop_until': None})
             if _dec.get('addr') != int.from_bytes(self.get('%jp'), 'little'):
