@@ -403,7 +403,7 @@ def do_shift(service, state, insn):
         }
     }})
     return insn, True
-def do_ecall(service, stats, insn):
+def do_ecall(service, state, insn):
     _x17 = insn.get('operands').get(17)
     _x10 = insn.get('operands').get(10)
     _x11 = insn.get('operands').get(11)
