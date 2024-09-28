@@ -1,0 +1,56 @@
+# Sample Nebula script
+service ../../pipelines/tangerine/implementation/core.py:localhost:22:0:127
+service ../../pipelines/tangelo/implementation/l2.py:localhost:22:-1:-1:"--cores 0-7 --next l3"
+service ../../pipelines/tangelo/implementation/l2.py:localhost:22:-1:-1:"--cores 8-15 --next l3"
+service ../../pipelines/tangelo/implementation/l3.py:localhost:22:-1:-1:"--cores 0-15 --next mem"
+service ../../pipelines/tangelo/implementation/l2.py:localhost:22:-1:-1:"--cores 16-23 --next l3"
+service ../../pipelines/tangelo/implementation/l2.py:localhost:22:-1:-1:"--cores 24-31 --next l3"
+service ../../pipelines/tangelo/implementation/l3.py:localhost:22:-1:-1:"--cores 16-31 --next mem"
+service ../../pipelines/tangelo/implementation/l2.py:localhost:22:-1:-1:"--cores 32-39 --next l3"
+service ../../pipelines/tangelo/implementation/l2.py:localhost:22:-1:-1:"--cores 40-47 --next l3"
+service ../../pipelines/tangelo/implementation/l3.py:localhost:22:-1:-1:"--cores 32-47 --next mem"
+service ../../pipelines/tangelo/implementation/l2.py:localhost:22:-1:-1:"--cores 48-55 --next l3"
+service ../../pipelines/tangelo/implementation/l2.py:localhost:22:-1:-1:"--cores 56-63 --next l3"
+service ../../pipelines/tangelo/implementation/l3.py:localhost:22:-1:-1:"--cores 48-63 --next mem"
+service ../../pipelines/tangelo/implementation/l2.py:localhost:22:-1:-1:"--cores 64-71 --next l3"
+service ../../pipelines/tangelo/implementation/l2.py:localhost:22:-1:-1:"--cores 72-79 --next l3"
+service ../../pipelines/tangelo/implementation/l3.py:localhost:22:-1:-1:"--cores 64-79 --next mem"
+service ../../pipelines/tangelo/implementation/l2.py:localhost:22:-1:-1:"--cores 80-87 --next l3"
+service ../../pipelines/tangelo/implementation/l2.py:localhost:22:-1:-1:"--cores 88-95 --next l3"
+service ../../pipelines/tangelo/implementation/l3.py:localhost:22:-1:-1:"--cores 80-95 --next mem"
+service ../../pipelines/tangelo/implementation/l2.py:localhost:22:-1:-1:"--cores 96-103 --next l3"
+service ../../pipelines/tangelo/implementation/l2.py:localhost:22:-1:-1:"--cores 104-111 --next l3"
+service ../../pipelines/tangelo/implementation/l3.py:localhost:22:-1:-1:"--cores 96-111 --next mem"
+service ../../pipelines/tangelo/implementation/l2.py:localhost:22:-1:-1:"--cores 112-119 --next l3"
+service ../../pipelines/tangelo/implementation/l2.py:localhost:22:-1:-1:"--cores 120-127 --next l3"
+service ../../pipelines/tangelo/implementation/l3.py:localhost:22:-1:-1:"--cores 112-127 --next mem"
+spawn
+config brpred:btac_entries 32
+config brpred:predictor_type bimodal
+config brpred:predictor_entries 32
+config fetch:l1ic_nsets 32
+config fetch:l1ic_nways 1
+config fetch:l1ic_nbytesperblock 16
+config fetch:l1ic_evictionpolicy lru # random
+config decode:max_bytes_to_decode 16
+config alu:result_forwarding True
+config lsu:l1dc_nsets 16
+config lsu:l1dc_nways 2
+config lsu:l1dc_nbytesperblock 16
+config lsu:l1dc_evictionpolicy lru # random
+config l2:nsets 32
+config l2:nways 4
+config l2:nbytesperblock 16
+config l2:evictionpolicy lru # random
+config l2:hitlatency 5
+config l3:nsets 64
+config l3:nways 8
+config l3:nbytesperblock 32
+config l3:evictionpolicy lru # random
+config l3:hitlatency 25
+config watchdog:result_name retire
+config watchdog:result_cycles 10000
+run
+shutdown
+run
+shutdown
