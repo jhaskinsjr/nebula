@@ -52,7 +52,6 @@ class Fetch:
         self.update({'pending_fetch': []})
         self.update({'mispredict': None})
         self.update({'fetch_buffer': []})
-#        self.update({'%jp': None})
         self.update({'l1ic': components.simplecache.SimpleCache(
                     self.get('config').get('l1ic_nsets'),
                     self.get('config').get('l1ic_nways'),
@@ -62,7 +61,6 @@ class Fetch:
     def fetch_block(self, jp, physical):
         _blockaddr = self.get('l1ic').blockaddr(jp)
         _blocksize = self.get('l1ic').nbytesperblock
-#        self.service.tx({'info': 'fetch_block(..., {} ({:08x}))'.format(jp, _blockaddr)})
         logging.info(os.path.basename(__file__) + ': fetch_block(..., {} ({:08x}))'.format(jp, _blockaddr))
         self.get('pending_fetch').append(_blockaddr)
         self.service.tx({'event': {
@@ -75,7 +73,6 @@ class Fetch:
                 'physical': physical,
             },
         }})
-#        toolbox.report_stats(service, state, 'flat', 'l1ic_misses')
         self.get('stats').refresh('flat', 'l1ic_misses')
     def do_l1ic(self):
         _req = self.get('fetch_buffer')[0]
@@ -86,12 +83,10 @@ class Fetch:
         if _frame not in self.get('tlb').keys(): return
         _jp = self.get('tlb').get(_frame) | components.simplemmu.offset(_pagesize, _vaddr)
         _physical = True
-#        self.service.tx({'info': '_jp : {} ({})'.format(list(_jp.to_bytes(8, 'little')), _jp)})
         logging.info(os.path.basename(__file__) + ': _jp : {} ({})'.format(list(_jp.to_bytes(8, 'little')), _jp))
         _blockaddr = self.get('l1ic').blockaddr(_jp)
         _blocksize = self.get('l1ic').nbytesperblock
         _data = self.get('l1ic').peek(_blockaddr, _blocksize)
-#        self.service.tx({'info': '_data : {}'.format(_data)})
         logging.info(os.path.basename(__file__) + ': _data : {}'.format(_data))
         if not _data:
             if len(self.get('pending_fetch')): return # only 1 pending fetch at a time is primitive, but good enough for now
@@ -116,11 +111,9 @@ class Fetch:
             },
         }})
         self.get('fetch_buffer').pop(0)
-#        toolbox.report_stats(service, state, 'flat', 'l1ic_accesses')
         self.get('stats').refresh('flat', 'l1ic_accesses')
     def do_results(self, results):
         for _mispr in map(lambda y: y.get('mispredict'), filter(lambda x: x.get('mispredict'), results)):
-#            self.service.tx({'info': '_mispr : {}'.format(_mispr)})
             logging.info(os.path.basename(__file__) + ': _mispr : {}'.format(_mispr))
             self.get('pending_fetch').clear()
             self.get('fetch_buffer').clear()
@@ -128,7 +121,6 @@ class Fetch:
         for _l2 in map(lambda y: y.get('l2'), filter(lambda x: x.get('l2'), results)):
             _addr = _l2.get('addr')
             if _addr not in self.get('pending_fetch'): continue
-#            self.service.tx({'info': '_l2 : {}'.format(_l2)})
             logging.info(os.path.basename(__file__) + ': _l2 : {}'.format(_l2))
             self.get('l1ic').poke(_addr, _l2.get('data'))
             self.get('pending_fetch').remove(_addr)
@@ -173,7 +165,6 @@ class Fetch:
         self.update({'mispredict': None})
         self.do_results(results)
         self.do_events(events)
-#        self.service.tx({'info': 'state.fetch_buffer : {}'.format(self.get('fetch_buffer'))})
         logging.info(os.path.basename(__file__) + ': state.fetch_buffer : {}'.format(self.get('fetch_buffer')))
         if not len(self.get('fetch_buffer')): return
         self.do_l1ic()
@@ -237,12 +228,5 @@ if '__main__' == __name__:
                 assert not state.get('running'), 'Attempted restore while running!'
                 state.update({'cycle': v.get('cycle')})
                 _service.tx({'ack': {'cycle': state.get('cycle')}})
-#            elif 'register' == k:
-#                logging.info('register : {}'.format(v))
-#                if state.get('coreid') != v.get('coreid'): continue
-#                if 'set' != v.get('cmd'): continue
-#                if '%pc' != v.get('name'): continue
-#                state.update({'%pc': v.get('data')})
-#                logging.info('state : {}'.format(state))
         if state.get('ack') and state.get('running'): _service.tx({'ack': {'cycle': state.get('cycle')}})
     logging.info('state : {}'.format(state))

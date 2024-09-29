@@ -24,7 +24,6 @@ def do_unimplemented(service, state, insn):
 def do_load(service, state, insn):
     if insn.get('peeked'):
         insn.update({'done': True})
-#        toolbox.report_stats(service, state, 'flat', 'load_serviced_by_preceding_queued_store')
         state.get('stats').refresh('flat', 'load_serviced_by_preceding_queued_store')
 def do_store(service, state, insn):
     insn.update({'result': None})
@@ -32,7 +31,6 @@ def do_store(service, state, insn):
 def fetch_block(service, state, addr, physical):
     _blockaddr = state.get('l1dc').blockaddr(addr)
     _blocksize = state.get('l1dc').nbytesperblock
-#    service.tx({'info': 'fetch_block(..., {} ({:08x}))'.format(addr, _blockaddr)})
     logging.info(os.path.basename(__file__) + ': fetch_block(..., {} ({:08x}))'.format(addr, _blockaddr))
     state.get('pending_fetch').append(_blockaddr)
     service.tx({'event': {
@@ -45,7 +43,6 @@ def fetch_block(service, state, addr, physical):
             'physical': physical,
         },
     }})
-#    toolbox.report_stats(service, state, 'flat', 'l1dc_misses')
     state.get('stats').refresh('flat', 'l1dc_misses')
 def do_l1dc(service, state):
     for _insn in filter(lambda x: not x.get('done'), state.get('executing')):
@@ -56,7 +53,6 @@ def do_l1dc(service, state):
         _addr = state.get('tlb').get(_frame) | components.simplemmu.offset(_pagesize, _vaddr)
         _physical = True
         _size = _insn.get('nbytes')
-#        service.tx({'info': '_addr : {} ({})'.format(_addr, _vaddr)})
         logging.info(os.path.basename(__file__) + ': _addr : {} ({})'.format(_addr, _vaddr))
         _ante = None
         _post = None
@@ -66,7 +62,6 @@ def do_l1dc(service, state):
                 if len(state.get('pending_fetch')): continue # only 1 pending fetch at a time is primitive, but good enough for now
                 fetch_block(service, state, _addr, _physical)
                 continue
-#            service.tx({'info': '_data : @{} {}'.format(_addr, _data)})
             logging.info(os.path.basename(__file__) + ': _data : @{} {}'.format(_addr, _data))
         else:
             _blockaddr = state.get('l1dc').blockaddr(_addr)
@@ -82,8 +77,6 @@ def do_l1dc(service, state):
                 if len(state.get('pending_fetch')): continue # only 1 pending fetch at a time is primitive, but good enough for now
                 fetch_block(service, state, _addr + len(_ante), _physical)
                 continue
-#            service.tx({'info': '_ante : @{} {}'.format(_addr, _ante)})
-#            service.tx({'info': '_post : @{} {}'.format(_addr + len(_ante), _post)})
             logging.info(os.path.basename(__file__) + ': _ante : @{} {}'.format(_addr, _ante))
             logging.info(os.path.basename(__file__) + ': _post : @{} {}'.format(_addr + len(_ante), _post))
             # NOTE: In an L1DC with only a single block, an incoming _post would
@@ -97,8 +90,6 @@ def do_l1dc(service, state):
             # STORE
             if _ante:
                 assert _post
-#                service.tx({'info': '_ante : @{} {}'.format(_addr, _ante)})
-#                service.tx({'info': '_post : @{} {}'.format(_addr + len(_ante), _post)})
                 logging.info(os.path.basename(__file__) + ': _ante : @{} {}'.format(_addr, _ante))
                 logging.info(os.path.basename(__file__) + ': _post : @{} {}'.format(_addr + len(_ante), _post))
                 state.get('l1dc').poke(_addr, _ante)
@@ -131,11 +122,9 @@ def do_l1dc(service, state):
             }})
         _insn.update({'done': True})
         if len(state.get('pending_fetch')): state.get('pending_fetch').pop(0)
-#        toolbox.report_stats(service, state, 'flat', 'l1dc_accesses')
         state.get('stats').refresh('flat', 'l1dc_accesses')
 def do_execute(service, state):
     for _insn in state.get('pending_execute'):
-#        service.tx({'info': '_insn : {}'.format(_insn)})
         logging.info(os.path.basename(__file__) + ': _insn : {}'.format(_insn))
         state.get('executing').append(_insn)
         {
@@ -232,14 +221,12 @@ class LSU:
             if _retire:
                 _ndx = next(filter(lambda x: _retire.get('iid') == self.get('pending_execute')[x].get('iid'), range(len(self.get('pending_execute')))), None)
                 if not isinstance(_ndx, int): continue
-#                self.service.tx({'info': 'retiring : {}'.format(_retire)})
                 logging.info(os.path.basename(__file__) + ': _retire : {}'.format(_retire))
                 self.get('pending_execute')[_ndx].update({'retired': True})
         for _l2 in filter(lambda x: x, map(lambda y: y.get('l2'), results)):
             _addr = _l2.get('addr')
             if _addr not in self.get('pending_fetch'): continue
             if not 'data' in _l2.keys(): continue # b/c lower levels in the cache hierarchy report POKE oeprations
-#            self.service.tx({'info': '_l2 : {}'.format(_l2)})
             logging.info(os.path.basename(__file__) + ': _l2 : {}'.format(_l2))
             self.get('l1dc').poke(_addr, _l2.get('data'))
             self.get('pending_fetch').remove(_addr)
@@ -302,8 +289,6 @@ class LSU:
                 self.get('pending_execute').append(_insn)
             elif 'cmd' in _lsu.keys() and 'purge' == _lsu.get('cmd'):
                 self.get('l1dc').purge()
-#        self.service.tx({'info': 'state.executing       : {} ({})'.format(list(map(lambda x: [x.get('cmd'), x.get('iid'), x.get('operands').get('addr')], self.get('executing'))), len(self.get('executing')))})
-#        self.service.tx({'info': 'state.pending_execute : {} ({})'.format(list(map(lambda x: [x.get('cmd'), x.get('iid'), x.get('operands').get('addr')], self.get('pending_execute'))), len(self.get('pending_execute')))})
         logging.info(os.path.basename(__file__) + ': state.executing       : {} ({})'.format(list(map(lambda x: [x.get('cmd'), x.get('iid'), x.get('operands').get('addr')], self.get('executing'))), len(self.get('executing'))))
         logging.info(os.path.basename(__file__) + ': state.pending_execute : {} ({})'.format(list(map(lambda x: [x.get('cmd'), x.get('iid'), x.get('operands').get('addr')], self.get('pending_execute'))), len(self.get('pending_execute'))))
         do_execute(self.service, self)

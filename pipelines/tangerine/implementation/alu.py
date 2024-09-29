@@ -257,7 +257,6 @@ def do_store(service, state, insn):
     }})
     return insn, True
 def do_atomic(service, state, insn):
-#    service.tx({'info': 'state.operands.mem : {} ({})'.format(state.get('operands').get('mem'), insn.get('cmd'))})
     logging.info(os.path.basename(__file__) + ': state.operands.mem : {} ({})'.format(state.get('operands').get('mem'), insn.get('cmd')))
     if insn.get('cmd') in ['LR.W', 'LR.D', 'SC.W', 'SC.D']:
         insn = {
@@ -413,13 +412,11 @@ def do_ecall(service, state, insn):
         if 'arg' not in state.get('syscall_kwargs').keys(): state.get('syscall_kwargs').update({'arg': []})
         state.get('syscall_kwargs').get('arg').append(bytes(state.get('operands').get('mem')))
         state.get('operands').pop('mem')
-#    service.tx({'info': 'state.syscall_kwargs : {}'.format(state.get('syscall_kwargs'))})
     logging.info(os.path.basename(__file__) + ': state.syscall_kwargs : {}'.format(state.get('syscall_kwargs')))
     _side_effect = state.get('system').do_syscall(_x17, _x10, _x11, _x12, _x13, _x14, _x15, **{
         **state.get('syscall_kwargs'),
         **{'cycle': state.get('cycle')},
     })
-#    service.tx({'info': '_side_effect         : {}'.format(_side_effect)})
     logging.info(os.path.basename(__file__) + ': _side_effect         : {}'.format(_side_effect))
     _done = _side_effect.get('done')
     if 'poke' in _side_effect.keys():
@@ -545,10 +542,8 @@ def do_fence(service, state, insn):
 
 def do_execute(service, state):
     if not len(state.get('pending_execute')): return
-#    toolbox.report_stats(service, state, 'flat', 'pending_execute_not_empty')
     state.get('stats').refresh('flat', 'pending_execute_not_empty')
     _remove_from_pending_execute = []
-#    service.tx({'info': 'state.pending_execute : {}'.format(state.get('pending_execute'))})
     logging.info(os.path.basename(__file__) + ': state.pending_execute : {}'.format(state.get('pending_execute')))
     for _insn in state.get('pending_execute'):
         if isinstance(state.get('recovery_iid'), int):
@@ -561,11 +556,9 @@ def do_execute(service, state):
                     '%pc': _insn.get('%pc'),
                 },
             }})
-#            toolbox.report_stats(service, state, 'flat', 'flushes')
             state.get('stats').refresh('flat', 'flushes')
             _remove_from_pending_execute.append(_insn)
             continue
-#        service.tx({'info': '_insn : {}'.format(_insn)})
         logging.info(os.path.basename(__file__) + ': _insn : {}'.format(_insn))
         _pc = int.from_bytes(_insn.get('%pc'), 'little')
         _word = ('{:08x}'.format(_insn.get('word')) if 4 == _insn.get('size') else '    {:04x}'.format(_insn.get('word')))
@@ -661,7 +654,6 @@ def do_execute(service, state):
             'FENCE': do_fence,
         }.get(_insn.get('cmd'), do_unimplemented)
         _insn_prime, _done = _f(service, state, _insn)
-#        toolbox.report_stats(service, state, 'histo', 'category', _f.__name__)
         state.get('stats').refresh('histo', 'category', _f.__name__)
         if not _done: break
         if state.get('config').get('result_forwarding') and 'rd' in _insn_prime.keys() and _insn_prime.get('result'):
@@ -769,7 +761,6 @@ class ALU:
                 **_insn,
                 **_patch,
             })
-#        self.service.tx({'info': 'state.operands : {}'.format(self.get('operands'))})
         logging.info(os.path.basename(__file__) + ': state.operands : {}'.format(self.get('operands')))
         do_execute(self.service, self)
 

@@ -49,9 +49,7 @@ class Commit:
             _key = None
             if _insn.get('cmd') in riscv.constants.STORES: _key = 'cycles_per_STORE'
             if _insn.get('cmd') in riscv.constants.LOADS: _key = 'cycles_per_LOAD'
-    #        if _key: toolbox.report_stats(service, state, 'histo', _key, state.get('cycle') - _insn.get('issued'))
             if _key: self.get('stats').refresh('histo', _key, self.get('cycle') - _insn.get('issued'))
-#            self.service.tx({'info': 'retiring {}'.format(_insn)})
             logging.info(os.path.basename(__file__) + ': retiring {}'.format(_insn))
             if _insn.get('ret_pc'):
                 self.service.tx({'event': {
@@ -76,7 +74,6 @@ class Commit:
             if _insn.get('shutdown'):
                 _insn.update({'operands': {int(k):v for k, v in _insn.get('operands').items()}})
                 _x17 = _insn.get('operands').get(17)
-#                self.service.tx({'info': 'ECALL {}... graceful shutdown'.format(int.from_bytes(_x17, 'little'))})
                 logging.info(os.path.basename(__file__) + ': ECALL {}... graceful shutdown'.format(int.from_bytes(_x17, 'little')))
                 self.service.tx({'event': {
                     'arrival': 1 + self.get('cycle'),
@@ -108,7 +105,6 @@ class Commit:
                 },
             }})
             _insn.update({'retired': True})
-    #        toolbox.report_stats(service, state, 'flat', 'retires')
             self.get('stats').refresh('flat', 'retires')
             self.update({'ncommits': 1 + self.get('ncommits')})
             _pc = _insn.get('_pc')
@@ -116,18 +112,15 @@ class Commit:
             logging.info('do_commit(): {:8x}: {} : {:10} (iid : {}, {:12}, {})'.format(_pc, _word, _insn.get('cmd'), _insn.get('iid'), self.get('cycle'), _insn.get('function', '')))
         self.service.tx({'committed': len(_retire)})
         if len(_commit):
-    #        toolbox.report_stats(service, state, 'histo', 'retired_per_cycle', len(_retire))
             self.get('stats').refresh('histo', 'retired_per_cycle', len(_retire))
         for _insn in _commit: self.get('pending_commit').remove(_insn)
     def do_tick(self, results, events, **kwargs):
         self.update({'cycle': kwargs.get('cycle', self.cycle)})
         for _l1dc in map(lambda y: y.get('l1dc'), filter(lambda x: x.get('l1dc'), results)):
-#            self.service.tx({'info': '_l1dc : {}'.format(_l1dc)})
             logging.info(os.path.basename(__file__) + ': _l1dc : {}'.format(_l1dc))
             for _insn in filter(lambda a: a.get('cmd') in riscv.constants.LOADS, self.get('pending_commit')):
                 if _insn.get('operands').get('addr') != _l1dc.get('addr'): continue
                 assert 'data' in _l1dc.keys()
-#                self.service.tx({'info': '_insn : {}'.format(_insn)})
                 logging.info(os.path.basename(__file__) + ': _insn : {}'.format(_insn))
                 _peeked  = _l1dc.get('data')
                 _peeked += [-1] * (8 - len(_peeked))
@@ -165,15 +158,6 @@ class Commit:
         self.update({'pending_commit': sorted(self.get('pending_commit'), key=lambda x: x.get('iid'))})
         if len(self.get('pending_commit')): self.do_commit()
         self.service.tx({'info': 'jhjr'}) # FIXME: something goes awry when NO self.service.tx({'info': ...}) are performed; don't know why yet
-#        self.service.tx({'info': 'pending_commit : [{}]'.format(', '.join(map(
-#            lambda x: '({}{}, {}, {})'.format(
-#                x.get('cmd'),
-#                (' @{}'.format(x.get('operands').get('addr')) if x.get('cmd') in riscv.constants.LOADS + riscv.constants.STORES else ''),
-#                x.get('%pc'),
-#                x.get('iid')
-#            ),
-#            self.get('pending_commit')
-#        )))})
         logging.info(os.path.basename(__file__) + ': pending_commit : [{}]'.format(', '.join(map(
             lambda x: '({}{}, {}, {})'.format(
                 x.get('cmd'),

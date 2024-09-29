@@ -146,40 +146,13 @@ if '__main__' == __name__:
                 state.update({'ack': False})
                 state.update({'futures': {}})
                 state.update({'stats': toolbox.stats.CounterBank(state.get('coreid'), state.get('name'))})
-#                for c in filter(lambda x: 'boot' in dir(x), state.components.values()): c.boot()
-#                state.components.get('brpred').boot()
-#                if not state.get('config').get('toolchain'): continue
-#                _toolchain = state.get('config').get('toolchain')
-#                _binary = state.get('binary')
-#                _files = next(iter(list(os.walk(_toolchain))))[-1]
-#                _objdump = next(filter(lambda x: 'objdump' in x, _files))
-#                _x = subprocess.run('{} -t {}'.format(os.path.join(_toolchain, _objdump), _binary).split(), capture_output=True)
-#                if len(_x.stderr): continue
-#                _objdump = _x.stdout.decode('ascii').split('\n')
-#                _objdump = sorted(filter(lambda x: len(x), _objdump))
-#                _objdump = filter(lambda x: re.search('^0', x), _objdump)
-#                _objdump = map(lambda x: x.split(), _objdump)
-#                state.update({'objmap': {
-#                    int(x[0], 16): {
-#                        'flags': x[1:-1],
-#                        'name': x[-1]
-#                    } for x in _objdump
-#                }})
                 state.boot()
             elif {'text': 'pause'} == {k: v}:
                 state.update({'running': False})
             elif 'binary' == k:
-#                state.update({'binary': v})
                 state.components.get('decode').update({'binary': v})
             elif 'config' == k:
                 logging.info('config : {}'.format(v))
-#                _components = {
-#                    'watchdog': state.components.get('watchdog'),
-#                    'brpred': state.components.get('brpred'),
-#                    'fetch': state.components.get('fetch'),
-#                    'regfile': state.components.get('regfile'),
-#                    state.get('name'): state,
-#                }
                 _components = {**state.components, **{state.get('name'): state}}
                 if v.get('service') not in _components.keys(): continue
                 _target = _components.get(v.get('service'))
