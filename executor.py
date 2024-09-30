@@ -187,6 +187,7 @@ if '__main__' == __name__:
     assert args.stochastic > 0, '--stochastic must be greater than 0!'
     assert args.stochastic <= 1, '--stochastic must be less than or equal to 1!'
     assert not (None != args.include and None != args.exclude), 'Cannot use both --include and --exclude!'
+    assert all(map(lambda x: os.path.exists(x), args.exec_script)), 'Cannot open one or more executor scripts!'
     _mongodb = None
     if args.mongodb:
         _mongodb = {
