@@ -1,10 +1,12 @@
 # Copyright (C) 2021, 2022, 2023, 2024 John Haskins Jr.
 
 import os
+import re
 import sys
 import argparse
 import logging
 import time
+import subprocess
 
 import service
 import toolbox
@@ -27,7 +29,11 @@ def do_tick(service, state, results, events):
             service.tx({'result': {
                 'arrival': 1 + state.get('cycle'),
                 'coreid': state.get('coreid'),
-                'insn': {**_insn, **{'%pc': decode.get('%pc')}},
+                'insn': {
+                    **_insn,
+                    **{'%pc': decode.get('%pc')},
+                    **({'function': next(filter(lambda x: int.from_bytes(decode.get('%pc'), 'little') >= x[0], sorted(state.get('objmap').items(), reverse=True)))[-1].get('name', '')} if state.get('objmap') else {}),
+                },
             }})
 
 if '__main__' == __name__:
@@ -61,6 +67,11 @@ if '__main__' == __name__:
         'ack': True,
         'stats': None,
         'buffer': [],
+        'binary': None,
+        'objmap': None,
+        'config': {
+            'toolchain': '',
+        }
     }
     _service = service.Service(state.get('service'), state.get('coreid'), _launcher.get('host'), _launcher.get('port'))
     while state.get('active'):
@@ -77,8 +88,35 @@ if '__main__' == __name__:
                 state.update({'ack': False})
                 state.update({'stats': toolbox.stats.CounterBank(state.get('coreid'), state.get('service'))})
                 state.update({'buffer': []})
+                if not state.get('config').get('toolchain'): continue
+                if not state.get('binary'): continue
+                _toolchain = state.get('config').get('toolchain')
+                _binary = state.get('binary')
+                _files = next(iter(list(os.walk(_toolchain))))[-1]
+                _objdump = next(filter(lambda x: 'objdump' in x, _files))
+                _x = subprocess.run('{} -t {}'.format(os.path.join(_toolchain, _objdump), _binary).split(), capture_output=True)
+                if len(_x.stderr): continue
+                _objdump = _x.stdout.decode('ascii').split('\n')
+                _objdump = sorted(filter(lambda x: len(x), _objdump))
+                _objdump = filter(lambda x: re.search('^0', x), _objdump)
+                _objdump = map(lambda x: x.split(), _objdump)
+                state.update({'objmap': {
+                    int(x[0], 16): {
+                        'flags': x[1:-1],
+                        'name': x[-1]
+                    } for x in _objdump
+                }})
             elif {'text': 'pause'} == {k: v}:
                 state.update({'running': False})
+            elif 'config' == k:
+                logging.debug('config : {}'.format(v))
+                if state.get('service') != v.get('service'): continue
+                _field = v.get('field')
+                _val = v.get('val')
+                assert _field in state.get('config').keys(), 'No such config field, {}, in service {}!'.format(_field, state.get('service'))
+                state.get('config').update({_field: _val})
+            elif 'binary' == k:
+                state.update({'binary': v})
             elif 'tick' == k:
                 state.update({'cycle': v.get('cycle')})
                 _results = tuple(filter(lambda x: state.get('coreid') == x.get('coreid'), v.get('results')))

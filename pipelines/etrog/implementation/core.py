@@ -6,7 +6,6 @@ import sys
 import argparse
 import logging
 import time
-import subprocess
 
 import service
 import toolbox
@@ -40,18 +39,14 @@ class Core(components.simplecore.SimpleCore):
         logging.info('Core.components.regfile.service : {}'.format(self.components.get('regfile').get('service')))
         logging.info('Core.components.execute.service : {}'.format(self.components.get('execute').get('service')))
         logging.info('Core.components.watchdog.service : {}'.format(self.components.get('watchdog').get('service')))
-        self.objmap = None
-        self.config = {
-            'toolchain': '',
-            'binary': '',
-        }
     def __repr__(self):
         return '[{}] {}'.format(self.coreid, ', '.join(map(lambda x: '{}: {}'.format(x, self.get(x)), [
             'cycle',
             'pending_pc', 'pending_fetch', 'pending_decode', 'pending_execute',
             'active', 'running', 'ack',
-            'objmap', 'config',
         ])))
+    def boot(self):
+        for c in filter(lambda x: 'boot' in dir(x), self.components.values()): c.boot()
     def do_results(self, results):
         logging.debug('SimpleCore.do_results(self, {}): ...'.format(results))
         _service = self.internal.get('service')
@@ -76,7 +71,6 @@ class Core(components.simplecore.SimpleCore):
             }})
             self.update({'pending_fetch': int.from_bytes(self.get('%pc'), 'little')})
             self.update({'pending_pc': False})
-#            toolbox.report_stats(service, state, 'flat', 'fetches')
             self.get('stats').refresh('flat', 'fetches')
         for mem in map(lambda y: y.get('mem'), filter(lambda x: x.get('mem'), results)):
             if mem.get('addr') != self.get('pending_fetch'): continue
@@ -95,7 +89,6 @@ class Core(components.simplecore.SimpleCore):
             _insn = {
                 **insn,
                 **{'iid': self.get('iid')},
-                **({'function': next(filter(lambda x: int.from_bytes(insn.get('%pc'), 'little') >= x[0], sorted(self.get('objmap').items(), reverse=True)))[-1].get('name', '')} if state.get('objmap') else {}),
             }
             self.update({'pending_execute': _insn})
             _service.tx({'event': {
@@ -242,27 +235,11 @@ if '__main__' == __name__:
                 state.update({'futures': {}})
                 state.update({'stats': toolbox.stats.CounterBank(state.get('coreid'), state.get('service'))})
                 state.update({'%pc': None})
-                if not state.get('config').get('toolchain'): continue
-                _toolchain = state.get('config').get('toolchain')
-                _binary = state.get('binary')
-                _files = next(iter(list(os.walk(_toolchain))))[-1]
-                _objdump = next(filter(lambda x: 'objdump' in x, _files))
-                _x = subprocess.run('{} -t {}'.format(os.path.join(_toolchain, _objdump), _binary).split(), capture_output=True)
-                if len(_x.stderr): continue
-                _objdump = _x.stdout.decode('ascii').split('\n')
-                _objdump = sorted(filter(lambda x: len(x), _objdump))
-                _objdump = filter(lambda x: re.search('^0', x), _objdump)
-                _objdump = map(lambda x: x.split(), _objdump)
-                state.update({'objmap': {
-                    int(x[0], 16): {
-                        'flags': x[1:-1],
-                        'name': x[-1]
-                    } for x in _objdump
-                }})
+                state.boot()
             elif {'text': 'pause'} == {k: v}:
                 state.update({'running': False})
             elif 'binary' == k:
-                state.update({'binary': v})
+                state.components.get('decode').update({'binary': v})
             elif 'config' == k:
                 logging.info('config : {}'.format(v))
                 _components = {

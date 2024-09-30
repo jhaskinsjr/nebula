@@ -6,7 +6,6 @@ import sys
 import argparse
 import logging
 import time
-import subprocess
 
 import service
 import toolbox
@@ -35,7 +34,6 @@ def do_tick(service, state, results, events):
         }})
         state.update({'pending_fetch': int.from_bytes(state.get('%pc'), 'little')})
         state.update({'pending_pc': False})
-#        toolbox.report_stats(service, state, 'flat', 'fetches')
         state.get('stats').refresh('flat', 'fetches')
     for mem in map(lambda y: y.get('mem'), filter(lambda x: x.get('mem'), results)):
         if mem.get('addr') != state.get('pending_fetch'): continue
@@ -54,7 +52,6 @@ def do_tick(service, state, results, events):
         _insn = {
             **insn,
             **{'iid': state.get('iid')},
-            **({'function': next(filter(lambda x: int.from_bytes(insn.get('%pc'), 'little') >= x[0], sorted(state.get('objmap').items(), reverse=True)))[-1].get('name', '')} if state.get('objmap') else {}),
         }
         state.update({'pending_execute': _insn})
         service.tx({'event': {
@@ -168,11 +165,6 @@ if '__main__' == __name__:
         'iid': 0,
         '%pc': None,
         'ack': True,
-        'objmap': None,
-        'config': {
-            'toolchain': '',
-            'binary': '',
-        },
     }
     _service = service.Service(state.get('service'), state.get('coreid'), _launcher.get('host'), _launcher.get('port'))
     while state.get('active'):
@@ -193,27 +185,8 @@ if '__main__' == __name__:
                 state.update({'pending_execute': None})
                 state.update({'stats': toolbox.stats.CounterBank(state.get('coreid'), state.get('service'))})
                 state.update({'%pc': None})
-                if not state.get('config').get('toolchain'): continue
-                _toolchain = state.get('config').get('toolchain')
-                _binary = state.get('binary')
-                _files = next(iter(list(os.walk(_toolchain))))[-1]
-                _objdump = next(filter(lambda x: 'objdump' in x, _files))
-                _x = subprocess.run('{} -t {}'.format(os.path.join(_toolchain, _objdump), _binary).split(), capture_output=True)
-                if len(_x.stderr): continue
-                _objdump = _x.stdout.decode('ascii').split('\n')
-                _objdump = sorted(filter(lambda x: len(x), _objdump))
-                _objdump = filter(lambda x: re.search('^0', x), _objdump)
-                _objdump = map(lambda x: x.split(), _objdump)
-                state.update({'objmap': {
-                    int(x[0], 16): {
-                        'flags': x[1:-1],
-                        'name': x[-1]
-                    } for x in _objdump
-                }})
             elif {'text': 'pause'} == {k: v}:
                 state.update({'running': False})
-            elif 'binary' == k:
-                state.update({'binary': v})
             elif 'config' == k:
                 logging.debug('config : {}'.format(v))
                 if state.get('service') != v.get('service'): continue
