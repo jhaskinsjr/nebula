@@ -30,26 +30,45 @@ pipeline logic. Since each step of executing an instruction (e.g., decode,
 register access) is handled by its own service, all the code for each step
 is self-contained, making it easier to understand and reason about.
 
-The [Bergamot](pipelines/bergamot/README.md) pipeline's implementation,
-for instance, is comprised of five
-Python files (see: pipelines/bergamot/implementation/), four of which
-contain fewer than 150 lines of code. The lone standout is the file that
-handles instruction execution
-(see: pipelines/bergamot/implementation/execute.py) which, despite handling
-dozens of RISC-V instructions, still contains fewer than 700 lines of code.
+## Granularity
 
-These bite-sized units allow chunks of functionality to be cleanly
-isolated from one another, making each easier to reason about, easier to
-understand, and easier to modify, which is indispensable for implementing
-novel design concepts. Consider, for instance, that a change to a function
-in the register file logic will almost certainly not alter functionality
-implemented in the decoder logic; this reduces the amount of the system
-that a developer has to be familiar with in order to be productive.
+The Nebula sample pipeline models are use either per-component
+granularity or per-core granuylarity.
 
-Furthermore, because the units communicate among themselves, it was easy
-to construct a unit that monitors communications between the other
-units to count events (e.g., number of fetches, number of instructions
-flushed, number of instructions retired).
+With per-component granularity,
+each of a pipeline's various elements (e.g., decoder, register file)
+is spawned inside its own independent Python process.
+An apt example of per-component granularity is the
+[Bergamot](../pipelines/bergamot/README.md) pipeline model, which is
+comprised of five Python files (see: pipelines/bergamot/implementation/).
+When a Bergamot simulation executes all five... simplecore.py, decode.py,
+regfile.py, execute.py, and watchdog.py... are executed as independent
+processes that communicate with each other over a TCP network.
+
+On the other hand, [Etrog](../pipelines/etrog/README.md) uses per-core
+granularity. Like Bergamot, Etrog's implementation is also comprised of
+several Python files (see: pipelines/etrog/implementation). However,
+rather than spawning each as its own Python process, only core.py is
+executed, and it, in turn, `import`s the other Python files and
+instantiates an object from each; messages are then passed between these
+objects over an internal "network," with only a small subset of those
+messages, e.g., communication with main memory, being communicated
+outside of core.py. Etrog, in essence, is a reimplementation of Bergamot
+that executes much more rapidly... almost 6 times faster than Betgamot...
+because of much less interprocess communication.
+
+When Nebula was first developed, all the sample pipeline models
+utilized per-component granularity. Per-core granularity emerged in
+release 1.5.0, with [Etrog](../pipelines/etrog/README.md), followed by
+[Tangerine](../pipelines/tangerine/README.md), which is a per-core
+reimplementation of [Tangelo](../pipelines/tangelo/README.md) in release
+2.0.0. Note that while Tangerine encapsulates each _core_'s components
+inside a single process, L2s and L3s continue to be executed inside
+independent processes so that they, like main memory, may be easily
+shared across multiple cores in multicore simulations.
+
+Moving forward, future sample pipeline models will use per-core
+granularity.
 
 ## Communication Channels
 
