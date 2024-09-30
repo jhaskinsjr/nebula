@@ -126,12 +126,19 @@ about these topics and much more are covered in the links below.
 
 # Recent Revision History
 
+Git tag `v2.0.0` (20240930):
+* tuned per-core microservices architecture (versus per-component); see: [Software Architecture](Documentation/Software_Architecture.md)
+* *new* [Tangerine](pipelines/tangerine/README.md) pipeline model: faster (3x) reimplementation of [Tangelo](pipelines/tangelo/README.md)
+* `decode:toolchain` now used for [Bergamot](pipelines/bergamot/README.md) and [Etrog](pipelines/etrog/README.md)
+* updated [Simulation Speed](Documentation/Simulation_Speed.md) documentation
+
 Git tag `v1.5.1` (20240921):
 * BUG FIX: [128e/localhost.nebula](chips/128e/localhost.nebula) now correctly points to core.py (instead of simplecore.py)
 * *new* [SimpleCore](components/simplecore/__init__.py) class
 * [Etrog](pipelines/etrog/implementation/core.py) creates `Core` class that inherits from `SimpleCore`
 
 Git tag `v1.5.0` (20240919):
+* first-pass per-core microservices architecture; see: [Software Architecture](Documentation/Software_Architecture.md)
 * *new* [Etrog](pipelines/etrog/README.md) pipeline model: faster reimplementation of [Bergamot](pipelines/bergamot/README.md)
 
 Git tag `v1.4.0` (20240819):
