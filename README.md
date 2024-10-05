@@ -127,7 +127,7 @@ about these topics and much more are covered in the links below.
 # Recent Revision History
 
 Git tag `v2.0.1` (20241005):
-* remove ability of [Etrog](pipelines/etrog/README.md), [Tangering](pipelines/tangerine/README.md) modules to run standalone
+* remove ability of [Etrog](pipelines/etrog/README.md), [Tangerine](pipelines/tangerine/README.md) modules to run standalone
 * remove superfluous `pipelines/*/implementation/stats.py` files
 * make `executor.py` verify all `*.exec` scripts are present _before_ processing them
 
