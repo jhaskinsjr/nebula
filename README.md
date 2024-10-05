@@ -126,6 +126,11 @@ about these topics and much more are covered in the links below.
 
 # Recent Revision History
 
+Git tag `v2.0.1` (20241005):
+* remove ability of [Etrog](pipelines/etrog/README.md), [Tangering](pipelines/tangerine/README.md) modules to run standalone
+* remove superfluous `pipelines/*/implementation/stats.py` files
+* make `executor.py` verify all `*.exec` scripts are present _before_ processing them
+
 Git tag `v2.0.0` (20240930):
 * tuned per-core microservices architecture (versus per-component); see: [Software Architecture](Documentation/Software_Architecture.md)
 * *new* [Tangerine](pipelines/tangerine/README.md) pipeline model: faster (3x) reimplementation of [Tangelo](pipelines/tangelo/README.md)
