@@ -4,6 +4,7 @@ The sample binaries...
 
 * examples/bin/sum
 * examples/bin/sort
+* examples/bin/sieve
 * examples/bin/negate
 * examples/bin/puts
 * examples/bin/cat
