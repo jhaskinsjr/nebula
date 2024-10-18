@@ -52,7 +52,7 @@ slight modifications according to a build recipe chronicled
 
 Unlike the other sample programs, gzip is not a mere toy, but,
 rather, a *real* benchmark that does *real* work. I have used it successfully
-to compress my `.bash_history` file from about 400 KB down to about 13 KB
+to compress my `.bash_history` file from about 375 KB down to about 15 KB
 with the [Jabara](../pipelines/jabara/README.md) sample model; to wit:
 
     cd ${HOME}/src/nebula/pipelines/jabara ; \
@@ -74,11 +74,12 @@ with the [Jabara](../pipelines/jabara/README.md) sample model; to wit:
             /home/john/src/nebula/examples/bin/gzip /tmp/.bash_history \
     )
 
-On my laptop the simulation, executing at a rate of about 51,000
-instructions/second, completed in a bit more than 26 minutes. As
-expected, this emitted nothing to my terminal, but wrote
-`.bash_history.gz` and deleted the original `.bash_history` file. And
-uncompressing...
+On my laptop the simulation, executed 71.2 million instructions at a
+rate of about 26,000 instructions/second, and completed in a bit less than
+46 minutes. As expected, this emitted nothing to my terminal, but wrote
+`/tmp/.bash_history.gz` and deleted `/tmp/.bash_history`.
+
+And uncompressing...
 
     cd ${HOME}/src/nebula/pipelines/jabara ; \
     LOGDIR=/tmp/log/$( basename $( pwd ) ) ; \
@@ -98,5 +99,6 @@ uncompressing...
             /home/john/src/nebula/examples/bin/gunzip /tmp/.bash_history.gz \
     )
 
-...took a little less than 4 minutes, writing `.bash_history` and
-deletint `.bash_history.gz`.
+...executed 12 million instructions at about 25,000 instructions/second,
+and completed in a little more than 8 minutes, writing `/tmp/.bash_history` and
+deleting `/tmp/.bash_history.gz`.
