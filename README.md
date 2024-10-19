@@ -166,6 +166,16 @@ Git tag `v1.3.0` (20240608):
 * massively multicore simulations (e.g.: [chips/128b/localhost.nebula](chips/128b/localhost.nebula); 128 Bergamot cores)
 
 
+# Lessons Learned
+
+Here are some insights I have gained on the path from a blank `vi` session to a fully operable cycle-accurate simulator framework.
+
+* **Prioritization is important, but judgement is vital.** Make sure the most important tasks get done first, and, more importantly, _make sure unimportant tasks don't get done_.
+* **Automate repetitive tasks.** Failure to do so wastes time and increases the probability of errors.
+* **Think globally.** Before drilling down on how a task is to be completed, first list as many tasks as you can think of, then consider interdependencies between tasks, e.g., what must precede what else, what groups of tasks may be performed concurrently (and, if I'd had a team working with me, what tasks I should do, what tasks I should delegate).
+* **Health is crucial.** Exercise, rest, good food, and laughter make good engineers great, and great engineers superb.
+
+
 # Contact
 
 I consult on the Nebula framework's use, development and deployment, and
