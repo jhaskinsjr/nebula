@@ -9,7 +9,6 @@ implemented have been struck through.)
 1. per-core cycle count
 1. cache snooping
 1. pipeline implementation with value prediction
-1. pipeline implementation with out-of-order execution
 1. perfect branch predictor
 1. perfect value predictor
 1. return address stack
