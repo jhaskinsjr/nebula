@@ -61,7 +61,8 @@ which begins by opening a socket and accepting connections on port 12345,
 executing the script localhost.nebula, and loading the binary
 (${HOME}/src/nebula/examples/bin/sieve) together with its command-line
 parameter "10", into the simulated main memory. With this
-foundation established, the simulator will execute a maximum of 100,000
+foundation established, the simulator will (because of the
+"--max_instructions" parameter) execute a maximum of 100,000
 simulated instructions.
 
 **Step 7.** Examine the output:
@@ -146,40 +147,19 @@ Git tag `v1.5.0` (20240919):
 * first-pass per-core microservices architecture; see: [Software Architecture](Documentation/Software_Architecture.md)
 * *new* [Etrog](pipelines/etrog/README.md) pipeline model: faster reimplementation of [Bergamot](pipelines/bergamot/README.md)
 
-Git tag `v1.4.0` (20240819):
-* BUG FIX: Tangelo now executes correctly when `alu:forward_results` is `False`
-* BUG FIX: MMU page reclamation
-* shared cache module (see: [components/sharedcache/__init__.py](components/sharedcache/__init__.py)) now handles multiple concurrent operations
-* significant performance improvement by deferred stat reporting
-
-Git tag `v1.3.1` (20240625):
-* Dhrystone benchmark
-* gzip benchmark
-
-Git tag `v1.3.0` (20240608):
-* *new* [Tangelo](pipelines/tangelo/README.md) pipeline model with V2P, TLB, shared caches
-* MMU service
-* cache block marking, fine-grained invalidation (see: [components/simplecache/__init__.py](components/simplecache/__init__.py))
-* shared caches (among multiple cores) (see: [components/sharedcache/__init__.py](components/sharedcache/__init__.py))
-* arbitrarily deep cache hierarchy
-* heterogenous cores simulations (e.g.: [chips/4t4b/localhost.nebula](chips/4t4b/localhost.nebula); 4 Tangelo cores + 4 Bergamot cores)
-* massively multicore simulations (e.g.: [chips/128b/localhost.nebula](chips/128b/localhost.nebula); 128 Bergamot cores)
-
 
 # Lessons Learned
 
-Here are some insights I have gained on the path from a blank `vi` session to a fully operable cycle-accurate simulator framework.
+Here are some insights I have gained on the path from a blank `vi` session
+to a fully operable cycle-accurate simulator framework.
 
 * **Prioritization is important, but judgement is vital.** Make sure the most important tasks get done first, and, more importantly, _make sure unimportant tasks don't get done_.
 * **Automate repetitive tasks.** Failure to do so wastes time and increases the probability of errors.
-* **Think globally.** Before drilling down on how a task is to be completed, first list as many tasks as you can think of, then consider interdependencies between tasks, e.g., what must precede what else, what groups of tasks may be performed concurrently (and, if I'd had a team working with me, what tasks I should do, what tasks I should delegate).
+* **Think globally.** Before drilling down on how a task is to be completed, first list as many tasks as you can think of, then consider interdependencies between tasks, e.g., what must precede what else, what groups of tasks may be performed concurrently (and, if you have a team, what tasks you should do, what tasks you should delegate).
 * **Health is crucial.** Exercise, rest, good food, and laughter make good engineers great, and great engineers superb.
 
 
 # Contact
-
-I consult on the Nebula framework's use, development and deployment, and
-microprocessor simulation generally.
 
 Email: john.haskins.jr@gmail.com |
 LinkedIn: https://www.linkedin.com/in/john-haskins-jr-925235a1/
