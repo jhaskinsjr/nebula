@@ -1,10 +1,8 @@
 # Software Architecture
 
-Nebula is a proof-of-concept project intended to gauge the efficacy of
+Nebula is a project intended to gauge the efficacy of
 modern microservices software architecture as applied to cycle-accurate
-microprocessor simulation. Accordingly, flexibility was prioritized above
-performance. For a more detailed discussion
-of Nebula's performance, see: [Simulation Speed](./Simulation_Speed.md).
+microprocessor simulation.
 
 ## Philosophy: Simplicity And Flexibility Through Independence
 
@@ -47,7 +45,7 @@ processes that communicate with each other over a TCP network.
 
 On the other hand, [Etrog](../pipelines/etrog/README.md) uses per-core
 granularity. Like Bergamot, Etrog's implementation is also comprised of
-several Python files (see: pipelines/etrog/implementation). However,
+several Python files (see: pipelines/etrog/implementation/). However,
 rather than spawning each as its own Python process, only core.py is
 executed, and it, in turn, `import`s the other Python files and
 instantiates an object from each; messages are then passed between these
